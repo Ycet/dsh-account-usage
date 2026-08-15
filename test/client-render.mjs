@@ -168,3 +168,36 @@ test("render does not crash when connection is absent (headless-ish client)", ()
   const html = renderToString(React.createElement(section.entry.component, injected));
   assert.ok(html.includes("OpenCode Go"));
 });
+
+test("TokenChart renders stacked segments with legend labels", () => {
+  const mod = loadClientExports();
+  const t = (k) => ({ legendMiss: "未命中输入", legendHit: "命中输入", legendOut: "输出", tokenChartEmpty: "空" })[k] ?? k;
+  const days = [
+    { date: "2026-08-13", models: { "deepseek-v4-flash": { cacheMissTokens: 300, cacheHitTokens: 200, responseTokens: 400 } } },
+    { date: "2026-08-14", models: { "deepseek-v4-flash": { cacheMissTokens: 50, cacheHitTokens: 0, responseTokens: 60 } } },
+    { date: "2026-08-15", models: {} }
+  ];
+  const html = renderToString(
+    React.createElement(mod.TokenChart, { days, model: "deepseek-v4-flash", currency: "CNY", t })
+  );
+  assert.ok(html.includes("<svg"), "renders the token chart");
+  // 堆叠分段：三种颜色各至少出现一次（有值的日期）
+  assert.ok(html.includes("var(--dsw-alias-state-business-primary)"), "miss segment color");
+  assert.ok(html.includes("var(--dsw-alias-state-success-primary)"), "hit segment color");
+  assert.ok(html.includes("var(--dsw-alias-state-warn-primary)"), "output segment color");
+  assert.ok(html.includes("2026-08-13"), "x-axis date labels");
+});
+
+test("BarChart renders per-day bars without native title tooltips", () => {
+  const mod = loadClientExports();
+  const t = (k) => ({ chartEmpty: "空" })[k] ?? k;
+  const days = [
+    { date: "2026-08-13", cost: 1.5, models: { "deepseek-v4-flash": { cost: 1.5 }, "deepseek-v4-pro": { cost: 0 } } },
+    { date: "2026-08-14", cost: 2.5, models: { "deepseek-v4-flash": { cost: 2.5 } } }
+  ];
+  const html = renderToString(React.createElement(mod.BarChart, { days, currency: "CNY", t }));
+  assert.ok(html.includes("<svg"), "renders the cost chart");
+  // 原生 <title>（带悬浮延迟）已被移除
+  assert.ok(!html.includes("<title"), "no native tooltip titles");
+  assert.ok(html.includes("2026-08-13"), "x-axis date labels");
+});

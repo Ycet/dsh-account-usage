@@ -50,6 +50,12 @@ window.__ModuleLoader__.load({
       totalsTokens: "tokens",
       chartTitle: "消费金额柱状图",
       chartEmpty: "所选区间内暂无消费数据",
+      tooltipTotal: "总消耗",
+      tokenChartTitle: "Token 消耗柱状图",
+      tokenChartEmpty: "所选区间内暂无 token 数据",
+      legendMiss: "未命中输入",
+      legendHit: "命中输入",
+      legendOut: "输出",
       modelsTitle: "模型明细（所选区间）",
       modelsEmpty: "暂无模型数据",
       colModel: "模型",
@@ -114,6 +120,12 @@ window.__ModuleLoader__.load({
       totalsTokens: "tokens",
       chartTitle: "Spend chart",
       chartEmpty: "No spend data in the selected range",
+      tooltipTotal: "Total",
+      tokenChartTitle: "Token usage chart",
+      tokenChartEmpty: "No token data in the selected range",
+      legendMiss: "Input (miss)",
+      legendHit: "Cache hit",
+      legendOut: "Output",
       modelsTitle: "Model details (selected range)",
       modelsEmpty: "No model data",
       colModel: "Model",
@@ -171,7 +183,15 @@ window.__ModuleLoader__.load({
       th: { textAlign: "left", color: "var(--dsw-alias-label-tertiary)", fontWeight: 500, padding: "4px 8px", borderBottom: "1px solid var(--dsw-alias-border-l2)", whiteSpace: "nowrap" },
       td: { color: "var(--dsw-alias-label-primary)", padding: "5px 8px", borderBottom: "1px solid var(--dsw-alias-border-l1)" },
       tdNum: { color: "var(--dsw-alias-label-primary)", padding: "5px 8px", borderBottom: "1px solid var(--dsw-alias-border-l1)", textAlign: "right", fontVariantNumeric: "tabular-nums" },
-      thNum: { textAlign: "right", color: "var(--dsw-alias-label-tertiary)", fontWeight: 500, padding: "4px 8px", borderBottom: "1px solid var(--dsw-alias-border-l2)", whiteSpace: "nowrap" }
+      thNum: { textAlign: "right", color: "var(--dsw-alias-label-tertiary)", fontWeight: 500, padding: "4px 8px", borderBottom: "1px solid var(--dsw-alias-border-l2)", whiteSpace: "nowrap" },
+      chartWrap: { position: "relative" },
+      tooltip: { position: "absolute", zIndex: 6, background: "var(--dsw-alias-bg-layer-3)", border: "1px solid var(--dsw-alias-border-l2)", borderRadius: 8, padding: "6px 10px", fontSize: 12, lineHeight: 1.6, whiteSpace: "nowrap", pointerEvents: "none", boxShadow: "0 4px 16px rgb(0 0 0 / 0.25)" },
+      tooltipTitle: { margin: 0, fontWeight: 600, color: "var(--dsw-alias-label-primary)", fontSize: 12 },
+      tooltipRow: { margin: 0, color: "var(--dsw-alias-label-secondary)", fontSize: 12, fontVariantNumeric: "tabular-nums" },
+      chip: { border: "1px solid var(--dsw-alias-border-l2)", color: "var(--dsw-alias-label-primary)", font: "inherit", cursor: "pointer", background: "transparent", borderRadius: 999, padding: "4px 12px", fontSize: 12 },
+      chipActive: { border: "1px solid var(--dsw-alias-state-business-primary)", color: "var(--dsw-alias-state-business-primary)", font: "inherit", cursor: "pointer", background: "transparent", borderRadius: 999, padding: "4px 12px", fontSize: 12 },
+      legendRow: { display: "flex", flexWrap: "wrap", gap: 14, alignItems: "center" },
+      swatch: { display: "inline-block", width: 10, height: 10, borderRadius: 3, marginRight: 5, verticalAlign: -1 }
     };
 
     const OPENCODE_LIMITS = { rolling: "$12", weekly: "$30", monthly: "$60" };
@@ -284,30 +304,47 @@ window.__ModuleLoader__.load({
       );
     }
 
+    /** 图表共用参数。 */
+    const CHART_W = 640;
+    const CHART_H = 170;
+    const CHART_PAD_L = 8;
+    const CHART_PAD_R = 8;
+    const CHART_PAD_B = 22;
+    const CHART_PAD_T = 14;
+
+    /** tooltip 水平位置：按柱索引换算百分比，边缘自动收拢防止溢出。 */
+    function tooltipLeft(index, count) {
+      const pct = ((index + 0.5) / count) * 100;
+      return `${Math.min(86, Math.max(14, pct))}%`;
+    }
+
+    /**
+     * 消费金额柱状图：悬浮立即显示 tooltip（总消耗 + 各模型消耗）。
+     * 不再使用原生 <title>（有悬浮延迟）。
+     */
     function BarChart({ days, currency, t }) {
+      const [hovered, setHovered] = React.useState(null);
       if (!days || days.length === 0) {
         return React.createElement("p", { style: styles.hint }, t("chartEmpty"));
       }
-      const W = 640;
-      const H = 170;
-      const padL = 8;
-      const padR = 8;
-      const padB = 22;
-      const padT = 14;
       let max = 0;
       for (const d of days) if (d.cost > max) max = d.cost;
-      const innerW = W - padL - padR;
+      const innerW = CHART_W - CHART_PAD_L - CHART_PAD_R;
       const slot = innerW / days.length;
       const bw = Math.max(1, Math.min(28, slot * 0.7));
       const bars = days.map((d, i) => {
-        const h = max > 0 ? (d.cost / max) * (H - padT - padB) : 0;
-        const x = padL + i * slot + (slot - bw) / 2;
+        const h = max > 0 ? (d.cost / max) * (CHART_H - CHART_PAD_T - CHART_PAD_B) : 0;
+        const x = CHART_PAD_L + i * slot + (slot - bw) / 2;
         const height = Math.max(h, d.cost > 0 ? 1 : 0);
-        return React.createElement("g", { key: d.date },
-          React.createElement("title", null, `${d.date} · ${fmtMoney(d.cost, currency)}`),
+        return React.createElement("g", {
+          key: d.date,
+          style: { cursor: "pointer" },
+          onMouseEnter: () => setHovered(i),
+          onMouseLeave: () => setHovered(null)
+        },
           React.createElement("rect", {
             x,
-            y: H - padB - height,
+            y: CHART_H - CHART_PAD_B - height,
             width: bw,
             height,
             rx: 1.5,
@@ -316,10 +353,147 @@ window.__ModuleLoader__.load({
           })
         );
       });
-      return React.createElement("svg", { width: "100%", viewBox: `0 0 ${W} ${H}`, style: { display: "block" } },
-        React.createElement("text", { x: padL, y: H - 6, style: { fill: "var(--dsw-alias-label-tertiary)", fontSize: 10 } }, days[0].date),
-        React.createElement("text", { x: W - padR, y: H - 6, textAnchor: "end", style: { fill: "var(--dsw-alias-label-tertiary)", fontSize: 10 } }, days[days.length - 1].date),
-        bars
+      let tooltip = null;
+      if (hovered !== null) {
+        const d = days[hovered];
+        const perModel = d.models || {};
+        // 按费用降序列出当日有明细的模型（flash/pro 通常在前）
+        const rows = Object.keys(perModel)
+          .map((name) => ({ name, cost: perModel[name].cost }))
+          .sort((a, b) => b.cost - a.cost)
+          .map((m) =>
+            React.createElement("p", { key: m.name, style: styles.tooltipRow },
+              `${m.name}: ${fmtMoney(m.cost, currency)}`
+            )
+          );
+        tooltip = React.createElement("div", {
+          style: { ...styles.tooltip, left: tooltipLeft(hovered, days.length), top: 0, transform: "translate(-50%, calc(-100% - 6px))" }
+        },
+          React.createElement("p", { style: styles.tooltipTitle }, d.date),
+          React.createElement("p", { style: styles.tooltipRow }, `${t("tooltipTotal")}: ${fmtMoney(d.cost, currency)}`),
+          rows.length > 0 ? rows : React.createElement("p", { style: styles.tooltipRow }, "—")
+        );
+      }
+      return React.createElement("div", { style: styles.chartWrap },
+        React.createElement("svg", { width: "100%", viewBox: `0 0 ${CHART_W} ${CHART_H}`, style: { display: "block" } },
+          React.createElement("text", { x: CHART_PAD_L, y: CHART_H - 6, style: { fill: "var(--dsw-alias-label-tertiary)", fontSize: 10 } }, days[0].date),
+          React.createElement("text", { x: CHART_W - CHART_PAD_R, y: CHART_H - 6, textAnchor: "end", style: { fill: "var(--dsw-alias-label-tertiary)", fontSize: 10 } }, days[days.length - 1].date),
+          bars
+        ),
+        tooltip
+      );
+    }
+
+    /** Token 柱状图分类色：未命中输入 / 命中输入 / 输出。 */
+    const TOKEN_COLORS = {
+      miss: "var(--dsw-alias-state-business-primary)",
+      hit: "var(--dsw-alias-state-success-primary)",
+      out: "var(--dsw-alias-state-warn-primary)"
+    };
+
+    /**
+     * 分模型 token 柱状图（与官方平台一致：每日堆叠柱，分段为
+     * 未命中输入 / 命中输入 / 输出）。悬浮立即显示分段明细。
+     */
+    function TokenChart({ days, model, currency, t }) {
+      const [hovered, setHovered] = React.useState(null);
+      if (!days || days.length === 0) {
+        return React.createElement("p", { style: styles.hint }, t("tokenChartEmpty"));
+      }
+      const series = days.map((d) => {
+        const m = d.models && d.models[model] ? d.models[model] : null;
+        return {
+          date: d.date,
+          miss: m ? m.cacheMissTokens : 0,
+          hit: m ? m.cacheHitTokens : 0,
+          out: m ? m.responseTokens : 0
+        };
+      });
+      let max = 0;
+      for (const s of series) {
+        const total = s.miss + s.hit + s.out;
+        if (total > max) max = total;
+      }
+      const innerW = CHART_W - CHART_PAD_L - CHART_PAD_R;
+      const slot = innerW / series.length;
+      const bw = Math.max(1, Math.min(28, slot * 0.7));
+      const segs = (s) => [
+        { key: "miss", v: s.miss, color: TOKEN_COLORS.miss },
+        { key: "hit", v: s.hit, color: TOKEN_COLORS.hit },
+        { key: "out", v: s.out, color: TOKEN_COLORS.out }
+      ];
+      const bars = series.map((s, i) => {
+        const x = CHART_PAD_L + i * slot + (slot - bw) / 2;
+        const rects = [];
+        let acc = 0;
+        for (const seg of segs(s)) {
+          if (seg.v <= 0) continue;
+          const h = max > 0 ? (seg.v / max) * (CHART_H - CHART_PAD_T - CHART_PAD_B) : 0;
+          const height = Math.max(h, 1);
+          rects.push(React.createElement("rect", {
+            key: seg.key,
+            x,
+            y: CHART_H - CHART_PAD_B - acc - height,
+            width: bw,
+            height,
+            fill: seg.color,
+            opacity: 0.95
+          }));
+          acc += height;
+        }
+        return React.createElement("g", {
+          key: s.date,
+          style: { cursor: "pointer" },
+          onMouseEnter: () => setHovered(i),
+          onMouseLeave: () => setHovered(null)
+        },
+          // 透明热区：整根柱（含空值日）都可悬浮
+          React.createElement("rect", {
+            x,
+            y: CHART_PAD_T,
+            width: bw,
+            height: CHART_H - CHART_PAD_T - CHART_PAD_B,
+            fill: "transparent",
+            pointerEvents: "all"
+          }),
+          rects
+        );
+      });
+      let tooltip = null;
+      if (hovered !== null) {
+        const s = series[hovered];
+        tooltip = React.createElement("div", {
+          style: { ...styles.tooltip, left: tooltipLeft(hovered, series.length), top: 0, transform: "translate(-50%, calc(-100% - 6px))" }
+        },
+          React.createElement("p", { style: styles.tooltipTitle }, s.date),
+          React.createElement("p", { style: styles.tooltipRow }, `${t("legendMiss")}: ${fmtCount(s.miss)}`),
+          React.createElement("p", { style: styles.tooltipRow }, `${t("legendHit")}: ${fmtCount(s.hit)}`),
+          React.createElement("p", { style: styles.tooltipRow }, `${t("legendOut")}: ${fmtCount(s.out)}`),
+          React.createElement("p", { style: { ...styles.tooltipRow, fontWeight: 600 } }, `${t("tooltipTotal")}: ${fmtCount(s.miss + s.hit + s.out)}`)
+        );
+      }
+      return React.createElement("div", { style: styles.chartWrap },
+        React.createElement("svg", { width: "100%", viewBox: `0 0 ${CHART_W} ${CHART_H}`, style: { display: "block" } },
+          React.createElement("text", { x: CHART_PAD_L, y: CHART_H - 6, style: { fill: "var(--dsw-alias-label-tertiary)", fontSize: 10 } }, series[0].date),
+          React.createElement("text", { x: CHART_W - CHART_PAD_R, y: CHART_H - 6, textAnchor: "end", style: { fill: "var(--dsw-alias-label-tertiary)", fontSize: 10 } }, series[series.length - 1].date),
+          bars
+        ),
+        tooltip
+      );
+    }
+
+    /** Token 图图例。 */
+    function TokenLegend({ t }) {
+      return React.createElement("div", { style: styles.legendRow },
+        React.createElement("span", { style: { color: "var(--dsw-alias-label-secondary)", fontSize: 12 } },
+          React.createElement("span", { style: { ...styles.swatch, background: TOKEN_COLORS.miss } }), t("legendMiss")
+        ),
+        React.createElement("span", { style: { color: "var(--dsw-alias-label-secondary)", fontSize: 12 } },
+          React.createElement("span", { style: { ...styles.swatch, background: TOKEN_COLORS.hit } }), t("legendHit")
+        ),
+        React.createElement("span", { style: { color: "var(--dsw-alias-label-secondary)", fontSize: 12 } },
+          React.createElement("span", { style: { ...styles.swatch, background: TOKEN_COLORS.out } }), t("legendOut")
+        )
       );
     }
 
@@ -586,6 +760,14 @@ window.__ModuleLoader__.load({
       );
 
       const currency = summary.kind === "done" && summary.value.ok === true ? summary.value.balance?.currency : null;
+      const [tokenModel, setTokenModel] = React.useState(null);
+      const usageModels = usage.kind === "done" && usage.value.ok === true ? usage.value.models || [] : [];
+      const tokenModelResolved =
+        usageModels.length > 0 && usageModels.some((m) => m.model === tokenModel)
+          ? tokenModel
+          : usageModels.length > 0
+            ? usageModels[0].model
+            : null;
 
       return React.createElement("div", { style: styles.section },
         React.createElement("div", { style: styles.panelTitle },
@@ -623,6 +805,24 @@ window.__ModuleLoader__.load({
                 React.createElement("div", { style: styles.card },
                   React.createElement("p", { style: styles.statLabel }, t("chartTitle")),
                   React.createElement(BarChart, { days: usage.value.days, currency, t })
+                ),
+                React.createElement("div", { style: styles.card },
+                  React.createElement("p", { style: styles.statLabel }, t("tokenChartTitle")),
+                  usageModels.length > 0
+                    ? React.createElement(React.Fragment, null,
+                      React.createElement("div", { style: styles.buttonsRow },
+                        usageModels.map((m) =>
+                          React.createElement("button", {
+                            key: m.model,
+                            style: tokenModelResolved === m.model ? styles.chipActive : styles.chip,
+                            onClick: () => setTokenModel(m.model)
+                          }, m.model)
+                        )
+                      ),
+                      React.createElement(TokenChart, { days: usage.value.days, model: tokenModelResolved, currency, t }),
+                      React.createElement(TokenLegend, { t })
+                    )
+                    : React.createElement("p", { style: styles.hint }, t("tokenChartEmpty"))
                 ),
                 React.createElement("div", { style: styles.section },
                   React.createElement("p", { style: styles.statLabel }, t("modelsTitle")),
@@ -731,6 +931,8 @@ window.__ModuleLoader__.load({
     exports.apply = apply;
     exports.inject = inject;
     exports.unwrapRpc = unwrapRpc;
+    exports.BarChart = BarChart;
+    exports.TokenChart = TokenChart;
     return module.exports;
   }
 });

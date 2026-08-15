@@ -275,6 +275,16 @@ test("usage route: aggregates days, filters future dates, maps models", async ()
       { cost: out.body.days[0].cost, requests: out.body.days[0].requests },
       { cost: 3.75, requests: 8 }
     );
+    // 每日分模型明细（费用图 tooltip / token 图数据源）
+    const dayModels0 = out.body.days[0].models;
+    assert.equal(dayModels0["deepseek-v4-flash"].cost, 1.75);
+    assert.equal(dayModels0["deepseek-v4-flash"].cacheMissTokens, 300);
+    assert.equal(dayModels0["deepseek-v4-pro"].cost, 2);
+    assert.equal(dayModels0["deepseek-v4-pro"].responseTokens, 600);
+    const dayModels1 = out.body.days[1].models;
+    assert.equal(dayModels1["deepseek-v4-flash"].cost, 0.5);
+    // 未来日期不在区间内 → 无该日明细
+    assert.equal(out.body.days.some((d) => d.date === D_FUTURE), false);
     // 总计：cost 4.25、requests 8（3 count + 5 REQUEST）、tokens 3110
     assert.equal(out.body.totals.cost, 4.25);
     assert.equal(out.body.totals.requests, 8);

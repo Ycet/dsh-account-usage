@@ -283,7 +283,7 @@ async function handleUsage(ctx, req, res) {
   const fromKey = localDate(from);
   const toKey = localDate(to);
   const todayKey = localDate(today);
-  const { dayAgg, modelAgg } = mergeMonths(
+  const { dayAgg, modelAgg, dayModelAgg } = mergeMonths(
     amountMaps,
     costMaps,
     (date) => date >= fromKey && date <= toKey && date <= todayKey
@@ -291,6 +291,20 @@ async function handleUsage(ctx, req, res) {
 
   const days = [];
   for (const [date, d] of dayAgg) {
+    // 每日分模型明细（费用 + token），供费用图 tooltip 与分模型 token 图使用
+    const dayModels = {};
+    const perModel = dayModelAgg.get(date);
+    if (perModel !== undefined) {
+      for (const [model, m] of perModel) {
+        dayModels[model] = {
+          cost: roundCost(m.cost),
+          requests: Math.round(m.requests),
+          cacheHitTokens: Math.round(m.cacheHit),
+          cacheMissTokens: Math.round(m.cacheMiss),
+          responseTokens: Math.round(m.response)
+        };
+      }
+    }
     days.push({
       date,
       cost: roundCost(d.cost),
@@ -298,7 +312,8 @@ async function handleUsage(ctx, req, res) {
       promptTokens: Math.round(d.prompt),
       cacheHitTokens: Math.round(d.cacheHit),
       cacheMissTokens: Math.round(d.cacheMiss),
-      responseTokens: Math.round(d.response)
+      responseTokens: Math.round(d.response),
+      models: dayModels
     });
   }
   days.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));

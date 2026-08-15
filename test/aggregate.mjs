@@ -231,6 +231,26 @@ test("mergeMonths tolerates missing month maps", () => {
   assert.ok(dayAgg.get("2026-08-13").cost === 3.75);
 });
 
+test("mergeMonths builds per-day per-model details (dayModelAgg)", () => {
+  const { dayModelAgg } = mergeMonths([parseAmount(amountBizData)], [parseCost(costBizData)]);
+  const day13 = dayModelAgg.get("2026-08-13");
+  assert.ok(day13 instanceof Map);
+  const flash = day13.get("deepseek-v4-flash");
+  assert.equal(flash.cost, 1.75);
+  assert.equal(flash.requests, 8);
+  assert.equal(flash.cacheHit, 200);
+  assert.equal(flash.cacheMiss, 300);
+  assert.equal(flash.response, 400);
+  const pro = day13.get("deepseek-v4-pro");
+  assert.equal(pro.cost, 2);
+  assert.equal(pro.prompt, 500);
+  assert.equal(pro.response, 600);
+  // keepDate 过滤同样作用于 dayModelAgg（未来日期不产生明细）
+  const filtered = mergeMonths([parseAmount(amountBizData)], [parseCost(costBizData)], (d) => d <= "2026-08-14");
+  assert.equal(filtered.dayModelAgg.has("2026-09-30"), false);
+  assert.equal(filtered.dayModelAgg.get("2026-08-14").get("deepseek-v4-flash").cost, 0.5);
+});
+
 test("mergeMonths keepDate predicate filters days AND model totals together", () => {
   const { dayAgg, modelAgg } = mergeMonths(
     [parseAmount(amountBizData)],
