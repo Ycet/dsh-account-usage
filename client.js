@@ -42,6 +42,7 @@ window.__ModuleLoader__.load({
       rangeThisMonth: "本月",
       rangeLastMonth: "上月",
       rangeCustom: "自定义",
+      rangeCustomRow: "自定义区间",
       rangeApply: "应用",
       rangeClipped: "区间超过单次可查询的月份上限，已自动裁剪至最近月份",
       totalsCost: "消费金额",
@@ -105,6 +106,7 @@ window.__ModuleLoader__.load({
       rangeThisMonth: "This month",
       rangeLastMonth: "Last month",
       rangeCustom: "Custom",
+      rangeCustomRow: "Custom range",
       rangeApply: "Apply",
       rangeClipped: "Range exceeds the per-query month cap; clipped to the most recent months",
       totalsCost: "Spend",
@@ -159,6 +161,7 @@ window.__ModuleLoader__.load({
       buttonsRow: { display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" },
       input: { flex: 1, minWidth: 200, border: "1px solid var(--dsw-alias-border-l2)", background: "var(--dsw-alias-bg-layer-1)", color: "var(--dsw-alias-label-primary)", font: "inherit", borderRadius: 6, padding: "5px 10px" },
       dateInput: { border: "1px solid var(--dsw-alias-border-l2)", background: "var(--dsw-alias-bg-layer-1)", color: "var(--dsw-alias-label-primary)", font: "inherit", borderRadius: 6, padding: "4px 8px" },
+      select: { border: "1px solid var(--dsw-alias-border-l2)", background: "var(--dsw-alias-bg-layer-1)", color: "var(--dsw-alias-label-primary)", font: "inherit", borderRadius: 6, padding: "5px 10px", cursor: "pointer", maxWidth: 200 },
       tokenRow: { display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" },
       barTrack: { height: 8, borderRadius: 4, background: "var(--dsw-alias-bg-layer-1)", overflow: "hidden" },
       barFill: { height: "100%", borderRadius: 4, background: "var(--dsw-alias-state-business-primary)", transition: "width .2s ease" },
@@ -398,16 +401,33 @@ window.__ModuleLoader__.load({
         const to = customFrom <= customTo ? customTo : customFrom;
         onApply({ from, to });
       };
+      const onSelect = (e) => {
+        const id = e.target.value;
+        if (id === "custom") {
+          // 仅切到自定义模式，区间在点击「应用」后生效
+          setActivePreset("custom");
+          return;
+        }
+        const p = presets().find((x) => x.id === id);
+        if (p) applyPreset(p);
+      };
       return React.createElement("div", { style: styles.section },
-        React.createElement("p", { style: styles.hint }, t("rangeTitle")),
         React.createElement("div", { style: styles.buttonsRow },
-          presets().map((p) =>
-            React.createElement("button", {
-              key: p.id,
-              style: activePreset === p.id ? styles.buttonActive : styles.button,
-              onClick: () => applyPreset(p)
-            }, t(PRESET_LABEL_KEYS[p.id]))
-          ),
+          React.createElement("p", { style: styles.hint }, t("rangeTitle")),
+          React.createElement("select", {
+            value: activePreset,
+            onChange: onSelect,
+            style: styles.select,
+            "aria-label": t("rangeTitle")
+          },
+            presets().map((p) =>
+              React.createElement("option", { key: p.id, value: p.id }, t(PRESET_LABEL_KEYS[p.id]))
+            ),
+            React.createElement("option", { value: "custom" }, t("rangeCustom"))
+          )
+        ),
+        React.createElement("div", { style: styles.buttonsRow },
+          React.createElement("span", { style: styles.hint }, t("rangeCustomRow")),
           React.createElement("input", { type: "date", value: customFrom, onChange: (e) => setCustomFrom(e.target.value), style: styles.dateInput }),
           React.createElement("input", { type: "date", value: customTo, onChange: (e) => setCustomTo(e.target.value), style: styles.dateInput }),
           React.createElement("button", { style: styles.button, onClick: applyCustom }, t("rangeApply"))

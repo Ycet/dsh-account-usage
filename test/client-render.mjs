@@ -150,6 +150,11 @@ test("apply registers an account settings.section and the page renders", () => {
   assert.ok(html.includes("OpenCode Go"), "renders the OpenCode panel");
   assert.ok(html.includes("查询中"), "renders the loading state");
   assert.ok(html.includes("时间维度"), "renders the range selector");
+  // 时间维度：预设集成进单个下拉菜单，自定义日期行保留
+  assert.ok(html.includes("<select"), "renders the range dropdown");
+  assert.ok(html.includes("近7天"), "preset options live inside the dropdown");
+  assert.ok(html.includes("自定义区间"), "renders the custom range row");
+  assert.ok(html.includes("type=\"date\""), "custom date inputs remain");
 });
 
 test("render does not crash when connection is absent (headless-ish client)", () => {
