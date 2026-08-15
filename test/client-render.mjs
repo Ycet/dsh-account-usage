@@ -152,10 +152,12 @@ test("apply registers an account settings.section and the page renders", () => {
   assert.ok(!html.includes("OpenCode Go"), "opencode panel is hidden until its tab is picked");
   assert.ok(html.includes("查询中"), "renders the loading state");
   assert.ok(html.includes("时间维度"), "renders the range selector");
-  // 时间维度：预设集成进单个下拉菜单，自定义日期行保留
+  // 时间维度：预设集成进单个下拉菜单，自定义日期行保留；默认选中「本月」
   assert.ok(html.includes("<select"), "renders the range dropdown");
   assert.ok(html.includes("近7天"), "preset options live inside the dropdown");
   assert.ok(html.includes("自定义区间"), "renders the custom range row");
+  assert.ok(html.includes('value="thisMonth"'), "default range preset is this month");
+  assert.ok(html.includes("selected"), "the this-month option is selected");
   assert.ok(html.includes("type=\"date\""), "custom date inputs remain");
 });
 
@@ -204,4 +206,21 @@ test("BarChart renders per-day bars without native title tooltips", () => {
   // 原生 <title>（带悬浮延迟）已被移除
   assert.ok(!html.includes("<title"), "no native tooltip titles");
   assert.ok(html.includes("2026-08-13"), "x-axis date labels");
+});
+
+test("fmtCountdown formats quota reset countdowns per window", () => {
+  const mod = loadClientExports();
+  const t = (k) =>
+    ({ countdownHour: "小时", countdownMinute: "分钟", countdownDay: "天", countdownAfter: "后重置", countdownNow: "即将重置" })[k] ?? k;
+  const at = (ms) => new Date(Date.now() + ms).toISOString();
+  // 5小时窗口：1小时5分钟 → "1小时5分钟后重置"
+  assert.equal(mod.fmtCountdown(at(65 * 60000), "rolling", t), "1小时5分钟后重置");
+  // 周窗口：2天3小时 → "2天3小时后重置"
+  assert.equal(mod.fmtCountdown(at((2 * 24 + 3) * 3600000), "weekly", t), "2天3小时后重置");
+  // 月窗口：同样天+小时格式
+  assert.equal(mod.fmtCountdown(at((30 * 24 + 1) * 3600000), "monthly", t), "30天1小时后重置");
+  // 已过期 → 即将重置
+  assert.equal(mod.fmtCountdown(at(-5000), "monthly", t), "即将重置");
+  // 无值 → null
+  assert.equal(mod.fmtCountdown(null, "weekly", t), null);
 });

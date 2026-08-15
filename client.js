@@ -75,6 +75,11 @@ window.__ModuleLoader__.load({
       monthly: "每月",
       limit: "限额参考",
       reset: "重置",
+      countdownHour: "小时",
+      countdownMinute: "分钟",
+      countdownDay: "天",
+      countdownAfter: "后重置",
+      countdownNow: "即将重置",
       refresh: "刷新",
       loading: "查询中…",
       loadFailed: "加载失败",
@@ -147,6 +152,11 @@ window.__ModuleLoader__.load({
       monthly: "Monthly",
       limit: "Limit (ref.)",
       reset: "resets",
+      countdownHour: "h",
+      countdownMinute: "min",
+      countdownDay: "d",
+      countdownAfter: " until reset",
+      countdownNow: "resets now",
       refresh: "Refresh",
       loading: "Loading…",
       loadFailed: "Load failed",
@@ -223,6 +233,25 @@ window.__ModuleLoader__.load({
       const d = new Date(resetsAt);
       if (Number.isNaN(d.getTime())) return resetsAt;
       return d.toLocaleString();
+    }
+
+    /**
+     * 配额窗口重置倒计时。kind: "rolling"（5小时窗口 → X小时X分钟）、
+     * "daily"/"weekly"/"monthly"（→ X天X小时）。已过重置时间返回"即将重置"。
+     */
+    function fmtCountdown(resetsAt, kind, t) {
+      if (!resetsAt) return null;
+      const ms = new Date(resetsAt).getTime() - Date.now();
+      if (Number.isNaN(ms)) return null;
+      if (ms <= 0) return t("countdownNow");
+      const totalMin = Math.floor(ms / 60000);
+      const days = Math.floor(totalMin / 1440);
+      const hours = Math.floor((totalMin % 1440) / 60);
+      const mins = totalMin % 60;
+      if (kind === "rolling") {
+        return `${hours}${t("countdownHour")}${mins}${t("countdownMinute")}${t("countdownAfter")}`;
+      }
+      return `${days}${t("countdownDay")}${hours}${t("countdownHour")}${t("countdownAfter")}`;
     }
 
     function fmtDate(d) {
@@ -538,7 +567,7 @@ window.__ModuleLoader__.load({
       );
     }
 
-    function WindowCard({ name, limit, windowData, t }) {
+    function WindowCard({ name, limit, windowData, countdown, t }) {
       const percent = windowData && typeof windowData.percent === "number" ? windowData.percent : null;
       const pct = percent === null ? 0 : Math.max(0, Math.min(100, percent));
       return React.createElement("div", { style: styles.card },
@@ -551,7 +580,7 @@ window.__ModuleLoader__.load({
         ),
         React.createElement("div", { style: styles.row },
           React.createElement("span", null, percent === null ? t("unknown") : percent + "%"),
-          React.createElement("span", null, `${t("reset")}: ${fmtReset(windowData && windowData.resetsAt, t)}`)
+          React.createElement("span", null, `${t("reset")}: ${fmtReset(windowData && windowData.resetsAt, t)}${countdown ? ` · ${countdown}` : ""}`)
         )
       );
     }
@@ -568,7 +597,7 @@ window.__ModuleLoader__.load({
     function RangeSelector({ range, onApply, t }) {
       const [customFrom, setCustomFrom] = React.useState(range.from);
       const [customTo, setCustomTo] = React.useState(range.to);
-      const [activePreset, setActivePreset] = React.useState("30d");
+      const [activePreset, setActivePreset] = React.useState("thisMonth");
       const applyPreset = (p) => {
         setActivePreset(p.id);
         setCustomFrom(p.from);
@@ -725,7 +754,7 @@ window.__ModuleLoader__.load({
       const [summary, setSummary] = React.useState({ kind: "loading" });
       const [usage, setUsage] = React.useState({ kind: "loading" });
       const [range, setRange] = React.useState(() => {
-        const p = presets()[2]; // 近30天
+        const p = presets()[4]; // 本月（默认）
         return { from: p.from, to: p.to };
       });
 
@@ -898,9 +927,27 @@ window.__ModuleLoader__.load({
               : React.createElement("span", { style: styles.badge }, t("keyMissing")),
           React.createElement("span", null)
         ),
-        React.createElement(WindowCard, { name: t("rolling"), limit: OPENCODE_LIMITS.rolling, windowData: state.value.usage?.rolling, t }),
-        React.createElement(WindowCard, { name: t("weekly"), limit: OPENCODE_LIMITS.weekly, windowData: state.value.usage?.weekly, t }),
-        React.createElement(WindowCard, { name: t("monthly"), limit: OPENCODE_LIMITS.monthly, windowData: state.value.usage?.monthly, t })
+        React.createElement(WindowCard, {
+          name: t("rolling"),
+          limit: OPENCODE_LIMITS.rolling,
+          windowData: state.value.usage?.rolling,
+          countdown: fmtCountdown(state.value.usage?.rolling?.resetsAt, "rolling", t),
+          t
+        }),
+        React.createElement(WindowCard, {
+          name: t("weekly"),
+          limit: OPENCODE_LIMITS.weekly,
+          windowData: state.value.usage?.weekly,
+          countdown: fmtCountdown(state.value.usage?.weekly?.resetsAt, "weekly", t),
+          t
+        }),
+        React.createElement(WindowCard, {
+          name: t("monthly"),
+          limit: OPENCODE_LIMITS.monthly,
+          windowData: state.value.usage?.monthly,
+          countdown: fmtCountdown(state.value.usage?.monthly?.resetsAt, "monthly", t),
+          t
+        })
       );
     }
 
@@ -952,6 +999,7 @@ window.__ModuleLoader__.load({
     exports.unwrapRpc = unwrapRpc;
     exports.BarChart = BarChart;
     exports.TokenChart = TokenChart;
+    exports.fmtCountdown = fmtCountdown;
     return module.exports;
   }
 });
