@@ -144,10 +144,12 @@ test("apply registers an account settings.section and the page renders", () => {
 
   const element = React.createElement(section.entry.component, injected);
   const html = renderToString(element);
-  // 初始渲染（SSR 不执行 useEffect）：标题 + 加载态 + 两个面板骨架
+  // 初始渲染（SSR 不执行 useEffect）：标题 + 两个文字标签 + 默认 deepseek 面板
   assert.ok(html.includes("账户"), "renders the page title");
-  assert.ok(html.includes("DeepSeek 平台"), "renders the DeepSeek panel");
-  assert.ok(html.includes("OpenCode Go"), "renders the OpenCode panel");
+  assert.ok(html.includes("deepseek"), "renders the deepseek tab");
+  assert.ok(html.includes("opencode go"), "renders the opencode go tab");
+  assert.ok(html.includes("DeepSeek 平台"), "default tab shows the DeepSeek panel");
+  assert.ok(!html.includes("OpenCode Go"), "opencode panel is hidden until its tab is picked");
   assert.ok(html.includes("查询中"), "renders the loading state");
   assert.ok(html.includes("时间维度"), "renders the range selector");
   // 时间维度：预设集成进单个下拉菜单，自定义日期行保留
@@ -166,7 +168,9 @@ test("render does not crash when connection is absent (headless-ish client)", ()
   const injected = section.entry.options.inject();
   assert.equal(injected.credApi, null);
   const html = renderToString(React.createElement(section.entry.component, injected));
-  assert.ok(html.includes("OpenCode Go"));
+  // 无 connection 时默认 deepseek 标签页仍正常渲染，opencode 标签存在
+  assert.ok(html.includes("DeepSeek 平台"));
+  assert.ok(html.includes("opencode go"));
 });
 
 test("TokenChart renders stacked segments with legend labels", () => {

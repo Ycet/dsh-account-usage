@@ -19,6 +19,8 @@ window.__ModuleLoader__.load({
     const zh = {
       nav: "账户",
       title: "账户",
+      tabDeepseek: "deepseek",
+      tabOpencode: "opencode go",
       deepseekPanel: "DeepSeek 平台",
       opencodePanel: "OpenCode Go",
       tokenTitle: "平台会话令牌",
@@ -89,6 +91,8 @@ window.__ModuleLoader__.load({
     const en = {
       nav: "Account",
       title: "Account",
+      tabDeepseek: "deepseek",
+      tabOpencode: "opencode go",
       deepseekPanel: "DeepSeek Platform",
       opencodePanel: "OpenCode Go",
       tokenTitle: "Platform session token",
@@ -191,7 +195,10 @@ window.__ModuleLoader__.load({
       chip: { border: "1px solid var(--dsw-alias-border-l2)", color: "var(--dsw-alias-label-primary)", font: "inherit", cursor: "pointer", background: "transparent", borderRadius: 999, padding: "4px 12px", fontSize: 12 },
       chipActive: { border: "1px solid var(--dsw-alias-state-business-primary)", color: "var(--dsw-alias-state-business-primary)", font: "inherit", cursor: "pointer", background: "transparent", borderRadius: 999, padding: "4px 12px", fontSize: 12 },
       legendRow: { display: "flex", flexWrap: "wrap", gap: 14, alignItems: "center" },
-      swatch: { display: "inline-block", width: 10, height: 10, borderRadius: 3, marginRight: 5, verticalAlign: -1 }
+      swatch: { display: "inline-block", width: 10, height: 10, borderRadius: 3, marginRight: 5, verticalAlign: -1 },
+      tabsRow: { display: "flex", gap: 4, borderBottom: "1px solid var(--dsw-alias-border-l2)", marginBottom: 4 },
+      tab: { border: "none", background: "transparent", color: "var(--dsw-alias-label-secondary)", font: "inherit", fontSize: 14, padding: "8px 14px", cursor: "pointer", borderBottom: "2px solid transparent", marginBottom: -1 },
+      tabActive: { border: "none", background: "transparent", color: "var(--dsw-alias-label-primary)", font: "inherit", fontSize: 14, fontWeight: 600, padding: "8px 14px", cursor: "pointer", borderBottom: "2px solid var(--dsw-alias-state-business-primary)", marginBottom: -1 }
     };
 
     const OPENCODE_LIMITS = { rolling: "$12", weekly: "$30", monthly: "$60" };
@@ -899,10 +906,22 @@ window.__ModuleLoader__.load({
 
     function AccountPage(props) {
       const { t, credApi } = props;
+      const [tab, setTab] = React.useState("deepseek");
       return React.createElement("div", { style: styles.wrap },
         React.createElement("h2", { style: styles.panelTitle }, t("title")),
-        React.createElement(DeepSeekPanel, { credApi, t }),
-        React.createElement(OpencodePanel, { t })
+        React.createElement("div", { style: styles.tabsRow },
+          React.createElement("button", {
+            style: tab === "deepseek" ? styles.tabActive : styles.tab,
+            onClick: () => setTab("deepseek")
+          }, t("tabDeepseek")),
+          React.createElement("button", {
+            style: tab === "opencode" ? styles.tabActive : styles.tab,
+            onClick: () => setTab("opencode")
+          }, t("tabOpencode"))
+        ),
+        tab === "deepseek"
+          ? React.createElement(DeepSeekPanel, { credApi, t })
+          : React.createElement(OpencodePanel, { t })
       );
     }
 
