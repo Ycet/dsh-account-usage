@@ -979,6 +979,8 @@ window.__ModuleLoader__.load({
     function AccountPage(props) {
       const { t, credApi } = props;
       const [tab, setTab] = React.useState("deepseek");
+      // 两个面板常驻挂载（CSS 隐藏未激活项）：切换标签零等待，
+      // 数据在后台按各自 60s 周期保持新鲜。
       return React.createElement("div", { style: styles.wrap },
         React.createElement("h2", { style: styles.panelTitle }, t("title")),
         React.createElement("div", { style: styles.tabsRow },
@@ -991,9 +993,12 @@ window.__ModuleLoader__.load({
             onClick: () => setTab("opencode")
           }, t("tabOpencode"))
         ),
-        tab === "deepseek"
-          ? React.createElement(DeepSeekPanel, { credApi, t })
-          : React.createElement(OpencodePanel, { t })
+        React.createElement("div", { style: tab === "deepseek" ? { display: "block" } : { display: "none" } },
+          React.createElement(DeepSeekPanel, { credApi, t })
+        ),
+        React.createElement("div", { style: tab === "opencode" ? { display: "block" } : { display: "none" } },
+          React.createElement(OpencodePanel, { t })
+        )
       );
     }
 

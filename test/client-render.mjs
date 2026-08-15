@@ -149,7 +149,8 @@ test("apply registers an account settings.section and the page renders", () => {
   assert.ok(html.includes("deepseek"), "renders the deepseek tab");
   assert.ok(html.includes("opencode go"), "renders the opencode go tab");
   assert.ok(html.includes("DeepSeek 平台"), "default tab shows the DeepSeek panel");
-  assert.ok(!html.includes("OpenCode Go"), "opencode panel is hidden until its tab is picked");
+  assert.ok(html.includes("OpenCode Go"), "opencode panel stays mounted for instant tab switch");
+  assert.ok(html.includes("display:none"), "inactive tab wrapper is hidden via CSS");
   assert.ok(html.includes("跳转"), "deepseek panel has the jump button");
   assert.ok(html.includes("查询中"), "renders the loading state");
   assert.ok(html.includes("时间维度"), "renders the range selector");

@@ -66,6 +66,8 @@ function envNum(key, fallback) {
 const TIMEOUT_MS = envNum("DSH_ACCOUNT_USAGE_TIMEOUT_MS", 15000);
 const CACHE_TTL_MS = envNum("DSH_ACCOUNT_USAGE_CACHE_MS", 30000);
 const MAX_MONTHS = envNum("DSH_ACCOUNT_USAGE_MAX_MONTHS", 3);
+/** OpenCode 配额缓存 TTL：上游 opencode.ai 实测 3-10s 延迟，缓存避免每次切换标签都等。 */
+const OPENCODE_CACHE_TTL_MS = envNum("DSH_ACCOUNT_USAGE_OPENCODE_CACHE_MS", 60000);
 
 // ---- 常量 -----------------------------------------------------------------
 
@@ -349,8 +351,19 @@ async function handleUsage(ctx, req, res) {
   sendJson(res, 200, { ok: true, range: { from: fromKey, to: toKey, clipped }, totals, days, models });
 }
 
+/** OpenCode 配额结果缓存（仅缓存成功结果；失败不缓存以便下次重试）。 */
+const opencodeCache = { at: 0, value: null };
+
 async function handleOpencode(ctx, res) {
+  if (opencodeCache.value !== null && Date.now() - opencodeCache.at < OPENCODE_CACHE_TTL_MS) {
+    sendJson(res, 200, opencodeCache.value);
+    return;
+  }
   const result = await fetchOpencodeUsage(ctx);
+  if (result.ok === true) {
+    opencodeCache.at = Date.now();
+    opencodeCache.value = result;
+  }
   sendJson(res, 200, result);
 }
 

@@ -411,3 +411,21 @@ test("opencode route: upstream 401 → unauthorized envelope", async () => {
     globalThis.fetch = realFetch;
   }
 });
+
+test("opencode route caches successful results within TTL", async () => {
+  const realFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = makeMockFetch({ calls });
+  try {
+    const { routes } = makeCtx({ OPENCODE_GO_API_KEY: "sk-test" }, await freshApply());
+    const r1 = await callRoute(routes.get("/api/account-usage/opencode"), "/");
+    assert.equal(r1.body.ok, true);
+    const r2 = await callRoute(routes.get("/api/account-usage/opencode"), "/");
+    assert.equal(r2.body.ok, true);
+    assert.equal(r2.body.usage.rolling.percent, r1.body.usage.rolling.percent);
+    // TTL 内第二次调用直接命中缓存，上游只请求一次
+    assert.equal(calls.filter((p) => p.endsWith("/usage")).length, 1);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
