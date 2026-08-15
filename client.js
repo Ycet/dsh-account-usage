@@ -81,6 +81,7 @@ window.__ModuleLoader__.load({
       countdownAfter: "后重置",
       countdownNow: "即将重置",
       refresh: "刷新",
+      jump: "跳转",
       loading: "查询中…",
       loadFailed: "加载失败",
       unknown: "未知",
@@ -158,6 +159,7 @@ window.__ModuleLoader__.load({
       countdownAfter: " until reset",
       countdownNow: "resets now",
       refresh: "Refresh",
+      jump: "Open",
       loading: "Loading…",
       loadFailed: "Load failed",
       unknown: "unknown",
@@ -212,6 +214,9 @@ window.__ModuleLoader__.load({
     };
 
     const OPENCODE_LIMITS = { rolling: "$12", weekly: "$30", monthly: "$60" };
+    /** 「跳转」目标：官方对应页面（新标签页打开）。 */
+    const DEEPSEEK_USAGE_PAGE_URL = "https://platform.deepseek.com/usage";
+    const OPENCODE_GO_PAGE_URL = "https://opencode.ai/workspace/wrk_01KWW4E4FYP5MRWA0GVTQP5JA6/go";
     const PLATFORM_TOKEN_REF = "DEEPSEEK_PLATFORM_TOKEN";
 
     // ---- helpers -----------------------------------------------------------
@@ -331,6 +336,14 @@ window.__ModuleLoader__.load({
 
     function RefreshButton({ onClick, t }) {
       return React.createElement("button", { style: styles.button, onClick }, t("refresh"));
+    }
+
+    /** 「跳转」按钮：在新浏览器标签页打开官方用量页面。 */
+    function JumpButton({ url, t }) {
+      return React.createElement("button", {
+        style: styles.button,
+        onClick: () => window.open(url, "_blank", "noopener,noreferrer")
+      }, t("jump"));
     }
 
     function StatCard({ label, value }) {
@@ -808,7 +821,10 @@ window.__ModuleLoader__.load({
       return React.createElement("div", { style: styles.section },
         React.createElement("div", { style: styles.panelTitle },
           React.createElement("span", null, t("deepseekPanel")),
-          React.createElement(RefreshButton, { onClick: () => { loadSummary(); loadUsage(range); }, t })
+          React.createElement("div", { style: styles.buttonsRow },
+            React.createElement(JumpButton, { url: DEEPSEEK_USAGE_PAGE_URL, t }),
+            React.createElement(RefreshButton, { onClick: () => { loadSummary(); loadUsage(range); }, t })
+          )
         ),
         React.createElement(TokenPanel, { credApi, onSaved: () => { loadSummary(); loadUsage(range); }, t }),
         summary.kind === "loading"
@@ -899,7 +915,10 @@ window.__ModuleLoader__.load({
         return React.createElement("div", { style: styles.section },
           React.createElement("div", { style: styles.panelTitle },
             React.createElement("span", null, t("opencodePanel")),
-            React.createElement(RefreshButton, { onClick: load, t })
+            React.createElement("div", { style: styles.buttonsRow },
+              React.createElement(JumpButton, { url: OPENCODE_GO_PAGE_URL, t }),
+              React.createElement(RefreshButton, { onClick: load, t })
+            )
           ),
           React.createElement("p", { style: styles.error }, state.message)
         );
@@ -908,7 +927,10 @@ window.__ModuleLoader__.load({
         return React.createElement("div", { style: styles.section },
           React.createElement("div", { style: styles.panelTitle },
             React.createElement("span", null, t("opencodePanel")),
-            React.createElement(RefreshButton, { onClick: load, t })
+            React.createElement("div", { style: styles.buttonsRow },
+              React.createElement(JumpButton, { url: OPENCODE_GO_PAGE_URL, t }),
+              React.createElement(RefreshButton, { onClick: load, t })
+            )
           ),
           React.createElement("p", { style: styles.error }, errorText(state.value, t))
         );
@@ -917,7 +939,10 @@ window.__ModuleLoader__.load({
       return React.createElement("div", { style: styles.section },
         React.createElement("div", { style: styles.panelTitle },
           React.createElement("span", null, t("opencodePanel")),
-          React.createElement(RefreshButton, { onClick: load, t })
+          React.createElement("div", { style: styles.buttonsRow },
+            React.createElement(JumpButton, { url: OPENCODE_GO_PAGE_URL, t }),
+            React.createElement(RefreshButton, { onClick: load, t })
+          )
         ),
         React.createElement("div", { style: styles.row },
           keySource === "credentials"

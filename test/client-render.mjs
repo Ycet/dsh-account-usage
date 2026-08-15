@@ -150,6 +150,7 @@ test("apply registers an account settings.section and the page renders", () => {
   assert.ok(html.includes("opencode go"), "renders the opencode go tab");
   assert.ok(html.includes("DeepSeek 平台"), "default tab shows the DeepSeek panel");
   assert.ok(!html.includes("OpenCode Go"), "opencode panel is hidden until its tab is picked");
+  assert.ok(html.includes("跳转"), "deepseek panel has the jump button");
   assert.ok(html.includes("查询中"), "renders the loading state");
   assert.ok(html.includes("时间维度"), "renders the range selector");
   // 时间维度：预设集成进单个下拉菜单，自定义日期行保留；默认选中「本月」
