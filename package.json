@@ -1,0 +1,53 @@
+{
+  "name": "dsh-account-usage",
+  "version": "0.1.11",
+  "description": "DeepSeek Harness web-GUI plugin: a Settings「账户」page showing DeepSeek platform balance/usage (daily cost chart, per-model requests & tokens, selectable time range) and the OpenCode Go 5h/weekly/monthly quota with reset times.",
+  "type": "module",
+  "main": "index.js",
+  "files": [
+    "index.js",
+    "lib",
+    "client.js",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-connection"
+      ]
+    }
+  },
+  "keywords": [
+    "dsh",
+    "deepseek",
+    "deepseek-harness",
+    "plugin",
+    "account",
+    "usage",
+    "balance",
+    "opencode",
+    "quota",
+    "web"
+  ],
+  "peerDependencies": {
+    "react": "^18.2.0",
+    "@deepseek-ai/cordis": "^4.0.1"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-credentials": "^0.1.0-rc.6"
+  },
+  "license": "MIT"
+}
