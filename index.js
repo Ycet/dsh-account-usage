@@ -33,7 +33,6 @@
  *          "unauthorized"|"network"|"bad-json"|"http-<n>"|"biz-error",
  *          message: string }
  */
-import { credentialRef } from "@deepseek-ai/dsh-credentials";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { readFile } from "node:fs/promises";
@@ -50,7 +49,10 @@ import {
 } from "./lib/aggregate.js";
 
 const name = "dsh-account-usage";
-const inject = ["credentials", "webServer"];
+// 宿主只硬依赖 webServer；credentials 服务经 ctx.get 可选访问（缺失时路由
+// 返回错误信封而非崩溃）——对 DSH 包面未来的重命名/移除完全免疫，
+// 保证目标机不会因本插件导致 dsh 启动失败。
+const inject = ["webServer"];
 
 // ---- tunables（环境变量覆盖，默认值即插即用） ------------------------------
 
@@ -73,8 +75,8 @@ const OPENCODE_CACHE_TTL_MS = envNum("DSH_ACCOUNT_USAGE_OPENCODE_CACHE_MS", 6000
 
 const DEEPSEEK_PLATFORM_BASE = "https://platform.deepseek.com/api/v0";
 const OPENCODE_USAGE_URL = "https://opencode.ai/zen/go/v1/usage";
-const PLATFORM_TOKEN_REF = credentialRef("DEEPSEEK_PLATFORM_TOKEN");
-const OPENCODE_KEY_REF = credentialRef("OPENCODE_GO_API_KEY");
+const PLATFORM_TOKEN_REF = "DEEPSEEK_PLATFORM_TOKEN";
+const OPENCODE_KEY_REF = "OPENCODE_GO_API_KEY";
 
 const BROWSER_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36";
@@ -96,9 +98,18 @@ function sendJson(res, status, body) {
 /** 平台请求缓存：cacheKey -> { at, value }。 */
 const platformCache = new Map();
 
+/** 可选读取凭据服务（缺失返回 undefined，调用方按未配置处理）。 */
+function getCredentials(ctx) {
+  const credentials = ctx.get ? ctx.get("credentials") : undefined;
+  if (credentials === undefined || typeof credentials.resolve !== "function") return undefined;
+  return credentials;
+}
+
 async function resolvePlatformToken(ctx) {
+  const credentials = getCredentials(ctx);
+  if (credentials === undefined) return undefined;
   try {
-    const hit = await ctx.credentials.resolve(PLATFORM_TOKEN_REF);
+    const hit = await credentials.resolve(PLATFORM_TOKEN_REF);
     if (hit !== undefined && typeof hit.value === "string" && hit.value !== "") return hit.value;
   } catch {
     /* fall through */
@@ -172,13 +183,16 @@ async function cachedPlatform(ctx, path, params, cacheKey) {
 // ---- OpenCode Go ------------------------------------------------------------
 
 async function resolveOpencodeKey(ctx) {
-  try {
-    const hit = await ctx.credentials.resolve(OPENCODE_KEY_REF);
-    if (hit !== undefined && typeof hit.value === "string" && hit.value !== "") {
-      return { key: hit.value, source: "credentials" };
+  const credentials = getCredentials(ctx);
+  if (credentials !== undefined) {
+    try {
+      const hit = await credentials.resolve(OPENCODE_KEY_REF);
+      if (hit !== undefined && typeof hit.value === "string" && hit.value !== "") {
+        return { key: hit.value, source: "credentials" };
+      }
+    } catch {
+      /* fall through */
     }
-  } catch {
-    /* fall through */
   }
   try {
     const authPath = join(homedir(), ".local", "share", "opencode", "auth.json");

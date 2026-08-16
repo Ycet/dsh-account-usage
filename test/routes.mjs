@@ -174,7 +174,13 @@ function makeCtx(credentials, applyFn) {
   const ctx = {
     credentials: {
       resolve: async (ref) =>
-        credentials[ref] !== undefined ? { value: credentials[ref] } : undefined
+        credentials !== null && credentials !== undefined && credentials[ref] !== undefined
+          ? { value: credentials[ref] }
+          : undefined
+    },
+    // 插件现在经 ctx.get("credentials") 可选访问（宿主零硬依赖）
+    get(name) {
+      return name === "credentials" ? this.credentials : undefined;
     },
     webServer: {
       register(route) {
@@ -318,6 +324,9 @@ test("usage route: month range beyond cap → clipped and bounded fetches", asyn
       credentials: {
         resolve: async (ref) => (ref === "DEEPSEEK_PLATFORM_TOKEN" ? { value: "tok" } : undefined)
       },
+      get(name) {
+        return name === "credentials" ? this.credentials : undefined;
+      },
       webServer: {
         register(route) {
           routes.set(route.path, route);
@@ -425,6 +434,22 @@ test("opencode route caches successful results within TTL", async () => {
     assert.equal(r2.body.usage.rolling.percent, r1.body.usage.rolling.percent);
     // TTL 内第二次调用直接命中缓存，上游只请求一次
     assert.equal(calls.filter((p) => p.endsWith("/usage")).length, 1);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test("routes degrade gracefully when the credentials service is absent", async () => {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = makeMockFetch({ token: "tok" });
+  try {
+    const { routes } = makeCtx(null, await freshApply());
+    const s = await callRoute(routes.get("/api/account-usage/deepseek-summary"), "/");
+    assert.equal(s.body.ok, false);
+    assert.equal(s.body.code, "no-token");
+    const o = await callRoute(routes.get("/api/account-usage/opencode"), "/");
+    assert.equal(o.body.ok, false);
+    assert.equal(o.body.code, "no-key");
   } finally {
     globalThis.fetch = realFetch;
   }
