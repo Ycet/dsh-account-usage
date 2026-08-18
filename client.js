@@ -583,13 +583,18 @@ window.__ModuleLoader__.load({
     function WindowCard({ name, limit, windowData, countdown, t }) {
       const percent = windowData && typeof windowData.percent === "number" ? windowData.percent : null;
       const pct = percent === null ? 0 : Math.max(0, Math.min(100, percent));
+      const barColor = pct < 50
+        ? "var(--dsw-alias-state-business-primary)"
+        : pct < 90
+          ? "#eab308"
+          : "var(--dsw-alias-state-error-primary)";
       return React.createElement("div", { style: styles.card },
         React.createElement("div", { style: styles.row },
           React.createElement("strong", { style: { fontSize: 14 } }, name),
           React.createElement("span", { style: { color: "var(--dsw-alias-label-tertiary)" } }, `${t("limit")}: ${limit}`)
         ),
         React.createElement("div", { style: styles.barTrack },
-          React.createElement("div", { style: { ...styles.barFill, width: pct + "%" } })
+          React.createElement("div", { style: { ...styles.barFill, width: pct + "%", background: barColor } })
         ),
         React.createElement("div", { style: styles.row },
           React.createElement("span", null, percent === null ? t("unknown") : percent + "%"),
