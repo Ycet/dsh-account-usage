@@ -67,10 +67,10 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 
 ```sh
 # 方式一：从本地源码安装（开发）
-dsh plugin --profile <profile> add <absolute-path-to-plugin>
+dsh plugin --profile web add <absolute-path-to-plugin>
 
 # 方式二：从 GitHub 安装
-dsh plugin --profile <profile> add github:Ycet/dsh-account-usage
+dsh plugin --profile web add github:Ycet/dsh-account-usage
 ```
 
 包声明了 `dsh.bundle` 补丁层，`dsh plugin` 会自动把加载项合入 profile 的 bundle 层，无需手动编辑 `cordis.patch.yml`。
@@ -79,7 +79,7 @@ dsh plugin --profile <profile> add github:Ycet/dsh-account-usage
 <summary>手动合并补丁层（可选）</summary>
 
 ```yaml
-# ~/.dsh/profiles/<profile>/cordis.patch.yml
+# ~/.dsh/profiles/web/cordis.patch.yml
 - insert:
     - id: account-usage
       name: dsh-account-usage
