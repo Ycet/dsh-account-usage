@@ -188,7 +188,7 @@ node --check index.js          # 宿主语法检查
 node --check lib/aggregate.js  # 聚合模块语法检查
 
 # 本地安装（开发迭代）：
-dsh plugin --profile <profile> add <absolute-path-to-plugin>
+dsh plugin --profile web add <absolute-path-to-plugin>
 # 修改源码后需重新安装（先 remove 再 add，或提升版本号后重新 add），再重启 dsh web
 ```
 
