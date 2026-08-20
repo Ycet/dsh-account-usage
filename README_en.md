@@ -67,10 +67,10 @@ A DeepSeek Harness (DSH) web-GUI plugin: adds an "Account" page to the settings 
 
 ```sh
 # Option 1: install from a local source directory (development)
-dsh plugin --profile <profile> add <absolute-path-to-plugin>
+dsh plugin --profile web add <absolute-path-to-plugin>
 
 # Option 2: install from GitHub
-dsh plugin --profile <profile> add github:Ycet/dsh-account-usage
+dsh plugin --profile web add github:Ycet/dsh-account-usage
 ```
 
 The package declares a `dsh.bundle` patch layer; `dsh plugin` merges the loader entry into the profile's bundle layer automatically — no manual editing of `cordis.patch.yml` required.
@@ -79,7 +79,7 @@ The package declares a `dsh.bundle` patch layer; `dsh plugin` merges the loader 
 <summary>Manual patch-layer merge (optional)</summary>
 
 ```yaml
-# ~/.dsh/profiles/<profile>/cordis.patch.yml
+# ~/.dsh/profiles/web/cordis.patch.yml
 - insert:
     - id: account-usage
       name: dsh-account-usage
@@ -188,7 +188,7 @@ node --check index.js          # host syntax check
 node --check lib/aggregate.js  # aggregation module syntax check
 
 # Local install (development iteration):
-dsh plugin --profile <profile> add <absolute-path-to-plugin>
+dsh plugin --profile web add <absolute-path-to-plugin>
 # After changing the source, reinstall (remove then add, or bump the version and add again), then restart dsh web
 ```
 
