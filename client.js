@@ -22,12 +22,15 @@ window.__ModuleLoader__.load({
     // 设计系统自带图标 IconUserOutline16（@deepseek-ai/dsh-client-ui-primitives，
     // 即 assets/icons/我的.svg 同款），按 16×16 渲染，fill=currentColor 使其
     // 随导航文字颜色适配浅色/深色主题。SVG 文件随插件打包发布（package.json
-    // files 含 assets），其他安装者同样可以使用该图标。
+    // files 含 assets），其他安装者同样可以使用该图标。路径常量同时被下方
+    // 的运行时兜底注入复用（React 元素与 DOM 注入共用同一份矢量数据）。
+    const ACCOUNT_ICON_D1 = "M11.0307 5.46369C11.0305 3.78995 9.6734 2.43357 7.99961 2.43357C6.32601 2.43379 4.96972 3.79009 4.96949 5.46369C4.96949 7.13748 6.32587 8.49455 7.99961 8.49477C9.67354 8.49477 11.0307 7.13762 11.0307 5.46369ZM12.3163 5.46369C12.3163 7.84777 10.3837 9.78042 7.99961 9.78042C5.61572 9.7802 3.68288 7.84763 3.68288 5.46369C3.6831 3.07993 5.61586 1.14718 7.99961 1.14695C10.3836 1.14695 12.3161 3.0798 12.3163 5.46369Z";
+    const ACCOUNT_ICON_D2 = "M8.00002 10.3316C11.7343 10.3316 14.1864 11.8997 15.0387 14.4445L14.4292 14.6483L13.8197 14.8531C13.1955 12.9893 11.3673 11.6182 8.00002 11.6182C4.63277 11.6182 2.80455 12.9893 2.18031 14.8531L1.5708 14.6483L0.961304 14.4445C1.81368 11.8997 4.26579 10.3316 8.00002 10.3316Z";
     const ACCOUNT_ICON = React.createElement(
       "svg",
-      { viewBox: "0 0 16 16", width: 16, height: 16, fill: "none", "aria-hidden": true, focusable: "false", style: { display: "block" } },
-      React.createElement("path", { fill: "currentColor", d: "M11.0307 5.46369C11.0305 3.78995 9.6734 2.43357 7.99961 2.43357C6.32601 2.43379 4.96972 3.79009 4.96949 5.46369C4.96949 7.13748 6.32587 8.49455 7.99961 8.49477C9.67354 8.49477 11.0307 7.13762 11.0307 5.46369ZM12.3163 5.46369C12.3163 7.84777 10.3837 9.78042 7.99961 9.78042C5.61572 9.7802 3.68288 7.84763 3.68288 5.46369C3.6831 3.07993 5.61586 1.14718 7.99961 1.14695C10.3836 1.14695 12.3161 3.0798 12.3163 5.46369Z" }),
-      React.createElement("path", { fill: "currentColor", d: "M8.00002 10.3316C11.7343 10.3316 14.1864 11.8997 15.0387 14.4445L14.4292 14.6483L13.8197 14.8531C13.1955 12.9893 11.3673 11.6182 8.00002 11.6182C4.63277 11.6182 2.80455 12.9893 2.18031 14.8531L1.5708 14.6483L0.961304 14.4445C1.81368 11.8997 4.26579 10.3316 8.00002 10.3316Z" })
+      { viewBox: "0 0 16 16", width: 16, height: 16, fill: "none", "aria-hidden": true, focusable: "false", "data-dsh-account-injected": "1", style: { display: "block" } },
+      React.createElement("path", { fill: "currentColor", d: ACCOUNT_ICON_D1 }),
+      React.createElement("path", { fill: "currentColor", d: ACCOUNT_ICON_D2 })
     );
 
     const zh = {
@@ -1041,6 +1044,82 @@ window.__ModuleLoader__.load({
           AccountPage
         )
       );
+
+      // ---- 设置导航图标兜底注入（保证在任意 DSH 安装上都显示本插件图标） ----
+      // 上游 DSH 的 settings.section 目前不原生支持“每个分区自定义图标”：设置
+      // 壳层的 navIcon() 只对 models / agent-presets / plugins 三个固定 id 有
+      // 专属图标，其余分区一律渲染默认“设置”齿轮。为让本插件在任何 DSH 版本
+      // （包括没有打过对应补丁、尚未合并上游特性）的安装上“装完即显示”账户
+      // 图标，这里用一个健壮的运行时兜底：监听设置面板（[role=dialog] 内的
+      // nav）的 DOM 变化，找到文本与本插件当前导航标签（随 DSH 语言切换）一致
+      // 的导航行，把该行的图标元素替换为我们的“我的”SVG。
+      // - 若所在 DSH 已原生支持分区 icon（壳层直接渲染了带 data-dsh-account-injected
+      //   标记的图标），观察器识别后会跳过，不重复注入。
+      // - 图标占位兼容两种壳层结构：旧壳层把图标包在 span 里（navIcon 占位
+      //   span），新壳层（0.1.1-rc.2+）把图标渲染为裸 <svg>。定位方式不依赖
+      //   具体标签：先按导航文本找到 label span，取它前一个兄弟作为图标槽。
+      // - 壳层重渲染时 React 会重放齿轮，下一次 DOM 变更会再次注入，终态一致。
+      ctx.effect(() => {
+        if (typeof document === "undefined" || typeof MutationObserver === "undefined") {
+          return () => {};
+        }
+        const SVG_NS = "http://www.w3.org/2000/svg";
+        const ICON_MARK = "data-dsh-account-injected";
+        const makeIcon = () => {
+          const svg = document.createElementNS(SVG_NS, "svg");
+          svg.setAttribute("viewBox", "0 0 16 16");
+          svg.setAttribute("width", "16");
+          svg.setAttribute("height", "16");
+          svg.setAttribute("aria-hidden", "true");
+          svg.setAttribute(ICON_MARK, "1");
+          svg.style.display = "block";
+          const addPath = (d) => {
+            const p = document.createElementNS(SVG_NS, "path");
+            p.setAttribute("fill", "currentColor");
+            p.setAttribute("d", d);
+            svg.appendChild(p);
+          };
+          addPath(ACCOUNT_ICON_D1);
+          addPath(ACCOUNT_ICON_D2);
+          return svg;
+        };
+        const alreadyOurs = (btn) => {
+          const svg = btn.querySelector("svg[" + ICON_MARK + "]");
+          if (!svg) return false;
+          const first = svg.querySelector("path");
+          return !!(first && first.getAttribute("d") === ACCOUNT_ICON_D1);
+        };
+        const inject = () => {
+          let label;
+          try { label = t("nav"); } catch { label = undefined; }
+          if (!label) return;
+          const rows = document.querySelectorAll('[role="dialog"] nav button');
+          for (let i = 0; i < rows.length; i++) {
+            const btn = rows[i];
+            if (btn.textContent.replace(/\s+/g, " ").trim() !== label) continue;
+            if (alreadyOurs(btn)) continue;
+            // 图标槽 = 导航 label span 的前一个兄弟；找不到 label span 时，
+            // 若首个子元素不是 span（裸 svg 结构）也视作图标槽直接替换。
+            const children = Array.from(btn.children);
+            const labelIdx = children.findIndex(
+              (c) => c.tagName === "SPAN" && c.textContent.replace(/\s+/g, " ").trim() === label
+            );
+            const slot = labelIdx > 0 ? children[labelIdx - 1] : null;
+            if (!slot) continue;
+            const icon = makeIcon();
+            if (slot.tagName === "SVG") {
+              slot.replaceWith(icon);
+            } else {
+              while (slot.firstChild) slot.removeChild(slot.firstChild);
+              slot.appendChild(icon);
+            }
+          }
+        };
+        inject();
+        const mo = new MutationObserver(inject);
+        mo.observe(document.body, { childList: true, subtree: true, characterData: true });
+        return () => mo.disconnect();
+      }, "dsh-account-usage: settings nav icon injection");
     }
 
     exports.NS = NS;
