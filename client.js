@@ -378,10 +378,47 @@ window.__ModuleLoader__.load({
     const CHART_PAD_B = 22;
     const CHART_PAD_T = 14;
 
-    /** tooltip 水平位置：按柱索引换算百分比，边缘自动收拢防止溢出。 */
-    function tooltipLeft(index, count) {
-      const pct = ((index + 0.5) / count) * 100;
-      return `${Math.min(86, Math.max(14, pct))}%`;
+    /**
+     * tooltip 悬浮层：像素级左右钳制，保证单行 tooltip 在图表/视口左右边缘
+     * 完整可见；图表容器顶部空间不足时翻转至绘图区基线下方弹出，避免被页面
+     * 上边缘截断。anchorIndex 为悬浮列索引（0..count-1），wrapRef 指向
+     * position:relative 的图表容器（chartWrap）。
+     */
+    function ChartTooltip({ anchorIndex, count, wrapRef, children }) {
+      const tipRef = React.useRef(null);
+      const [pos, setPos] = React.useState(null);
+      React.useLayoutEffect(() => {
+        const tip = tipRef.current;
+        const wrap = wrapRef.current;
+        if (!tip || !wrap) return;
+        const wrapRect = wrap.getBoundingClientRect();
+        const tipW = tip.offsetWidth;
+        const tipH = tip.offsetHeight;
+        if (tipW <= 0 || tipH <= 0) return;
+        // 列中心（SVG viewBox 坐标系 → 容器像素，含左内边距）
+        const slot = (CHART_W - CHART_PAD_L - CHART_PAD_R) / count;
+        const centerX = wrapRect.width * ((CHART_PAD_L + (anchorIndex + 0.5) * slot) / CHART_W);
+        let left = Math.round(centerX - tipW / 2);
+        // 视口钳制：左右各留 8px 安全边距，再收拢回容器内
+        const vpLeft = wrapRect.left + left;
+        const vpRight = vpLeft + tipW;
+        if (vpLeft < 8) left += 8 - vpLeft;
+        if (vpRight > window.innerWidth - 8) left -= vpRight - (window.innerWidth - 8);
+        left = Math.max(0, Math.min(left, Math.max(0, wrapRect.width - tipW)));
+        // 纵向：默认在图表上方弹出；顶部空间不足则翻到绘图区基线下方
+        const aboveTop = -tipH - 6;
+        const flip = wrapRect.top + aboveTop < 8;
+        const top = flip
+          ? ((CHART_H - CHART_PAD_B) / CHART_H) * wrapRect.height + 6
+          : aboveTop;
+        setPos({ left, top });
+      }, [anchorIndex, count, wrapRef]);
+      const style = {
+        ...styles.tooltip,
+        left: pos ? pos.left : -9999,
+        top: pos ? pos.top : -9999
+      };
+      return React.createElement("div", { ref: tipRef, style }, children);
     }
 
     /**
@@ -390,6 +427,7 @@ window.__ModuleLoader__.load({
      */
     function BarChart({ days, currency, t }) {
       const [hovered, setHovered] = React.useState(null);
+      const wrapRef = React.useRef(null);
       if (!days || days.length === 0) {
         return React.createElement("p", { style: styles.hint }, t("chartEmpty"));
       }
@@ -408,6 +446,15 @@ window.__ModuleLoader__.load({
           onMouseEnter: () => setHovered(i),
           onMouseLeave: () => setHovered(null)
         },
+          // 透明热区：整根柱（含柱体上方空白、零值日）都可悬浮
+          React.createElement("rect", {
+            x,
+            y: CHART_PAD_T,
+            width: bw,
+            height: CHART_H - CHART_PAD_T - CHART_PAD_B,
+            fill: "transparent",
+            pointerEvents: "all"
+          }),
           React.createElement("rect", {
             x,
             y: CHART_H - CHART_PAD_B - height,
@@ -432,15 +479,13 @@ window.__ModuleLoader__.load({
               `${m.name}: ${fmtMoney(m.cost, currency)}`
             )
           );
-        tooltip = React.createElement("div", {
-          style: { ...styles.tooltip, left: tooltipLeft(hovered, days.length), top: 0, transform: "translate(-50%, calc(-100% - 6px))" }
-        },
+        tooltip = React.createElement(ChartTooltip, { anchorIndex: hovered, count: days.length, wrapRef },
           React.createElement("p", { style: styles.tooltipTitle }, d.date),
           React.createElement("p", { style: styles.tooltipRow }, `${t("tooltipTotal")}: ${fmtMoney(d.cost, currency)}`),
           rows.length > 0 ? rows : React.createElement("p", { style: styles.tooltipRow }, "—")
         );
       }
-      return React.createElement("div", { style: styles.chartWrap },
+      return React.createElement("div", { ref: wrapRef, style: styles.chartWrap },
         React.createElement("svg", { width: "100%", viewBox: `0 0 ${CHART_W} ${CHART_H}`, style: { display: "block" } },
           React.createElement("text", { x: CHART_PAD_L, y: CHART_H - 6, style: { fill: "var(--dsw-alias-label-tertiary)", fontSize: 10 } }, days[0].date),
           React.createElement("text", { x: CHART_W - CHART_PAD_R, y: CHART_H - 6, textAnchor: "end", style: { fill: "var(--dsw-alias-label-tertiary)", fontSize: 10 } }, days[days.length - 1].date),
@@ -463,6 +508,7 @@ window.__ModuleLoader__.load({
      */
     function TokenChart({ days, model, currency, t }) {
       const [hovered, setHovered] = React.useState(null);
+      const wrapRef = React.useRef(null);
       if (!days || days.length === 0) {
         return React.createElement("p", { style: styles.hint }, t("tokenChartEmpty"));
       }
@@ -513,7 +559,9 @@ window.__ModuleLoader__.load({
           onMouseEnter: () => setHovered(i),
           onMouseLeave: () => setHovered(null)
         },
-          // 透明热区：整根柱（含空值日）都可悬浮
+          rects,
+          // 透明热区（置于最上层）：柱宽 × 全绘图区高，柱体上方空白、
+          // 零 token 日整列都可悬浮
           React.createElement("rect", {
             x,
             y: CHART_PAD_T,
@@ -521,16 +569,13 @@ window.__ModuleLoader__.load({
             height: CHART_H - CHART_PAD_T - CHART_PAD_B,
             fill: "transparent",
             pointerEvents: "all"
-          }),
-          rects
+          })
         );
       });
       let tooltip = null;
       if (hovered !== null) {
         const s = series[hovered];
-        tooltip = React.createElement("div", {
-          style: { ...styles.tooltip, left: tooltipLeft(hovered, series.length), top: 0, transform: "translate(-50%, calc(-100% - 6px))" }
-        },
+        tooltip = React.createElement(ChartTooltip, { anchorIndex: hovered, count: series.length, wrapRef },
           React.createElement("p", { style: styles.tooltipTitle }, s.date),
           React.createElement("p", { style: styles.tooltipRow }, `${t("legendMiss")}: ${fmtCount(s.miss)}`),
           React.createElement("p", { style: styles.tooltipRow }, `${t("legendHit")}: ${fmtCount(s.hit)}`),
@@ -538,7 +583,7 @@ window.__ModuleLoader__.load({
           React.createElement("p", { style: { ...styles.tooltipRow, fontWeight: 600 } }, `${t("tooltipTotal")}: ${fmtCount(s.miss + s.hit + s.out)}`)
         );
       }
-      return React.createElement("div", { style: styles.chartWrap },
+      return React.createElement("div", { ref: wrapRef, style: styles.chartWrap },
         React.createElement("svg", { width: "100%", viewBox: `0 0 ${CHART_W} ${CHART_H}`, style: { display: "block" } },
           React.createElement("text", { x: CHART_PAD_L, y: CHART_H - 6, style: { fill: "var(--dsw-alias-label-tertiary)", fontSize: 10 } }, series[0].date),
           React.createElement("text", { x: CHART_W - CHART_PAD_R, y: CHART_H - 6, textAnchor: "end", style: { fill: "var(--dsw-alias-label-tertiary)", fontSize: 10 } }, series[series.length - 1].date),
