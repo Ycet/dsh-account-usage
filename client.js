@@ -209,6 +209,7 @@ window.__ModuleLoader__.load({
       moduleHeader: { display: "flex", alignItems: "center", gap: 8, borderBottom: "1px solid var(--dsw-alias-border-l2)", paddingBottom: 8 },
       moduleBar: { width: 3, height: 14, borderRadius: 2, background: "var(--dsw-alias-state-business-primary)", flexShrink: 0 },
       moduleTitle: { margin: 0, fontSize: 13, fontWeight: 600, color: "var(--dsw-alias-label-primary)" },
+      moduleChevron: { marginLeft: "auto", color: "var(--dsw-alias-label-tertiary)", display: "flex", alignItems: "center" },
       statGridItem: { display: "flex", flexDirection: "column", gap: 4 },
       cardsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 },
       statLabel: { color: "var(--dsw-alias-label-tertiary)", fontSize: 12, margin: 0 },
@@ -376,14 +377,35 @@ window.__ModuleLoader__.load({
       }, t("jump"));
     }
 
-    /** 分组卡片：标题栏（3px 主题色竖条 + 标题 + 底部分隔线）+ 内容区。 */
-    function ModuleCard({ title, children }) {
+    /** 分组卡片：标题栏（3px 主题色竖条 + 标题 + 底部分隔线）+ 内容区。
+     * collapsible 时标题栏可点击折叠/展开；collapsed 为受控状态（由父组件管理）。 */
+    function ModuleCard({ title, children, collapsible, collapsed, onToggle }) {
+      const header = React.createElement("div", {
+        style: collapsible ? { ...styles.moduleHeader, cursor: "pointer" } : styles.moduleHeader,
+        onClick: collapsible ? onToggle : undefined,
+        role: collapsible ? "button" : undefined,
+        "aria-expanded": collapsible ? !collapsed : undefined
+      },
+        React.createElement("span", { style: styles.moduleBar }),
+        React.createElement("p", { style: styles.moduleTitle }, title),
+        collapsible
+          ? React.createElement("span", { style: styles.moduleChevron },
+            React.createElement("svg", {
+              width: 12,
+              height: 12,
+              viewBox: "0 0 16 16",
+              fill: "none",
+              style: { transition: "transform .15s ease", transform: collapsed ? "rotate(-90deg)" : "none", display: "block" },
+              "aria-hidden": true
+            },
+              React.createElement("path", { d: "M4 6l4 4 4-4", stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round" })
+            )
+          )
+          : null
+      );
       return React.createElement("div", { style: styles.moduleCard },
-        React.createElement("div", { style: styles.moduleHeader },
-          React.createElement("span", { style: styles.moduleBar }),
-          React.createElement("p", { style: styles.moduleTitle }, title)
-        ),
-        children
+        header,
+        collapsible && collapsed ? null : children
       );
     }
 
@@ -862,6 +884,39 @@ window.__ModuleLoader__.load({
         const p = presets()[4]; // 本月（默认）
         return { from: p.from, to: p.to };
       });
+      // 会话令牌模块折叠状态：默认折叠；探测到令牌未配置时自动展开
+      const [tokenCollapsed, setTokenCollapsed] = React.useState(true);
+      const [tokenConfigured, setTokenConfigured] = React.useState(null); // null=探测中
+
+      React.useEffect(() => {
+        let disposed = false;
+        if (!credApi) {
+          setTokenConfigured(false);
+          return;
+        }
+        Promise.resolve()
+          .then(() => credApi.describe({ refs: [PLATFORM_TOKEN_REF] }))
+          .then((r) => {
+            if (disposed) return;
+            const result = unwrapRpc(r);
+            const view =
+              result && result.ok === true && result.value && result.value.credentials
+                ? result.value.credentials[PLATFORM_TOKEN_REF]
+                : null;
+            setTokenConfigured(!!(view && view.configured));
+          })
+          .catch(() => {
+            if (!disposed) setTokenConfigured(false);
+          });
+        return () => {
+          disposed = true;
+        };
+      }, [credApi]);
+
+      React.useEffect(() => {
+        // 未配置 → 自动展开；已配置则保持折叠默认
+        if (tokenConfigured === false) setTokenCollapsed(false);
+      }, [tokenConfigured]);
 
       const loadSummary = React.useCallback(() => {
         setSummary({ kind: "loading" });
@@ -918,8 +973,13 @@ window.__ModuleLoader__.load({
             React.createElement(RefreshButton, { onClick: () => { loadSummary(); loadUsage(range); }, t })
           )
         ),
-        // 模块一：会话令牌
-        React.createElement(ModuleCard, { title: t("moduleToken") },
+        // 模块一：会话令牌（默认折叠；未配置令牌时自动展开）
+        React.createElement(ModuleCard, {
+          title: t("moduleToken"),
+          collapsible: true,
+          collapsed: tokenCollapsed,
+          onToggle: () => setTokenCollapsed((v) => !v)
+        },
           React.createElement(TokenPanel, { credApi, onSaved: () => { loadSummary(); loadUsage(range); }, t })
         ),
         // 模块二：账户余额
