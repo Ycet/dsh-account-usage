@@ -380,8 +380,14 @@ window.__ModuleLoader__.load({
     /** 分组卡片：标题栏（3px 主题色竖条 + 标题 + 底部分隔线）+ 内容区。
      * collapsible 时标题栏可点击折叠/展开；collapsed 为受控状态（由父组件管理）。 */
     function ModuleCard({ title, children, collapsible, collapsed, onToggle }) {
+      // 折叠时标题栏不显示底部横线（borderBottom + 其留白一并移除）
+      const headerStyle = collapsible
+        ? collapsed
+          ? { ...styles.moduleHeader, cursor: "pointer", borderBottom: "none", paddingBottom: 0 }
+          : { ...styles.moduleHeader, cursor: "pointer" }
+        : styles.moduleHeader;
       const header = React.createElement("div", {
-        style: collapsible ? { ...styles.moduleHeader, cursor: "pointer" } : styles.moduleHeader,
+        style: headerStyle,
         onClick: collapsible ? onToggle : undefined,
         role: collapsible ? "button" : undefined,
         "aria-expanded": collapsible ? !collapsed : undefined
