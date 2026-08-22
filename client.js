@@ -40,6 +40,10 @@ window.__ModuleLoader__.load({
       tabOpencode: "opencode go",
       deepseekPanel: "DeepSeek 平台",
       opencodePanel: "OpenCode Go",
+      moduleToken: "会话令牌",
+      moduleBalance: "账户余额",
+      moduleUsage: "用量与图表",
+      moduleModels: "模型明细",
       tokenTitle: "平台会话令牌",
       tokenConfigured: "已配置",
       tokenMissing: "未配置 —— 用量与余额将不可用",
@@ -118,6 +122,10 @@ window.__ModuleLoader__.load({
       tabOpencode: "opencode go",
       deepseekPanel: "DeepSeek Platform",
       opencodePanel: "OpenCode Go",
+      moduleToken: "Session Token",
+      moduleBalance: "Account Balance",
+      moduleUsage: "Usage & Charts",
+      moduleModels: "Model Details",
       tokenTitle: "Platform session token",
       tokenConfigured: "Configured",
       tokenMissing: "Not configured — balance and usage are unavailable",
@@ -197,6 +205,11 @@ window.__ModuleLoader__.load({
       error: { color: "var(--dsw-alias-state-error-primary)", fontSize: 13, lineHeight: 1.6, margin: 0 },
       ok: { color: "var(--dsw-alias-state-success-primary)", fontSize: 12, lineHeight: 1.6, margin: 0 },
       card: { border: "1px solid var(--dsw-alias-border-l2)", background: "var(--dsw-alias-bg-layer-3)", borderRadius: 10, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 8 },
+      moduleCard: { border: "1px solid var(--dsw-alias-border-l2)", background: "var(--dsw-alias-bg-layer-3)", borderRadius: 10, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 12 },
+      moduleHeader: { display: "flex", alignItems: "center", gap: 8, borderBottom: "1px solid var(--dsw-alias-border-l2)", paddingBottom: 8 },
+      moduleBar: { width: 3, height: 14, borderRadius: 2, background: "var(--dsw-alias-state-business-primary)", flexShrink: 0 },
+      moduleTitle: { margin: 0, fontSize: 13, fontWeight: 600, color: "var(--dsw-alias-label-primary)" },
+      statGridItem: { display: "flex", flexDirection: "column", gap: 4 },
       cardsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 },
       statLabel: { color: "var(--dsw-alias-label-tertiary)", fontSize: 12, margin: 0 },
       statValue: { fontSize: 18, fontWeight: 600, margin: 0 },
@@ -363,8 +376,20 @@ window.__ModuleLoader__.load({
       }, t("jump"));
     }
 
-    function StatCard({ label, value }) {
-      return React.createElement("div", { style: styles.card },
+    /** 分组卡片：标题栏（3px 主题色竖条 + 标题 + 底部分隔线）+ 内容区。 */
+    function ModuleCard({ title, children }) {
+      return React.createElement("div", { style: styles.moduleCard },
+        React.createElement("div", { style: styles.moduleHeader },
+          React.createElement("span", { style: styles.moduleBar }),
+          React.createElement("p", { style: styles.moduleTitle }, title)
+        ),
+        children
+      );
+    }
+
+    /** 无边框统计项（模块卡片内使用，避免“卡中卡”）。 */
+    function StatGridItem({ label, value }) {
+      return React.createElement("div", { style: styles.statGridItem },
         React.createElement("p", { style: styles.statLabel }, label),
         React.createElement("p", { style: styles.statValue }, value)
       );
@@ -893,61 +918,76 @@ window.__ModuleLoader__.load({
             React.createElement(RefreshButton, { onClick: () => { loadSummary(); loadUsage(range); }, t })
           )
         ),
-        React.createElement(TokenPanel, { credApi, onSaved: () => { loadSummary(); loadUsage(range); }, t }),
-        summary.kind === "loading"
-          ? React.createElement("p", { style: styles.hint }, t("loading"))
-          : summary.kind === "failure"
-            ? React.createElement("p", { style: styles.error }, summary.message)
-            : summary.value.ok !== true
-              ? React.createElement("p", { style: styles.error }, errorText(summary.value, t))
-              : React.createElement("div", { style: styles.cardsGrid },
-                React.createElement(StatCard, { label: t("summaryToppedUp"), value: fmtMoney(summary.value.balance?.toppedUp, currency) }),
-                React.createElement(StatCard, { label: t("summaryGranted"), value: fmtMoney(summary.value.balance?.granted, currency) }),
-                React.createElement(StatCard, { label: t("summaryCumulative"), value: fmtMoney(summary.value.cumulativeCost, currency) })
-              ),
-        React.createElement(RangeSelector, { range, onApply: applyRange, t }),
-        usage.kind === "loading"
-          ? React.createElement("p", { style: styles.hint }, t("loading"))
-          : usage.kind === "failure"
-            ? React.createElement("p", { style: styles.error }, usage.message)
-            : usage.value.ok !== true
-              ? React.createElement("p", { style: styles.error }, errorText(usage.value, t))
-              : React.createElement(React.Fragment, null,
-                usage.value.range?.clipped
-                  ? React.createElement("p", { style: styles.hint }, t("rangeClipped"))
-                  : null,
-                React.createElement("div", { style: styles.cardsGrid },
-                  React.createElement(StatCard, { label: t("totalsCost"), value: fmtMoney(usage.value.totals?.cost, currency) }),
-                  React.createElement(StatCard, { label: t("totalsRequests"), value: fmtCount(usage.value.totals?.requests) }),
-                  React.createElement(StatCard, { label: t("totalsTokens"), value: fmtCount(usage.value.totals?.tokens) })
-                ),
-                React.createElement("div", { style: styles.card },
-                  React.createElement("p", { style: styles.statLabel }, t("chartTitle")),
-                  React.createElement(BarChart, { days: usage.value.days, currency, t })
-                ),
-                React.createElement("div", { style: styles.card },
-                  React.createElement("p", { style: styles.statLabel }, t("tokenChartTitle")),
-                  usageModels.length > 0
-                    ? React.createElement(React.Fragment, null,
-                      React.createElement("div", { style: styles.buttonsRow },
-                        usageModels.map((m) =>
-                          React.createElement("button", {
-                            key: m.model,
-                            style: tokenModelResolved === m.model ? styles.chipActive : styles.chip,
-                            onClick: () => setTokenModel(m.model)
-                          }, m.model)
-                        )
-                      ),
-                      React.createElement(TokenChart, { days: usage.value.days, model: tokenModelResolved, currency, t }),
-                      React.createElement(TokenLegend, { t })
-                    )
-                    : React.createElement("p", { style: styles.hint }, t("tokenChartEmpty"))
-                ),
-                React.createElement("div", { style: styles.section },
-                  React.createElement("p", { style: styles.statLabel }, t("modelsTitle")),
-                  React.createElement(ModelTable, { models: usage.value.models, currency, t })
+        // 模块一：会话令牌
+        React.createElement(ModuleCard, { title: t("moduleToken") },
+          React.createElement(TokenPanel, { credApi, onSaved: () => { loadSummary(); loadUsage(range); }, t })
+        ),
+        // 模块二：账户余额
+        React.createElement(ModuleCard, { title: t("moduleBalance") },
+          summary.kind === "loading"
+            ? React.createElement("p", { style: styles.hint }, t("loading"))
+            : summary.kind === "failure"
+              ? React.createElement("p", { style: styles.error }, summary.message)
+              : summary.value.ok !== true
+                ? React.createElement("p", { style: styles.error }, errorText(summary.value, t))
+                : React.createElement("div", { style: styles.cardsGrid },
+                  React.createElement(StatGridItem, { label: t("summaryToppedUp"), value: fmtMoney(summary.value.balance?.toppedUp, currency) }),
+                  React.createElement(StatGridItem, { label: t("summaryGranted"), value: fmtMoney(summary.value.balance?.granted, currency) }),
+                  React.createElement(StatGridItem, { label: t("summaryCumulative"), value: fmtMoney(summary.value.cumulativeCost, currency) })
                 )
-              )
+        ),
+        // 模块三：用量与图表
+        React.createElement(ModuleCard, { title: t("moduleUsage") },
+          React.createElement(RangeSelector, { range, onApply: applyRange, t }),
+          usage.kind === "loading"
+            ? React.createElement("p", { style: styles.hint }, t("loading"))
+            : usage.kind === "failure"
+              ? React.createElement("p", { style: styles.error }, usage.message)
+              : usage.value.ok !== true
+                ? React.createElement("p", { style: styles.error }, errorText(usage.value, t))
+                : React.createElement(React.Fragment, null,
+                  usage.value.range?.clipped
+                    ? React.createElement("p", { style: styles.hint }, t("rangeClipped"))
+                    : null,
+                  React.createElement("div", { style: styles.cardsGrid },
+                    React.createElement(StatGridItem, { label: t("totalsCost"), value: fmtMoney(usage.value.totals?.cost, currency) }),
+                    React.createElement(StatGridItem, { label: t("totalsRequests"), value: fmtCount(usage.value.totals?.requests) }),
+                    React.createElement(StatGridItem, { label: t("totalsTokens"), value: fmtCount(usage.value.totals?.tokens) })
+                  ),
+                  React.createElement("div", { style: styles.card },
+                    React.createElement("p", { style: styles.statLabel }, t("chartTitle")),
+                    React.createElement(BarChart, { days: usage.value.days, currency, t })
+                  ),
+                  React.createElement("div", { style: styles.card },
+                    React.createElement("p", { style: styles.statLabel }, t("tokenChartTitle")),
+                    usageModels.length > 0
+                      ? React.createElement(React.Fragment, null,
+                        React.createElement("div", { style: styles.buttonsRow },
+                          usageModels.map((m) =>
+                            React.createElement("button", {
+                              key: m.model,
+                              style: tokenModelResolved === m.model ? styles.chipActive : styles.chip,
+                              onClick: () => setTokenModel(m.model)
+                            }, m.model)
+                          )
+                        ),
+                        React.createElement(TokenChart, { days: usage.value.days, model: tokenModelResolved, currency, t }),
+                        React.createElement(TokenLegend, { t })
+                      )
+                      : React.createElement("p", { style: styles.hint }, t("tokenChartEmpty"))
+                  )
+                )
+        ),
+        // 模块四：模型明细
+        React.createElement(ModuleCard, { title: t("moduleModels") },
+          usage.kind === "loading"
+            ? React.createElement("p", { style: styles.hint }, t("loading"))
+            : usage.kind === "failure"
+              ? React.createElement("p", { style: styles.error }, usage.message)
+              : usage.value.ok !== true
+                ? React.createElement("p", { style: styles.error }, errorText(usage.value, t))
+                : React.createElement(ModelTable, { models: usage.value.models, currency, t })
+        )
       );
     }
 
