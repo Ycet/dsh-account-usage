@@ -834,7 +834,7 @@ window.__ModuleLoader__.load({
         );
       } else status = React.createElement("p", { style: styles.error }, t("tokenMissing"));
 
-      return React.createElement("div", { style: styles.card },
+      return React.createElement("div", { style: styles.section },
         React.createElement("div", { style: styles.row },
           React.createElement("strong", { style: { fontSize: 13 } }, t("tokenTitle")),
           status
