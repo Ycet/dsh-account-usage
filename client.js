@@ -14,7 +14,7 @@ window.__ModuleLoader__.load({
     const React = require("react");
 
     const NS = "settings.accountUsage";
-    const inject = ["slots", "locale", "connection"];
+    const inject = ["slots", "locale", "remote", "remote.credentials"];
 
     // ---- 账户导航图标（来源：assets/icons/我的.svg） ----
     // DSH 设置面板对每个分区条目默认渲染“设置”齿轮图标；为让本插件显示自己的
@@ -355,8 +355,44 @@ window.__ModuleLoader__.load({
     }
 
     /**
-     * connection.api 的 unary 方法返回 { rpcId, result: { ok, value|error } }
-     * 信封；解出 result 分支，信封缺失返回 null（调用方按失败处理）。
+     * 账户页原先消费 connection.api 的 { rpcId, result } 信封，且 describe
+     * 的成功值嵌在 value.credentials。rc.1 的 remote.credentials 直接返回
+     * RemoteResult，describe 的 value 则是按凭据引用索引的记录。此适配层
+     * 恢复旧面板契约，令令牌编辑和账户页不必各自处理传输层差异。
+     */
+    function createCredentialApi(remote) {
+      const credentials = remote && remote.credentials;
+      if (
+        !credentials ||
+        typeof credentials.describe !== "function" ||
+        typeof credentials.set !== "function" ||
+        typeof credentials.unset !== "function"
+      ) return null;
+
+      const invoke = (method, args, mapResult) =>
+        Promise.resolve()
+          .then(() => credentials[method](...args))
+          .then((result) => ({ result: mapResult ? mapResult(result) : result }));
+
+      return {
+        describe({ refs }) {
+          return invoke("describe", [refs], (result) => {
+            if (!result || result.ok !== true) return result;
+            return { ...result, value: { credentials: result.value } };
+          });
+        },
+        set({ ref, value }) {
+          return invoke("set", [ref, value]);
+        },
+        unset({ ref }) {
+          return invoke("unset", [ref]);
+        }
+      };
+    }
+
+    /**
+     * 凭据适配器返回 { result: { ok, value|error } } 信封；解出 result
+     * 分支，信封缺失返回 null（调用方按失败处理）。
      */
     function unwrapRpc(r) {
       if (r === null || typeof r !== "object" || r.result === null || typeof r.result !== "object") return null;
@@ -1178,8 +1214,7 @@ window.__ModuleLoader__.load({
     function apply(ctx) {
       ctx.effect(() => ctx.locale.register(NS, { zh, en }), "dsh-account-usage: dictionaries");
       const t = ctx.locale.bind(NS);
-      const connection = ctx.get("connection");
-      const credApi = connection && connection.api && connection.api.credentials ? connection.api.credentials : null;
+      const credApi = createCredentialApi(ctx.remote);
       const injected = () => ({ t, credApi });
       ctx.slots.inject("settings.section", () =>
         ctx.slots.register(
@@ -1276,6 +1311,7 @@ window.__ModuleLoader__.load({
     exports.NS = NS;
     exports.apply = apply;
     exports.inject = inject;
+    exports.createCredentialApi = createCredentialApi;
     exports.unwrapRpc = unwrapRpc;
     exports.BarChart = BarChart;
     exports.TokenChart = TokenChart;
