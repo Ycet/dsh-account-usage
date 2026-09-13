@@ -7,6 +7,13 @@
 - 本仓库中首次提交的版本号为 `0.1.11`，`0.1.12` 未出现在本目录的 `package.json` 中（上游插件仓库另有 `v0.1.12` 标签）。
 - 条目末尾的短哈希（如 `c1182a4`）为对应提交，便于追溯。
 
+## [0.1.23] - 2026-09-13
+
+### 修复 / Fixed
+
+- 消费金额柱状图的悬浮提示只列出当日**消费金额大于 0** 的模型，并按费用降序排列，避免零消费模型占用提示行（`e889c12`）。
+- English: The daily cost chart tooltip now lists only models whose cost for that day is greater than zero, sorted by descending cost.
+
 ## [0.1.22] - 2026-09-07
 
 ### 变更 / Changed
