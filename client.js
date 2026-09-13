@@ -559,9 +559,10 @@ window.__ModuleLoader__.load({
       if (hovered !== null) {
         const d = days[hovered];
         const perModel = d.models || {};
-        // 按费用降序列出当日有明细的模型（flash/pro 通常在前）
+        // 仅展示当日消费金额大于 0 的模型，并按费用降序排列
         const rows = Object.keys(perModel)
           .map((name) => ({ name, cost: perModel[name].cost }))
+          .filter((m) => m.cost > 0)
           .sort((a, b) => b.cost - a.cost)
           .map((m) =>
             React.createElement("p", { key: m.name, style: styles.tooltipRow },
