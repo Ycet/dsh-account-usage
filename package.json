@@ -52,7 +52,7 @@
     "@deepseek-ai/cordis": "^4.0.1"
   },
   "dependencies": {
-    "@deepseek-ai/dsh-credentials": "^0.1.0-rc.6"
+    "@deepseek-ai/dsh-credentials": "0.1.7-rc.1"
   },
   "license": "MIT"
 }
