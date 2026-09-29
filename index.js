@@ -210,6 +210,23 @@ async function fetchOpencodeUsage(ctx) {
   if (response.status === 401) {
     return { ok: false, code: "unauthorized", message: "OpenCode Go API Key 无效或已过期（401）" };
   }
+  if (response.status === 403) {
+    // 官方用量接口用 EntitlementError 区分“缺少 Go 订阅”和其他访问拒绝。
+    let errorType;
+    try {
+      errorType = (await response.json())?.error?.type;
+    } catch {
+      /* 保留通用 HTTP 403 错误 */
+    }
+    if (errorType === "EntitlementError") {
+      return {
+        ok: false,
+        code: "go-subscription-required",
+        keySource: source,
+        message: "当前 API Key 所属工作区没有 OpenCode Go 订阅"
+      };
+    }
+  }
   if (!response.ok) {
     return { ok: false, code: `http-${response.status}`, message: `OpenCode 用量接口返回 HTTP ${response.status}` };
   }
