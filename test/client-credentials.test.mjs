@@ -27,7 +27,7 @@ async function loadClientBundle() {
   }
 }
 
-function accountRegistration(client, remote) {
+function accountRegistration(client, remote, runtimeSlots) {
   const registrations = [];
   client.apply({
     remote,
@@ -44,16 +44,16 @@ function accountRegistration(client, remote) {
       }
     },
     slots: {
-      inject(_name, callback) {
-        return callback();
+      inject(name, callback) {
+        return runtimeSlots ? runtimeSlots.inject(name, callback) : callback();
       },
-      register(spec) {
+      register(spec, component) {
         registrations.push(spec);
-        return () => {};
+        return runtimeSlots ? runtimeSlots.register(spec, component) : () => {};
       }
     }
   });
-  const registration = registrations.find((item) => item.name === "settings.section" && item.id === "account");
+  const registration = registrations.find((item) => item.name === "settings.section");
   assert.ok(registration, "account settings section should register");
   return registration;
 }
@@ -110,4 +110,50 @@ test("credential bridge remains unavailable when rc.1 remote.credentials is abse
   const client = await loadClientBundle();
   const registration = accountRegistration(client, {});
   assert.equal(registration.inject().credApi, null);
+});
+
+// 使用真实桌面槽位注册器，验证两种加载顺序及卸载，不用宽松 mock 掩盖 ID 冲突。
+for (const officialFirst of [true, false]) test(`desktop account sections coexist (officialFirst=${officialFirst})`, {
+  skip: !process.env.DSH_TEST_INSTALL_ROOT
+}, async (t) => {
+  const base = process.env.DSH_TEST_INSTALL_ROOT + "/node_modules/@deepseek-ai/";
+  const { SlotCore } = await import(base + "dsh-client-ui-slots/lib/index.js");
+  const core = new SlotCore();
+  const unregisterRoot = core.register({
+    name: "root",
+    children: { "settings.section": { kind: "list", scope: "root" } }
+  }, () => null);
+  t.after(unregisterRoot);
+
+  // DSH 0.2.0-rc.2 官方账户页的注册契约：account，默认优先级，order=-10。
+  const OfficialAccount = () => null;
+  const registerOfficial = () => core.register({
+    name: "settings.section", id: "account", order: -10, locale: "settings.account"
+  }, OfficialAccount);
+  if (officialFirst) t.after(registerOfficial());
+
+  const disposers = [];
+  const client = await loadClientBundle();
+  const registration = accountRegistration(client, {}, {
+    inject(name, callback) {
+      assert.equal(name, "settings.section");
+      const dispose = callback();
+      disposers.push(dispose);
+      t.after(dispose);
+      return dispose;
+    },
+    register(spec, component) {
+      return core.register(spec, component);
+    }
+  });
+  if (!officialFirst) t.after(registerOfficial());
+
+  assert.deepEqual(core.entriesOfSlot("settings.section").map((entry) => entry.options.id), ["account", "account-usage"]);
+  assert.equal(core.entriesOfSlot("settings.section")[0].component, OfficialAccount);
+  assert.equal(registration.id, "account-usage");
+  assert.equal(registration.priority ?? 0, 0, "both pages should coexist at the default priority");
+
+  for (const dispose of disposers) dispose();
+  assert.deepEqual(core.entriesOfSlot("settings.section").map((entry) => entry.options.id), ["account"]);
+  assert.equal(core.entriesOfSlot("settings.section")[0].component, OfficialAccount);
 });

@@ -1229,7 +1229,8 @@ window.__ModuleLoader__.load({
         ctx.slots.register(
           {
             name: "settings.section",
-            id: "account",
+            // 官方账号与余额页使用 account；独立 ID 保证两页同时注册。
+            id: "account-usage",
             order: 45,
             label: () => t("nav"),
             icon: ACCOUNT_ICON,
