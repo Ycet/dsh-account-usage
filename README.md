@@ -8,7 +8,7 @@
 DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」页，一站式查看 DeepSeek 平台余额/用量与 OpenCode Go 配额。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.1.14-blue.svg?style=for-the-badge)](package.json)
+[![Version](https://img.shields.io/badge/version-0.1.26-blue.svg?style=for-the-badge)](package.json)
 [![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.6%2B-purple.svg?style=for-the-badge)](https://github.com/deepseek-ai/deepseek-harness)
 
 </div>
@@ -54,6 +54,10 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 | **OpenCode Go 配额** | 5 小时滚动 / 每周 / 每月三个窗口的用量百分比与下次重置时间 |
 | **自动刷新** | 页面挂载期间每 60 秒自动轮询最新数据 |
 | **双语言界面** | 完整的中英文切换支持 |
+| **官方账户页共存** | 使用独立的设置分区 ID，兼容桌面端官方「账号与余额」入口 |
+
+> [!NOTE]
+> `0.1.26` 修复了桌面端设置入口 ID 冲突。升级后重启 DSH，自制「账户」页与官方「账号与余额」页可同时出现；官方入口仍按 DSH 的账户登录状态显示。已在 DSH 桌面端 `0.2.0-rc.2` 验证。
 
 ---
 
@@ -147,7 +151,7 @@ DEEPSEEK_PLATFORM_TOKEN: <令牌>
 |------|------|------|
 | 宿主 | `index.js` | 注册三条 `GET /api/account-usage/*` 精确路由（`deepseek-summary` / `deepseek-usage` / `opencode`）；经 `ctx.credentials` 解析密钥，固定白名单上游 URL，15s 超时 + 30s 缓存 |
 | 解析聚合 | `lib/aggregate.js` | 纯函数：平台信封解包后的每日/每模型 token、费用、请求次数聚合 |
-| 浏览器 | `client.js` | 手写惰性 CJS 客户端包：注册 `settings.section`（id `account`），渲染账户页（SVG 柱状图、维度选择器、模型表、配额进度条），挂载期间每 60s 自动刷新 |
+| 浏览器 | `client.js` | 手写惰性 CJS 客户端包：注册 `settings.section`（id `account-usage`），渲染账户页（SVG 柱状图、维度选择器、模型表、配额进度条），挂载期间每 60s 自动刷新 |
 | 组合 | `cordis.patch.yml` | `dsh.bundle` 补丁层，安装时自动合入 |
 
 ### 数据源
@@ -184,8 +188,8 @@ DEEPSEEK_PLATFORM_TOKEN: <令牌>
 ## 🛠️ 开发
 
 ```sh
-node --check index.js          # 宿主语法检查
-node --check lib/aggregate.js  # 聚合模块语法检查
+npm run check  # 宿主、客户端和聚合模块语法检查
+npm test       # 凭据与 OpenCode Go 响应回归测试
 
 # 本地安装（开发迭代）：
 dsh plugin --profile web add <absolute-path-to-plugin>
@@ -193,6 +197,8 @@ dsh plugin --profile web add <absolute-path-to-plugin>
 ```
 
 修改 `client.js` 后需重启 `dsh web`（重新生成 boot-graph 哈希），再强制刷新页面。
+
+桌面端需完全退出并重新打开应用。本地 `link:` 安装会直接加载修改后的源码。设置 `DSH_TEST_INSTALL_ROOT` 为包含 DSH `node_modules` 的运行时目录后，`npm test` 还会使用真实槽位注册器验证官方页与插件页的两种加载顺序，以及卸载插件页后官方页仍保留；未设置时跳过这两项集成测试。
 
 > [!NOTE]
 > `dsh plugin` 在 Windows 下经 shell 转发 pnpm，安装路径不能含空格；工作区路径含空格时可先在无空格路径建目录联接（`mklink /J`）作为安装网关。

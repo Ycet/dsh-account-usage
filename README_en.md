@@ -8,7 +8,7 @@
 A DeepSeek Harness (DSH) web-GUI plugin: adds an "Account" page to the settings panel for a one-stop view of DeepSeek platform balance/usage and OpenCode Go quotas.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.1.14-blue.svg?style=for-the-badge)](package.json)
+[![Version](https://img.shields.io/badge/version-0.1.26-blue.svg?style=for-the-badge)](package.json)
 [![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.6%2B-purple.svg?style=for-the-badge)](https://github.com/deepseek-ai/deepseek-harness)
 
 </div>
@@ -54,6 +54,10 @@ A DeepSeek Harness (DSH) web-GUI plugin: adds an "Account" page to the settings 
 | **OpenCode Go quotas** | Usage percentage and next reset time for the 5-hour rolling / weekly / monthly windows |
 | **Auto refresh** | Polls for fresh data every 60 seconds while the page is mounted |
 | **Bilingual UI** | Full Chinese/English switching |
+| **Built-in account page coexistence** | Uses a separate settings section ID alongside the desktop app's built-in account and balance page |
+
+> [!NOTE]
+> `0.1.26` fixes a desktop settings entry ID collision. Restart DSH after upgrading to show the plugin's "Account" page alongside the built-in account and balance page; the built-in entry remains subject to DSH's account sign-in state. Verified with DSH desktop `0.2.0-rc.2`.
 
 ---
 
@@ -147,7 +151,7 @@ A dual-half plugin (host + browser) with data flowing through same-origin HTTP r
 |------|------|------|
 | Host | `index.js` | Registers three precise `GET /api/account-usage/*` routes (`deepseek-summary` / `deepseek-usage` / `opencode`); resolves keys via `ctx.credentials`, uses a fixed allow-listed upstream URL, 15s timeout + 30s cache |
 | Parsing/aggregation | `lib/aggregate.js` | Pure functions: daily/per-model token, cost and request-count aggregation after unwrapping the platform envelope |
-| Browser | `client.js` | Hand-written lazy CJS client bundle: registers `settings.section` (id `account`), renders the account page (SVG bar charts, range selector, model table, quota progress bars), auto-refreshes every 60s |
+| Browser | `client.js` | Hand-written lazy CJS client bundle: registers `settings.section` (id `account-usage`), renders the account page (SVG bar charts, range selector, model table, quota progress bars), auto-refreshes every 60s |
 | Composition | `cordis.patch.yml` | `dsh.bundle` patch layer, merged automatically on install |
 
 ### Data sources
@@ -184,8 +188,8 @@ A dual-half plugin (host + browser) with data flowing through same-origin HTTP r
 ## 🛠️ Development
 
 ```sh
-node --check index.js          # host syntax check
-node --check lib/aggregate.js  # aggregation module syntax check
+npm run check  # host, client and aggregation syntax checks
+npm test       # credential and OpenCode Go response regression tests
 
 # Local install (development iteration):
 dsh plugin --profile web add <absolute-path-to-plugin>
@@ -193,6 +197,8 @@ dsh plugin --profile web add <absolute-path-to-plugin>
 ```
 
 After modifying `client.js`, restart `dsh web` (the boot-graph hash is regenerated) and hard-refresh the page.
+
+For the desktop app, quit it completely and reopen it. A local `link:` installation loads the updated source directly. Set `DSH_TEST_INSTALL_ROOT` to a DSH runtime directory containing `node_modules` to also test both loading orders of the built-in and plugin pages using the real slot registry, plus removal of the plugin page while retaining the built-in page. Without this variable, these two integration tests are skipped.
 
 > [!NOTE]
 > On Windows, `dsh plugin` forwards to pnpm through the shell, so the install path must not contain spaces; if your workspace path has spaces, create a junction (`mklink /J`) in a space-free path as an install gateway.

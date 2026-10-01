@@ -110,6 +110,7 @@ window.__ModuleLoader__.load({
       tokenExpired: "平台令牌已过期：请重新登录 platform.deepseek.com 并更新 userToken",
       noKey: "未找到 OpenCode Go API Key",
       unauthorized: "OpenCode Go API Key 无效或已过期（401）",
+      goSubscriptionRequired: "当前 Key 所属工作区未开通 OpenCode Go，或订阅尚未生效。请在 OpenCode 控制台核对订阅，并确认 DSH 使用该工作区的 Go API Key。",
       networkError: "网络请求失败，请稍后重试",
       badJson: "接口响应解析失败",
       httpError: "接口返回 HTTP {status}"
@@ -192,6 +193,7 @@ window.__ModuleLoader__.load({
       tokenExpired: "Platform token expired: log in to platform.deepseek.com again and update userToken",
       noKey: "No OpenCode Go API key found",
       unauthorized: "OpenCode Go API key is invalid or expired (401)",
+      goSubscriptionRequired: "The workspace for this key has no active OpenCode Go subscription. Check the subscription in OpenCode Console and use a Go API key from that workspace in DSH.",
       networkError: "Network request failed, try again later",
       badJson: "Failed to parse the endpoint response",
       httpError: "Endpoint returned HTTP {status}"
@@ -247,7 +249,7 @@ window.__ModuleLoader__.load({
     const OPENCODE_LIMITS = { rolling: "$12", weekly: "$30", monthly: "$60" };
     /** 「跳转」目标：官方对应页面（新标签页打开）。 */
     const DEEPSEEK_USAGE_PAGE_URL = "https://platform.deepseek.com/usage";
-    const OPENCODE_GO_PAGE_URL = "https://opencode.ai/workspace/wrk_01KWW4E4FYP5MRWA0GVTQP5JA6/go";
+    const OPENCODE_GO_PAGE_URL = "https://opencode.ai/console/";
     const PLATFORM_TOKEN_REF = "DEEPSEEK_PLATFORM_TOKEN";
 
     // ---- helpers -----------------------------------------------------------
@@ -346,6 +348,7 @@ window.__ModuleLoader__.load({
       if (code === "token-expired") return t("tokenExpired");
       if (code === "no-key") return t("noKey");
       if (code === "unauthorized") return t("unauthorized");
+      if (code === "go-subscription-required") return t("goSubscriptionRequired");
       if (code === "network") return t("networkError");
       if (code === "bad-json") return t("badJson");
       if (typeof code === "string" && code.startsWith("http-")) {
@@ -1142,7 +1145,12 @@ window.__ModuleLoader__.load({
               React.createElement(RefreshButton, { onClick: load, t })
             )
           ),
-          React.createElement("p", { style: styles.error }, errorText(state.value, t))
+          React.createElement("p", { style: styles.error }, errorText(state.value, t)),
+          state.value.keySource === "credentials"
+            ? React.createElement("p", { style: styles.hint }, t("keySourceCredentials"))
+            : state.value.keySource === "auth-json"
+              ? React.createElement("p", { style: styles.hint }, t("keySourceAuthJson"))
+              : null
         );
       }
       const keySource = state.value.keySource;
@@ -1221,7 +1229,8 @@ window.__ModuleLoader__.load({
         ctx.slots.register(
           {
             name: "settings.section",
-            id: "account",
+            // 官方账号与余额页使用 account；独立 ID 保证两页同时注册。
+            id: "account-usage",
             order: 45,
             label: () => t("nav"),
             icon: ACCOUNT_ICON,
