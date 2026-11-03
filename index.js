@@ -14,6 +14,10 @@
  *     区间内的每日序列（费用、请求次数、各类型 token）与按模型汇总。
  *     跨月区间自动并行拉取所需月份（上限 MAX_MONTHS，超出裁剪 from 并
  *     标记 range.clipped）。接口返回整月数据，未来日期被过滤。
+ *     同时按 ≤31 天窗口拉取 /api/v0/usage/by_api_key/amount 与
+ *     /api/v0/usage/by_api_key/cost，合并出网页搜索/抓取（调用类型）的
+ *     每日调用次数与费用（响应字段 tools）；工具查询失败只降级该模块，
+ *     不影响模型用量。
  *
  *   GET /api/account-usage/opencode
  *     调用官方端点 https://opencode.ai/zen/go/v1/usage，返回 OpenCode Go
@@ -46,7 +50,14 @@ import {
   parseCost,
   mergeMonths,
   pickWindow,
-  roundCost
+  roundCost,
+  TOOL_WINDOW_DAYS,
+  timezoneOffsetSeconds,
+  platformWindowQuery,
+  splitDateWindows,
+  parseFunctionAmount,
+  parseFunctionCost,
+  mergeToolUsage
 } from "./lib/aggregate.js";
 
 const name = "dsh-account-usage";
@@ -150,12 +161,26 @@ async function fetchPlatformJson(ctx, path, params) {
   } catch {
     return { ok: false, code: "bad-json", message: "平台接口响应解析失败" };
   }
-  const bizCode = body?.code ?? body?.data?.biz_code;
-  if (bizCode !== 0) {
-    if (bizCode === 40002 || bizCode === 40003) {
+  if (body === null || typeof body !== "object") {
+    return { ok: false, code: "bad-json", message: "平台接口响应格式异常" };
+  }
+  // 平台信封有两层状态：顶层 code 与 data.biz_code。实测区间超限等业务错误
+  // 会返回顶层 code=0 + biz_code=1（INVALID_PARAM），只读顶层会把失败误判为成功。
+  const topCode = body.code;
+  const bizCode = body.data?.biz_code;
+  const failed =
+    (topCode !== undefined && topCode !== 0) || (bizCode !== undefined && bizCode !== 0);
+  if (failed) {
+    const code = bizCode !== undefined && bizCode !== 0 ? bizCode : topCode;
+    if (code === 40002 || code === 40003) {
       return { ok: false, code: "token-expired", message: "平台令牌已过期，请重新登录 platform.deepseek.com" };
     }
-    return { ok: false, code: "biz-error", message: `平台接口业务错误 (code ${bizCode ?? "unknown"})` };
+    const bizMsg = typeof body.data?.biz_msg === "string" && body.data.biz_msg !== "" ? body.data.biz_msg : null;
+    return {
+      ok: false,
+      code: "biz-error",
+      message: `平台接口业务错误 (code ${code ?? "unknown"}${bizMsg === null ? "" : `: ${bizMsg}`})`
+    };
   }
   return { ok: true, bizData: body?.data?.biz_data };
 }
@@ -165,6 +190,13 @@ async function cachedPlatform(ctx, path, params, cacheKey) {
   const hit = platformCache.get(cacheKey);
   if (hit !== undefined && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
   const value = await fetchPlatformJson(ctx, path, params);
+  // 区间切换会产生大量窗口缓存键；超过上限时顺手清理过期项，避免无界增长。
+  if (platformCache.size > 256) {
+    const now = Date.now();
+    for (const [key, entry] of platformCache) {
+      if (now - entry.at >= CACHE_TTL_MS) platformCache.delete(key);
+    }
+  }
   platformCache.set(cacheKey, { at: Date.now(), value });
   return value;
 }
@@ -250,6 +282,101 @@ async function fetchOpencodeUsage(ctx) {
 
 // ---- 路由处理器 --------------------------------------------------------------
 
+// ---- 网页搜索 / 网页抓取（调用类型）用量 ----------------------------------
+
+/** 从 by_api_key 响应中提取 functions 顺序（兼容 amount / cost 两种结构）。 */
+function functionOrderOf(bizData) {
+  const container = Array.isArray(bizData) ? bizData[0] : bizData;
+  if (Array.isArray(container?.functions)) return container.functions;
+  for (const group of Array.isArray(container?.data) ? container.data : []) {
+    if (Array.isArray(group?.functions)) return group.functions;
+  }
+  return [];
+}
+
+/**
+ * 查询网页搜索/抓取（平台「调用类型」）用量。
+ * 平台该接口单次最多 31 天，超出会返回 biz_code=1 INVALID_PARAM，因此按
+ * <=TOOL_WINDOW_DAYS 天切窗并行请求，再按「函数 × 日期」合并。
+ * 永不抛异常；amount 查询失败 → ok:false；cost 查询失败 → 只降级费用。
+ */
+async function loadToolUsage(ctx, fromKey, toKey) {
+  const offsetSec = timezoneOffsetSeconds();
+  const windows = splitDateWindows(fromKey, toKey, TOOL_WINDOW_DAYS);
+  const range = { from: fromKey, to: toKey, windows: windows.length };
+  if (windows.length === 0) {
+    return {
+      ok: true,
+      currency: null,
+      costAvailable: false,
+      functions: [],
+      totals: { calls: 0, cost: null },
+      range
+    };
+  }
+  const tasks = windows.map((window) => ({
+    window,
+    query: platformWindowQuery(window.from, window.to, offsetSec)
+  }));
+  if (tasks.some((task) => task.query === null)) {
+    return { ok: false, code: "bad-range", message: "所选区间无法转换为平台查询参数", range };
+  }
+  const results = await Promise.all(
+    tasks.map((task) =>
+      Promise.all([
+        cachedPlatform(
+          ctx,
+          "/usage/by_api_key/amount",
+          { start: task.query.start, end: task.query.end, tz: task.query.tz },
+          `tool-amount:${task.query.start}:${task.query.end}:${task.query.tz}`
+        ),
+        cachedPlatform(
+          ctx,
+          "/usage/by_api_key/cost",
+          { start: task.query.start, end: task.query.end, tz: task.query.tz },
+          `tool-cost:${task.query.start}:${task.query.end}:${task.query.tz}`
+        )
+      ])
+    )
+  );
+  const amountResults = results.map(([amount]) => amount);
+  const amountError = amountResults.find((result) => !result.ok);
+  if (amountError !== undefined) {
+    return { ok: false, code: amountError.code, message: amountError.message, range };
+  }
+  const costResults = results.map(([, cost]) => cost);
+  const costError = costResults.find((result) => !result.ok);
+  if (costError !== undefined) {
+    ctx.logger?.warn?.(`dsh-account-usage: 工具费用查询降级（${costError.code}）`);
+  }
+  const order = [];
+  const seen = new Set();
+  for (const result of amountResults) {
+    for (const fn of functionOrderOf(result.bizData)) {
+      if (typeof fn === "string" && fn !== "" && !seen.has(fn)) {
+        seen.add(fn);
+        order.push(fn);
+      }
+    }
+  }
+  const amountMaps = amountResults.map((result, index) =>
+    parseFunctionAmount(result.bizData, tasks[index].query.tz)
+  );
+  // 任一分段费用失败则整体标记费用不可用，避免部分窗口按 0 计算造成少计。
+  const costParsed = costError === undefined
+    ? costResults.map((result, index) => parseFunctionCost(result.bizData, tasks[index].query.tz))
+    : costResults.map(() => null);
+  const merged = mergeToolUsage(amountMaps, costParsed, fromKey, toKey, order);
+  return {
+    ok: true,
+    currency: merged.currency,
+    costAvailable: merged.costAvailable,
+    functions: merged.functions,
+    totals: merged.totals,
+    range
+  };
+}
+
 async function handleSummary(ctx, res) {
   const summary = await cachedPlatform(ctx, "/users/get_user_summary", {}, "summary");
   if (!summary.ok) {
@@ -284,14 +411,25 @@ async function handleUsage(ctx, req, res) {
     from = new Date(months[0].year, months[0].month - 1, 1);
     clipped = true;
   }
-  const results = await Promise.all(
-    months.map(({ year, month }) =>
-      Promise.all([
-        cachedPlatform(ctx, "/usage/amount", { month, year }, `amount:${year}-${month}`),
-        cachedPlatform(ctx, "/usage/cost", { month, year }, `cost:${year}-${month}`)
-      ])
-    )
-  );
+  const fromKey = localDate(from);
+  const toKey = localDate(to);
+  const todayKey = localDate(today);
+  const [results, tools] = await Promise.all([
+    Promise.all(
+      months.map(({ year, month }) =>
+        Promise.all([
+          cachedPlatform(ctx, "/usage/amount", { month, year }, `amount:${year}-${month}`),
+          cachedPlatform(ctx, "/usage/cost", { month, year }, `cost:${year}-${month}`)
+        ])
+      )
+    ),
+    // 工具用量独立查询：失败只降级该模块，不影响模型用量响应。
+    loadToolUsage(ctx, fromKey, toKey).catch((error) => {
+      ctx.logger?.warn?.("dsh-account-usage: tool usage query failed");
+      ctx.logger?.warn?.(error);
+      return { ok: false, code: "internal", message: "网页搜索/抓取用量查询失败" };
+    })
+  ]);
   const firstError = results.flat().find((r) => !r.ok);
   if (firstError !== undefined) {
     sendJson(res, 200, { ok: false, code: firstError.code, message: firstError.message });
@@ -299,9 +437,6 @@ async function handleUsage(ctx, req, res) {
   }
   const amountMaps = results.map(([a]) => parseAmount(a.bizData));
   const costMaps = results.map(([, c]) => parseCost(c.bizData));
-  const fromKey = localDate(from);
-  const toKey = localDate(to);
-  const todayKey = localDate(today);
   const { dayAgg, modelAgg, dayModelAgg } = mergeMonths(
     amountMaps,
     costMaps,
@@ -365,7 +500,14 @@ async function handleUsage(ctx, req, res) {
       0
     )
   };
-  sendJson(res, 200, { ok: true, range: { from: fromKey, to: toKey, clipped }, totals, days, models });
+  sendJson(res, 200, {
+    ok: true,
+    range: { from: fromKey, to: toKey, clipped },
+    totals,
+    days,
+    models,
+    tools
+  });
 }
 
 /** OpenCode 配额结果缓存（仅缓存成功结果；失败不缓存以便下次重试）。 */

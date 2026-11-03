@@ -8,7 +8,7 @@
 A DeepSeek Harness (DSH) web-GUI plugin: adds an "Account" page to the settings panel for a one-stop view of DeepSeek platform balance/usage and OpenCode Go quotas.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.1.26-blue.svg?style=for-the-badge)](package.json)
+[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg?style=for-the-badge)](package.json)
 [![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.6%2B-purple.svg?style=for-the-badge)](https://github.com/deepseek-ai/deepseek-harness)
 
 </div>
@@ -33,7 +33,7 @@ A DeepSeek Harness (DSH) web-GUI plugin: adds an "Account" page to the settings 
 
 ## 📸 Preview
 
-**DeepSeek platform tab**: balance overview, time-range selector with custom range, daily cost/token bar charts, per-model detail table.
+**DeepSeek platform tab**: balance overview, time-range selector with custom range, daily cost/token bar charts, web search/fetch usage charts, per-model detail table.
 
 ![Screenshot of the DeepSeek platform "Account" page](assets/images/account-usage-U--01.png)
 
@@ -49,6 +49,8 @@ A DeepSeek Harness (DSH) web-GUI plugin: adds an "Account" page to the settings 
 |---------|-------------|
 | **DeepSeek platform overview** | Recharge balance, bonus balance, cumulative spending, current-month spending and tokens |
 | **Daily bar charts** | Cost and token consumption charts, SVG-rendered, with hover tooltips per day |
+| **Web search / fetch usage** | Daily call counts and cost by call type (`tool-search` / `tool-fetch`) with per-tool area charts, following the selected range; ranges over 31 days are queried in windows and merged |
+| **Account-menu balance entry** | Shows "Balance: ¥x.xx" (top-up + granted) above "Settings" in the account menu; click to open this plugin's Account page |
 | **Time-range switching** | Today / last 7 days / last 30 days / last 90 days / this month / last month / custom range |
 | **Per-model table** | deepseek-v4-flash / deepseek-v4-pro / others: request count, input/cached/output tokens, cost |
 | **OpenCode Go quotas** | Usage percentage and next reset time for the 5-hour rolling / weekly / monthly windows |
@@ -57,7 +59,7 @@ A DeepSeek Harness (DSH) web-GUI plugin: adds an "Account" page to the settings 
 | **Built-in account page coexistence** | Uses a separate settings section ID alongside the desktop app's built-in account and balance page |
 
 > [!NOTE]
-> `0.1.26` fixes a desktop settings entry ID collision. Restart DSH after upgrading to show the plugin's "Account" page alongside the built-in account and balance page; the built-in entry remains subject to DSH's account sign-in state. Verified with DSH desktop `0.2.0-rc.2`.
+> `0.2.0` adds web search/fetch usage charts and an account-menu balance entry. The entry targets the native account menu structure of DSH desktop `0.2.1-rc.5`: on older versions without that menu, or if upstream redesigns it, the entry stays hidden without affecting the Account page. The tool-usage API is limited to 31 days per request; the plugin splits and merges longer ranges automatically. Fully quit and reopen DSH desktop after upgrading.
 
 ---
 
@@ -138,6 +140,8 @@ The plugin looks it up automatically in this order:
 - Switch between the **deepseek / opencode go** tabs at the top of the "Account" page in the settings panel;
 - On the DeepSeek tab, pick a time range (Today / last 7 days / last 30 days / last 90 days / this month / last month) or choose a custom range and click "Apply";
 - Hover over the bar charts for daily details; the per-model table shows requests, tokens and cost for the selected range;
+- The "Web Search & Fetch" module shows daily `tool-search` / `tool-fetch` call counts, call-type cost and per-tool area charts for the selected range; ranges over 31 days are split and merged automatically;
+- The account menu (sidebar account avatar) gets a "Balance: ¥x.xx" entry above "Settings" (top-up + granted balance); clicking it opens Settings on this plugin's Account page;
 - On the OpenCode Go tab, view usage percentage, next reset time and reference limit for each quota window, with one-click "Go to opencode.ai" and "Refresh" buttons;
 - Data auto-refreshes every 60 seconds while the page is mounted; "Open config file" locates your local DSH credentials file.
 
@@ -149,9 +153,9 @@ A dual-half plugin (host + browser) with data flowing through same-origin HTTP r
 
 | Part | File | Role |
 |------|------|------|
-| Host | `index.js` | Registers three precise `GET /api/account-usage/*` routes (`deepseek-summary` / `deepseek-usage` / `opencode`); resolves keys via `ctx.credentials`, uses a fixed allow-listed upstream URL, 15s timeout + 30s cache |
-| Parsing/aggregation | `lib/aggregate.js` | Pure functions: daily/per-model token, cost and request-count aggregation after unwrapping the platform envelope |
-| Browser | `client.js` | Hand-written lazy CJS client bundle: registers `settings.section` (id `account-usage`), renders the account page (SVG bar charts, range selector, model table, quota progress bars), auto-refreshes every 60s |
+| Host | `index.js` | Registers three precise `GET /api/account-usage/*` routes (`deepseek-summary` / `deepseek-usage` / `opencode`); resolves keys via `ctx.credentials`, uses a fixed allow-listed upstream URL, 15s timeout + 30s cache; `deepseek-usage` merges model usage with web search/fetch usage |
+| Parsing/aggregation | `lib/aggregate.js` | Pure functions: daily/per-model token, cost and request-count aggregation; time-window splitting and function-usage merge for web search/fetch |
+| Browser | `client.js` | Hand-written lazy CJS client bundle: registers `settings.section` (id `account-usage`), renders the account page (SVG bar/area charts, range selector, model table, quota progress bars), auto-refreshes every 60s; runtime DOM enhancement adds the settings nav icon and account-menu balance entry |
 | Composition | `cordis.patch.yml` | `dsh.bundle` patch layer, merged automatically on install |
 
 ### Data sources
@@ -161,6 +165,8 @@ A dual-half plugin (host + browser) with data flowing through same-origin HTTP r
 | Account summary | `platform.deepseek.com/api/v0/users/get_user_summary` (+`/get_user_info`) | `Bearer <userToken>` |
 | Daily token details | `platform.deepseek.com/api/v0/usage/amount?month=&year=` | `Bearer <userToken>` |
 | Daily cost details | `platform.deepseek.com/api/v0/usage/cost?month=&year=` | `Bearer <userToken>` |
+| Web search/fetch call counts | `platform.deepseek.com/api/v0/usage/by_api_key/amount?start=&end=&tz=` (≤31 days per request) | `Bearer <userToken>` |
+| Web search/fetch cost | `platform.deepseek.com/api/v0/usage/by_api_key/cost?start=&end=&tz=` (≤31 days per request) | `Bearer <userToken>` |
 | OpenCode Go quota | `opencode.ai/zen/go/v1/usage` (official) | `Bearer <sk-opencode-…>` |
 
 ---
@@ -180,6 +186,8 @@ A dual-half plugin (host + browser) with data flowing through same-origin HTTP r
 
 - The DeepSeek usage APIs are **undocumented private endpoints**; fields may change as the platform evolves. The plugin parses responses defensively and degrades missing fields to "—" instead of failing. If "—" persists, re-capture the API and report back.
 - "Cumulative spending" and "API request count" are not in public docs: cumulative spending is located by a naming heuristic in the summary response (shows "—" if not found), and request count reads `count/requests/request_count/req_count/calls` fields on model entries. Both were calibrated against a real token.
+- The web search/fetch usage API accepts at most 31 days per request; the plugin splits longer ranges into 31-day windows, so very long ranges make more requests. Tool names come from the platform's `functions` array (`tool-search` / `tool-fetch` today); unknown tools are shown as-is.
+- The account-menu balance entry relies on the native DSH 0.2.x account menu DOM. If upstream redesigns that menu, the entry may be temporarily hidden, without affecting the Account page or other features. It only reads the platform token already configured for this plugin and stores no balance data.
 - OpenCode Go limits ($12/$30/$60) are reference values for the plans; the endpoint does not return limits. Check opencode.ai when plans change.
 - When bound to `0.0.0.0`, this plugin's routes are reachable on the LAN (the same pre-existing limitation as other local DSH plugins; the default `127.0.0.1` is unaffected).
 
