@@ -44,6 +44,7 @@ window.__ModuleLoader__.load({
       moduleBalance: "账户余额",
       moduleUsage: "用量与图表",
       moduleModels: "模型明细",
+      moduleTools: "网页搜索与抓取",
       tokenTitle: "平台会话令牌",
       tokenConfigured: "已配置",
       tokenMissing: "未配置 —— 用量与余额将不可用",
@@ -81,6 +82,15 @@ window.__ModuleLoader__.load({
       legendOut: "输出",
       modelsTitle: "模型明细（所选区间）",
       modelsEmpty: "暂无模型数据",
+      toolsSearch: "网页搜索",
+      toolsFetch: "网页抓取",
+      toolsCalls: "调用次数",
+      toolsCost: "消费",
+      toolsEmpty: "所选区间内暂无网页搜索/抓取调用",
+      toolsUnavailable: "网页搜索/抓取用量暂不可用",
+      toolsCostChart: "调用类型消费",
+      toolsCostEmpty: "所选区间内暂无工具消费数据",
+      toolsRequests: "API 请求次数",
       colModel: "模型",
       colRequests: "请求次数",
       colInput: "输入(未命中)",
@@ -113,7 +123,10 @@ window.__ModuleLoader__.load({
       goSubscriptionRequired: "当前 Key 所属工作区未开通 OpenCode Go，或订阅尚未生效。请在 OpenCode 控制台核对订阅，并确认 DSH 使用该工作区的 Go API Key。",
       networkError: "网络请求失败，请稍后重试",
       badJson: "接口响应解析失败",
-      httpError: "接口返回 HTTP {status}"
+      httpError: "接口返回 HTTP {status}",
+      menuBalance: "余额：",
+      menuBalanceTitle: "DeepSeek 平台余额",
+      menuOpenAccount: "打开账户设置"
     };
 
     const en = {
@@ -127,6 +140,7 @@ window.__ModuleLoader__.load({
       moduleBalance: "Account Balance",
       moduleUsage: "Usage & Charts",
       moduleModels: "Model Details",
+      moduleTools: "Web Search & Fetch",
       tokenTitle: "Platform session token",
       tokenConfigured: "Configured",
       tokenMissing: "Not configured — balance and usage are unavailable",
@@ -164,6 +178,15 @@ window.__ModuleLoader__.load({
       legendOut: "Output",
       modelsTitle: "Model details (selected range)",
       modelsEmpty: "No model data",
+      toolsSearch: "Web search",
+      toolsFetch: "Web fetch",
+      toolsCalls: "Calls",
+      toolsCost: "Cost",
+      toolsEmpty: "No web search/fetch calls in the selected range",
+      toolsUnavailable: "Web search/fetch usage is temporarily unavailable",
+      toolsCostChart: "Cost by call type",
+      toolsCostEmpty: "No tool cost data in the selected range",
+      toolsRequests: "API requests",
       colModel: "Model",
       colRequests: "Requests",
       colInput: "Input (miss)",
@@ -196,7 +219,10 @@ window.__ModuleLoader__.load({
       goSubscriptionRequired: "The workspace for this key has no active OpenCode Go subscription. Check the subscription in OpenCode Console and use a Go API key from that workspace in DSH.",
       networkError: "Network request failed, try again later",
       badJson: "Failed to parse the endpoint response",
-      httpError: "Endpoint returned HTTP {status}"
+      httpError: "Endpoint returned HTTP {status}",
+      menuBalance: "Balance: ",
+      menuBalanceTitle: "DeepSeek platform balance",
+      menuOpenAccount: "Open account settings"
     };
 
     const styles = {
@@ -233,6 +259,16 @@ window.__ModuleLoader__.load({
       td: { color: "var(--dsw-alias-label-primary)", padding: "5px 8px", borderBottom: "1px solid var(--dsw-alias-border-l1)" },
       tdNum: { color: "var(--dsw-alias-label-primary)", padding: "5px 8px", borderBottom: "1px solid var(--dsw-alias-border-l1)", textAlign: "right", fontVariantNumeric: "tabular-nums" },
       thNum: { textAlign: "right", color: "var(--dsw-alias-label-tertiary)", fontWeight: 500, padding: "4px 8px", borderBottom: "1px solid var(--dsw-alias-border-l2)", whiteSpace: "nowrap" },
+      toolGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 12 },
+      toolCard: { border: "1px solid var(--dsw-alias-border-l2)", background: "var(--dsw-alias-bg-layer-3)", borderRadius: 10, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8 },
+      toolStatGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 },
+      toolStatItem: { display: "flex", flexDirection: "column", gap: 2 },
+      toolStatLabel: { margin: 0, color: "var(--dsw-alias-label-tertiary)", fontSize: 12 },
+      toolStatValue: { margin: 0, color: "var(--dsw-alias-label-primary)", fontSize: 20, fontWeight: 600, fontVariantNumeric: "tabular-nums" },
+      toolStatSub: { margin: 0, color: "var(--dsw-alias-label-tertiary)", fontSize: 11, fontVariantNumeric: "tabular-nums" },
+      toolCardHead: { display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 },
+      toolCardTitle: { margin: 0, color: "var(--dsw-alias-label-primary)", fontSize: 13, fontWeight: 600 },
+      toolCardTotal: { margin: 0, color: "var(--dsw-alias-label-secondary)", fontSize: 12, fontVariantNumeric: "tabular-nums" },
       chartWrap: { position: "relative" },
       tooltip: { position: "absolute", zIndex: 6, background: "var(--dsw-alias-bg-layer-3)", border: "1px solid var(--dsw-alias-border-l2)", borderRadius: 8, padding: "6px 10px", fontSize: 12, lineHeight: 1.6, whiteSpace: "nowrap", pointerEvents: "none", boxShadow: "0 4px 16px rgb(0 0 0 / 0.25)" },
       tooltipTitle: { margin: 0, fontWeight: 600, color: "var(--dsw-alias-label-primary)", fontSize: 12 },
@@ -264,6 +300,55 @@ window.__ModuleLoader__.load({
     function fmtCount(v) {
       if (v === null || v === undefined || Number.isNaN(v)) return "—";
       return Math.round(v).toLocaleString();
+    }
+
+    // ---- 网页搜索 / 抓取工具与账户菜单余额助手 --------------------------------
+
+    /** 平台函数名 → 文案键；未知函数原样展示。 */
+    const TOOL_I18N = { "tool-search": "toolsSearch", "tool-fetch": "toolsFetch" };
+
+    function toolLabelOf(id, t) {
+      const key = TOOL_I18N[id];
+      return key === undefined ? String(id) : t(key);
+    }
+
+    /** 工具系列色（与主题变量联动）。 */
+    const TOOL_COLORS = [
+      "var(--dsw-alias-state-business-primary)",
+      "var(--dsw-alias-state-warn-primary)",
+      "var(--dsw-alias-state-success-primary)"
+    ];
+
+    function toolColorOf(index) {
+      return TOOL_COLORS[index % TOOL_COLORS.length];
+    }
+
+    /** `YYYY-MM-DD` → `M/D`（图表横轴短标签）。 */
+    function fmtShortDate(date) {
+      const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(date);
+      return m === null ? date : `${Number(m[1])}/${Number(m[2])}`;
+    }
+
+    /** 平台「可用余额」= 充值余额 + 赠送余额；无法取值返回 null。 */
+    function balanceTotalOf(body) {
+      if (body === null || typeof body !== "object" || body.ok !== true) return null;
+      const balance = body.balance !== null && typeof body.balance === "object" ? body.balance : {};
+      const values = [balance.toppedUp, balance.granted].filter(
+        (v) => typeof v === "number" && Number.isFinite(v)
+      );
+      if (values.length === 0) return null;
+      return values.reduce((sum, v) => sum + v, 0);
+    }
+
+    /** 账户菜单余额文案：`余额：¥3.29`；失败/无值显示 `余额：—`。 */
+    function balanceTextOf(body, t) {
+      const total = balanceTotalOf(body);
+      if (total === null) return t("menuBalance") + "—";
+      const currency =
+        body !== null && typeof body === "object" && body.balance !== null && typeof body.balance === "object"
+          ? body.balance.currency
+          : null;
+      return t("menuBalance") + fmtMoney(total, currency);
     }
 
     function fmtReset(resetsAt, t) {
@@ -475,8 +560,9 @@ window.__ModuleLoader__.load({
      * 完整可见；图表容器顶部空间不足时翻转至绘图区基线下方弹出，避免被页面
      * 上边缘截断。anchorIndex 为悬浮列索引（0..count-1），wrapRef 指向
      * position:relative 的图表容器（chartWrap）。
+     * 折线/面积图可直接传 anchorX（SVG viewBox 坐标），跳过柱状图列中心换算。
      */
-    function ChartTooltip({ anchorIndex, count, wrapRef, children }) {
+    function ChartTooltip({ anchorIndex, anchorX, count, wrapRef, chartWidth = CHART_W, chartHeight = CHART_H, children }) {
       const tipRef = React.useRef(null);
       const [pos, setPos] = React.useState(null);
       React.useLayoutEffect(() => {
@@ -488,8 +574,11 @@ window.__ModuleLoader__.load({
         const tipH = tip.offsetHeight;
         if (tipW <= 0 || tipH <= 0) return;
         // 列中心（SVG viewBox 坐标系 → 容器像素，含左内边距）
-        const slot = (CHART_W - CHART_PAD_L - CHART_PAD_R) / count;
-        const centerX = wrapRect.width * ((CHART_PAD_L + (anchorIndex + 0.5) * slot) / CHART_W);
+        const slot = (chartWidth - CHART_PAD_L - CHART_PAD_R) / count;
+        const x = anchorX !== undefined
+          ? anchorX
+          : CHART_PAD_L + (anchorIndex + 0.5) * slot;
+        const centerX = wrapRect.width * (x / chartWidth);
         let left = Math.round(centerX - tipW / 2);
         // 视口钳制：左右各留 8px 安全边距，再收拢回容器内
         const vpLeft = wrapRect.left + left;
@@ -501,10 +590,10 @@ window.__ModuleLoader__.load({
         const aboveTop = -tipH - 6;
         const flip = wrapRect.top + aboveTop < 8;
         const top = flip
-          ? ((CHART_H - CHART_PAD_B) / CHART_H) * wrapRect.height + 6
+          ? ((chartHeight - CHART_PAD_B) / chartHeight) * wrapRect.height + 6
           : aboveTop;
         setPos({ left, top });
-      }, [anchorIndex, count, wrapRef]);
+      }, [anchorIndex, anchorX, count, wrapRef, chartWidth, chartHeight]);
       const style = {
         ...styles.tooltip,
         left: pos ? pos.left : -9999,
@@ -699,6 +788,392 @@ window.__ModuleLoader__.load({
           React.createElement("span", { style: { ...styles.swatch, background: TOKEN_COLORS.out } }), t("legendOut")
         )
       );
+    }
+
+    // ---- 网页搜索 / 网页抓取（调用类型）图表 ----------------------------------
+
+    /** 取一个「好看」的坐标轴最大值（1/2/3/5/7 × 10^n）。 */
+    function niceMaxOf(value) {
+      if (!(value > 0)) return 1;
+      const exp = Math.floor(Math.log10(value));
+      const base = Math.pow(10, exp);
+      const n = value / base;
+      const steps = [1, 2, 3, 5, 7, 10];
+      let step = steps[steps.length - 1];
+      for (const candidate of steps) {
+        if (n <= candidate) {
+          step = candidate;
+          break;
+        }
+      }
+      return step * base;
+    }
+
+    /** 折线平滑路径（控制点取相邻点水平 1/3，避免尖角）。 */
+    function smoothPathOf(points) {
+      if (!Array.isArray(points) || points.length === 0) return "";
+      if (points.length === 1) return `M${points[0].x},${points[0].y}`;
+      let d = `M${points[0].x},${points[0].y}`;
+      for (let i = 1; i < points.length; i += 1) {
+        const p0 = points[i - 1];
+        const p1 = points[i];
+        const dx = (p1.x - p0.x) / 3;
+        d += ` C${p0.x + dx},${p0.y} ${p1.x - dx},${p1.y} ${p1.x},${p1.y}`;
+      }
+      return d;
+    }
+
+    /**
+     * 调用类型消费堆叠柱状图：按日堆叠 tool-search / tool-fetch 费用，
+     * 悬浮显示当日合计与分工具费用（对应官方「调用类型」费用视图）。
+     */
+    function ToolCostChart({ functions, currency, t }) {
+      const [hovered, setHovered] = React.useState(null);
+      const wrapRef = React.useRef(null);
+      const dates = functions.length > 0 && Array.isArray(functions[0].days)
+        ? functions[0].days.map((day) => day.date)
+        : [];
+      if (dates.length === 0) return React.createElement("p", { style: styles.hint }, t("toolsCostEmpty"));
+      const rows = dates.map((date) => {
+        const segments = functions.map((fn, index) => {
+          const day = Array.isArray(fn.days) ? fn.days.find((item) => item.date === date) : undefined;
+          const cost = day !== undefined && typeof day.cost === "number" ? day.cost : 0;
+          return { id: fn.id, label: toolLabelOf(fn.id, t), color: toolColorOf(index), cost };
+        });
+        return { date, segments, total: segments.reduce((sum, segment) => sum + segment.cost, 0) };
+      });
+      let max = 0;
+      for (const row of rows) if (row.total > max) max = row.total;
+      if (!(max > 0)) return React.createElement("p", { style: styles.hint }, t("toolsCostEmpty"));
+      const innerW = CHART_W - CHART_PAD_L - CHART_PAD_R;
+      const slot = innerW / rows.length;
+      const bw = Math.max(1, Math.min(28, slot * 0.7));
+      const plotH = CHART_H - CHART_PAD_T - CHART_PAD_B;
+      const bars = rows.map((row, index) => {
+        const x = CHART_PAD_L + index * slot + (slot - bw) / 2;
+        let acc = 0;
+        const rects = [];
+        for (const segment of row.segments) {
+          if (!(segment.cost > 0)) continue;
+          const height = Math.max((segment.cost / max) * plotH, 1);
+          rects.push(
+            React.createElement("rect", {
+              key: segment.id,
+              x,
+              y: CHART_H - CHART_PAD_B - acc - height,
+              width: bw,
+              height,
+              fill: segment.color,
+              opacity: 0.95
+            })
+          );
+          acc += height;
+        }
+        return React.createElement("g", {
+          key: row.date,
+          style: { cursor: "pointer" },
+          onMouseEnter: () => setHovered(index),
+          onMouseLeave: () => setHovered(null)
+        },
+          rects,
+          React.createElement("rect", {
+            x,
+            y: CHART_PAD_T,
+            width: bw,
+            height: plotH,
+            fill: "transparent",
+            pointerEvents: "all"
+          })
+        );
+      });
+      let tooltip = null;
+      if (hovered !== null) {
+        const row = rows[hovered];
+        const detail = row.segments
+          .filter((segment) => segment.cost > 0)
+          .sort((a, b) => b.cost - a.cost)
+          .map((segment) =>
+            React.createElement("p", { key: segment.id, style: styles.tooltipRow },
+              `${segment.label}: ${fmtMoney(segment.cost, currency)}`
+            )
+          );
+        tooltip = React.createElement(ChartTooltip, {
+          anchorIndex: hovered,
+          count: rows.length,
+          wrapRef
+        },
+          React.createElement("p", { style: styles.tooltipTitle }, row.date),
+          React.createElement("p", { style: styles.tooltipRow }, `${t("tooltipTotal")}: ${fmtMoney(row.total, currency)}`),
+          detail.length > 0 ? detail : null
+        );
+      }
+      return React.createElement("div", { ref: wrapRef, style: styles.chartWrap },
+        React.createElement("svg", {
+          width: "100%",
+          viewBox: `0 0 ${CHART_W} ${CHART_H}`,
+          style: { display: "block" }
+        },
+          React.createElement("text", {
+            x: CHART_PAD_L,
+            y: CHART_H - 6,
+            style: { fill: "var(--dsw-alias-label-tertiary)", fontSize: 10 }
+          }, fmtShortDate(rows[0].date)),
+          React.createElement("text", {
+            x: CHART_W - CHART_PAD_R,
+            y: CHART_H - 6,
+            textAnchor: "end",
+            style: { fill: "var(--dsw-alias-label-tertiary)", fontSize: 10 }
+          }, fmtShortDate(rows[rows.length - 1].date)),
+          bars
+        ),
+        tooltip
+      );
+    }
+
+    /**
+     * 单工具请求次数面积图：平滑折线 + 渐变面积 + 悬浮竖线/圆点，
+     * 对应官方「API 请求次数」视图。tooltip 同时展示当日调用次数与费用。
+     */
+    function ToolAreaChart({ tool, index, currency, t }) {
+      const [hovered, setHovered] = React.useState(null);
+      const wrapRef = React.useRef(null);
+      const svgRef = React.useRef(null);
+      const days = tool !== null && tool !== undefined && Array.isArray(tool.days) ? tool.days : [];
+      if (days.length === 0) return React.createElement("p", { style: styles.hint }, t("tokenChartEmpty"));
+      const values = days.map((day) => (typeof day.calls === "number" && Number.isFinite(day.calls) ? day.calls : 0));
+      const maxRaw = Math.max(0, ...values);
+      const max = niceMaxOf(maxRaw);
+      // 工具面积图使用更窄的 viewBox（520×200），在设置面板双列卡片里
+      // 缩放后字号/线宽仍可读；柱状图继续使用 640×170。
+      const AREA_W = 520;
+      const AREA_H = 200;
+      const AREA_PAD_L = 46;
+      const AREA_PAD_R = 12;
+      const AREA_PAD_T = 14;
+      const innerW = AREA_W - AREA_PAD_L - AREA_PAD_R;
+      const plotH = AREA_H - AREA_PAD_T - CHART_PAD_B;
+      const baseY = AREA_H - CHART_PAD_B;
+      const xOf = (i) => (days.length <= 1 ? AREA_PAD_L + innerW / 2 : AREA_PAD_L + (i / (days.length - 1)) * innerW);
+      const yOf = (v) => baseY - (v / max) * plotH;
+      const points = values.map((value, i) => ({ x: xOf(i), y: yOf(value) }));
+      const linePath = smoothPathOf(points);
+      const firstPoint = points[0];
+      const lastPoint = points[points.length - 1];
+      const areaPath = days.length <= 1
+        ? `M${firstPoint.x},${baseY} L${firstPoint.x},${firstPoint.y} L${firstPoint.x},${baseY} Z`
+        : `${linePath} L${lastPoint.x},${baseY} L${firstPoint.x},${baseY} Z`;
+      const color = toolColorOf(index);
+      const gradientId = `dsh-tool-area-grad-${index}`;
+      const onMove = (event) => {
+        const svg = svgRef.current;
+        if (!svg) return;
+        const rect = svg.getBoundingClientRect();
+        if (!(rect.width > 0)) return;
+        const localX = ((event.clientX - rect.left) / rect.width) * AREA_W;
+        const ratio = days.length <= 1 ? 0 : (localX - AREA_PAD_L) / innerW;
+        const clamped = Math.min(1, Math.max(0, ratio));
+        setHovered(Math.round(clamped * (days.length - 1)));
+      };
+      const ticks = [max, max / 2, 0];
+      const tickText = (value) =>
+        Number.isInteger(value) ? fmtCount(value) : Math.abs(value) < 10 ? value.toFixed(1) : fmtCount(value);
+      const tickLabels = ticks.map((value, i) =>
+        React.createElement("text", {
+          key: `tick-${i}`,
+          x: AREA_PAD_L - 8,
+          y: yOf(value) + 3,
+          textAnchor: "end",
+          style: { fill: "var(--dsw-alias-label-tertiary)", fontSize: 13 }
+        }, tickText(value))
+      );
+      const gridLines = ticks.map((value, i) =>
+        React.createElement("line", {
+          key: `grid-${i}`,
+          x1: AREA_PAD_L,
+          x2: AREA_W - AREA_PAD_R,
+          y1: yOf(value),
+          y2: yOf(value),
+          stroke: "var(--dsw-alias-border-l2)",
+          strokeWidth: 1,
+          opacity: 0.55
+        })
+      );
+      const xLabelIndexes = [];
+      const labelCandidates = days.length === 1 ? [0] : [0, Math.floor((days.length - 1) / 2), days.length - 1];
+      for (const dayIndex of labelCandidates) {
+        if (!xLabelIndexes.includes(dayIndex)) xLabelIndexes.push(dayIndex);
+      }
+      const xLabels = xLabelIndexes.map((dayIndex, i) => {
+        const isFirst = i === 0;
+        const isLast = i === xLabelIndexes.length - 1;
+        return React.createElement("text", {
+          key: `xlabel-${dayIndex}`,
+          x: isFirst ? AREA_PAD_L : isLast ? AREA_W - AREA_PAD_R : xOf(dayIndex),
+          y: AREA_H - 6,
+          textAnchor: isFirst ? "start" : isLast ? "end" : "middle",
+          style: { fill: "var(--dsw-alias-label-tertiary)", fontSize: 12 }
+        }, fmtShortDate(days[dayIndex].date));
+      });
+      let hoverMarks = null;
+      if (hovered !== null && hovered >= 0 && hovered < points.length) {
+        const point = points[hovered];
+        hoverMarks = React.createElement(React.Fragment, null,
+          React.createElement("line", {
+            x1: point.x,
+            x2: point.x,
+            y1: AREA_PAD_T,
+            y2: baseY,
+            stroke: "var(--dsw-alias-label-tertiary)",
+            strokeWidth: 1,
+            strokeDasharray: "3 3",
+            opacity: 0.7,
+            pointerEvents: "none"
+          }),
+          React.createElement("circle", {
+            cx: point.x,
+            cy: point.y,
+            r: 3.5,
+            fill: color,
+            stroke: "var(--dsw-alias-bg-layer-3)",
+            strokeWidth: 1.5,
+            pointerEvents: "none"
+          })
+        );
+      }
+      // 单日区间（如「今天」）没有线段可画，用圆点标记该日数值。
+      const singlePoint = days.length === 1
+        ? React.createElement("circle", {
+            cx: firstPoint.x,
+            cy: firstPoint.y,
+            r: 3,
+            fill: color,
+            pointerEvents: "none"
+          })
+        : null;
+      let tooltip = null;
+      if (hovered !== null && hovered >= 0 && hovered < days.length) {
+        const day = days[hovered];
+        const cost = typeof day.cost === "number" && Number.isFinite(day.cost) ? fmtMoney(day.cost, currency) : "—";
+        tooltip = React.createElement(ChartTooltip, {
+          anchorIndex: hovered,
+          anchorX: xOf(hovered),
+          count: days.length,
+          wrapRef,
+          chartWidth: AREA_W,
+          chartHeight: AREA_H
+        },
+          React.createElement("p", { style: styles.tooltipTitle }, day.date),
+          React.createElement("p", { style: styles.tooltipRow }, `${t("toolsCalls")}: ${fmtCount(day.calls)}`),
+          React.createElement("p", { style: styles.tooltipRow }, `${t("toolsCost")}: ${cost}`)
+        );
+      }
+      return React.createElement("div", { ref: wrapRef, style: styles.chartWrap },
+        React.createElement("svg", {
+          ref: svgRef,
+          width: "100%",
+          viewBox: `0 0 ${AREA_W} ${AREA_H}`,
+          style: { display: "block" }
+        },
+          React.createElement("defs", null,
+            React.createElement("linearGradient", {
+              id: gradientId,
+              x1: "0",
+              y1: "0",
+              x2: "0",
+              y2: "1"
+            },
+              React.createElement("stop", { offset: "0%", stopColor: color, stopOpacity: 0.42 }),
+              React.createElement("stop", { offset: "100%", stopColor: color, stopOpacity: 0.02 })
+            )
+          ),
+          gridLines,
+          tickLabels,
+          xLabels,
+          React.createElement("path", { d: areaPath, fill: `url(#${gradientId})`, stroke: "none" }),
+          React.createElement("path", {
+            d: linePath,
+            fill: "none",
+            stroke: color,
+            strokeWidth: 2,
+            strokeLinecap: "round",
+            strokeLinejoin: "round"
+          }),
+          hoverMarks,
+          singlePoint,
+          React.createElement("rect", {
+            x: AREA_PAD_L,
+            y: AREA_PAD_T,
+            width: innerW,
+            height: plotH,
+            fill: "transparent",
+            style: { cursor: "crosshair" },
+            onMouseMove: onMove,
+            onMouseLeave: () => setHovered(null)
+          })
+        ),
+        tooltip
+      );
+    }
+
+    /** 网页搜索 / 网页抓取模块：统计 + 调用类型费用图 + 分工具请求图。 */
+    function ToolUsageSection({ tools, currency, t }) {
+      if (tools === null || tools === undefined) return React.createElement("p", { style: styles.hint }, t("toolsEmpty"));
+      if (tools.ok !== true) {
+        return React.createElement(React.Fragment, null,
+          React.createElement("p", { style: styles.error }, t("toolsUnavailable")),
+          typeof tools.message === "string" && tools.message !== ""
+            ? React.createElement("p", { style: styles.hint }, tools.message)
+            : null
+        );
+      }
+      const functions = Array.isArray(tools.functions)
+        ? tools.functions.filter((fn) => fn !== null && typeof fn === "object" && Array.isArray(fn.days))
+        : [];
+      const totalCalls = tools.totals !== null && typeof tools.totals === "object" && typeof tools.totals.calls === "number"
+        ? tools.totals.calls
+        : functions.reduce((sum, fn) => sum + (typeof fn.calls === "number" ? fn.calls : 0), 0);
+      if (functions.length === 0 || totalCalls === 0) {
+        return React.createElement("p", { style: styles.hint }, t("toolsEmpty"));
+      }
+      const currencyOf = typeof tools.currency === "string" && tools.currency !== "" ? tools.currency : currency;
+      const costAvailable = tools.costAvailable === true;
+      const totalCost = tools.totals !== null && typeof tools.totals === "object" && typeof tools.totals.cost === "number"
+        ? tools.totals.cost
+        : null;
+      const summary = React.createElement("div", { style: styles.toolStatGrid },
+        functions.map((fn) =>
+          React.createElement("div", { key: fn.id, style: styles.toolStatItem },
+            React.createElement("p", { style: styles.toolStatLabel }, toolLabelOf(fn.id, t)),
+            React.createElement("p", { style: styles.toolStatValue }, `${fmtCount(fn.calls)} ${t("toolsCalls")}`),
+            React.createElement("p", { style: styles.toolStatSub },
+              `${t("toolsCost")}: ${costAvailable ? fmtMoney(fn.cost, currencyOf) : "—"}`
+            )
+          )
+        )
+      );
+      const costChart = costAvailable && totalCost !== null && totalCost > 0
+        ? React.createElement("div", { style: styles.toolCard },
+          React.createElement("div", { style: styles.toolCardHead },
+            React.createElement("p", { style: styles.toolCardTitle }, t("toolsCostChart")),
+            React.createElement("p", { style: styles.toolCardTotal }, fmtMoney(totalCost, currencyOf))
+          ),
+          React.createElement(ToolCostChart, { functions, currency: currencyOf, t })
+        )
+        : null;
+      const charts = React.createElement("div", { style: styles.toolGrid },
+        functions.map((fn, index) =>
+          React.createElement("div", { key: fn.id, style: styles.toolCard },
+            React.createElement("div", { style: styles.toolCardHead },
+              React.createElement("p", { style: styles.toolCardTitle }, toolLabelOf(fn.id, t)),
+              React.createElement("p", { style: styles.toolCardTotal },
+                `${t("toolsRequests")}: ${fmtCount(fn.calls)}`
+              )
+            ),
+            React.createElement(ToolAreaChart, { tool: fn, index, currency: currencyOf, t })
+          )
+        )
+      );
+      return React.createElement("div", { style: styles.section }, summary, costChart, charts);
     }
 
     function ModelTable({ models, currency, t }) {
@@ -1084,7 +1559,17 @@ window.__ModuleLoader__.load({
                   )
                 )
         ),
-        // 模块四：模型明细
+        // 模块四：网页搜索与抓取（调用类型用量）
+        React.createElement(ModuleCard, { title: t("moduleTools") },
+          usage.kind === "loading"
+            ? React.createElement("p", { style: styles.hint }, t("loading"))
+            : usage.kind === "failure"
+              ? React.createElement("p", { style: styles.error }, usage.message)
+              : usage.value.ok !== true
+                ? React.createElement("p", { style: styles.error }, errorText(usage.value, t))
+                : React.createElement(ToolUsageSection, { tools: usage.value.tools, currency, t })
+        ),
+        // 模块五：模型明细
         React.createElement(ModuleCard, { title: t("moduleModels") },
           usage.kind === "loading"
             ? React.createElement("p", { style: styles.hint }, t("loading"))
@@ -1241,81 +1726,392 @@ window.__ModuleLoader__.load({
         )
       );
 
-      // ---- 设置导航图标兜底注入（保证在任意 DSH 安装上都显示本插件图标） ----
-      // 上游 DSH 的 settings.section 目前不原生支持“每个分区自定义图标”：设置
-      // 壳层的 navIcon() 只对 models / agent-presets / plugins 三个固定 id 有
-      // 专属图标，其余分区一律渲染默认“设置”齿轮。为让本插件在任何 DSH 版本
-      // （包括没有打过对应补丁、尚未合并上游特性）的安装上“装完即显示”账户
-      // 图标，这里用一个健壮的运行时兜底：监听设置面板（[role=dialog] 内的
-      // nav）的 DOM 变化，找到文本与本插件当前导航标签（随 DSH 语言切换）一致
-      // 的导航行，把该行的图标元素替换为我们的“我的”SVG。
-      // - 若所在 DSH 已原生支持分区 icon（壳层直接渲染了带 data-dsh-account-injected
-      //   标记的图标），观察器识别后会跳过，不重复注入。
-      // - 图标占位兼容两种壳层结构：旧壳层把图标包在 span 里（navIcon 占位
-      //   span），新壳层（0.1.1-rc.2+）把图标渲染为裸 <svg>。定位方式不依赖
-      //   具体标签：先按导航文本找到 label span，取它前一个兄弟作为图标槽。
-      // - 壳层重渲染时 React 会重放齿轮，下一次 DOM 变更会再次注入，终态一致。
+      // ---- 设置导航图标 / 账户菜单余额（运行时 DOM 增强） ----
+      // 上游 settings.section 不原生支持“每个分区自定义图标”，设置壳层的
+      // navIcon() 只对 models / agent-presets / plugins 三个固定 id 有专属图标；
+      // 账户菜单（settings.launcher 由官方账户插件占用）也没有可插入菜单项的 Slot。
+      // 因此这里用运行时 DOM 增强：
+      //   1) 设置导航：按 Slot 条目顺序定位本插件分区（id account-usage），只替换
+      //      该行图标，避免官方「账户」页同名时被误改；
+      //   2) 账户菜单：在「设置」项上方插入一行「余额：¥x.xx」，点击后打开设置并
+      //      切到本插件账户页。
+      const SVG_NS = "http://www.w3.org/2000/svg";
+      const ICON_MARK = "data-dsh-account-injected";
+      const NAV_ATTR = "data-dsh-account-usage-nav";
+      const BALANCE_ATTR = "data-dsh-account-balance";
+      const BALANCE_LABEL_ATTR = "data-dsh-account-balance-label";
+      const MENU_STYLE_ID = "dsh-account-usage/menu.css";
+      const SECTION_ID = "account-usage";
+      const normalizeText = (value) => String(value ?? "").replace(/\s+/g, " ").trim();
+      const MENU_CSS = [
+        ".dsh-account-balance-item{display:flex;align-items:center;gap:6px;width:100%;min-height:34px;padding:6px 8px;border:none;border-radius:var(--dsw-radius-md);background:transparent;cursor:pointer;font:inherit;font-size:13px;line-height:20px;color:var(--dsw-alias-label-primary);text-align:left}",
+        ".dsh-account-balance-item:hover:not(:disabled),.dsh-account-balance-item:focus-visible{background:var(--dsw-alias-interactive-bg-hover);outline:none}",
+        ".dsh-account-balance-item:disabled{opacity:.4;cursor:not-allowed}",
+        ".dsh-account-balance-icon{display:inline-flex;flex:none;width:16px;height:16px;align-items:center;justify-content:center;color:var(--dsw-alias-menu-icon)}",
+        ".dsh-account-balance-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums}"
+      ].join("\n");
+
+      const makeIcon = () => {
+        const svg = document.createElementNS(SVG_NS, "svg");
+        svg.setAttribute("viewBox", "0 0 16 16");
+        svg.setAttribute("width", "16");
+        svg.setAttribute("height", "16");
+        svg.setAttribute("aria-hidden", "true");
+        svg.setAttribute(ICON_MARK, "1");
+        svg.style.display = "block";
+        const addPath = (d) => {
+          const p = document.createElementNS(SVG_NS, "path");
+          p.setAttribute("fill", "currentColor");
+          p.setAttribute("d", d);
+          svg.appendChild(p);
+        };
+        addPath(ACCOUNT_ICON_D1);
+        addPath(ACCOUNT_ICON_D2);
+        return svg;
+      };
+
+      const alreadyOurs = (btn) => {
+        const svg = btn.querySelector("svg[" + ICON_MARK + "]");
+        if (!svg) return false;
+        const first = svg.querySelector("path");
+        return !!(first && first.getAttribute("d") === ACCOUNT_ICON_D1);
+      };
+
+      /**
+       * 本插件在 settings.section 列表中的下标（与设置面板的 order 排序一致）。
+       * 返回值：>=0 命中；-1 条目列表可用但本插件尚未注册；null 旧运行时无 entries。
+       */
+      const sectionIndexOf = () => {
+        try {
+          if (typeof ctx.slots.entries !== "function") return null;
+          const entries = ctx.slots.entries("settings.section");
+          if (!Array.isArray(entries)) return null;
+          const rows = entries
+            .map((entry) => ({
+              id: entry?.options?.id,
+              order: typeof entry?.options?.order === "number" ? entry.options.order : 0
+            }))
+            .sort((a, b) => a.order - b.order);
+          return rows.findIndex((row) => row.id === SECTION_ID);
+        } catch {
+          return null;
+        }
+      };
+
+      /** 给设置导航中的本插件行注入图标；返回该 nav button（找不到返回 null）。 */
+      const paintNavIcons = () => {
+        if (typeof document === "undefined") return null;
+        let label;
+        try {
+          label = t("nav");
+        } catch {
+          label = undefined;
+        }
+        const buttons = Array.from(document.querySelectorAll('[role="dialog"] nav button'));
+        for (const btn of buttons) btn.removeAttribute(NAV_ATTR);
+        let target = null;
+        const index = sectionIndexOf();
+        if (index !== null && index >= 0 && index < buttons.length) target = buttons[index];
+        if (target === null && label) {
+          const matches = buttons.filter((btn) => normalizeText(btn.textContent) === normalizeText(label));
+          // 同名分区（官方「账户」order -10，本插件 order 45）时取最后一个；
+          // 条目列表可用但本插件尚未注册时无法确认归属，跳过以免误改官方图标。
+          // 旧运行时（无 slots.entries）退回按文本匹配，保持旧版行为。
+          if (matches.length >= 2) target = matches[matches.length - 1];
+          else if (matches.length === 1 && (index === null || alreadyOurs(matches[0]))) target = matches[0];
+        }
+        if (target === null) return null;
+        target.setAttribute(NAV_ATTR, "1");
+        if (alreadyOurs(target)) return target;
+        const children = Array.from(target.children);
+        const labelIdx = label
+          ? children.findIndex(
+              (child) => child.tagName === "SPAN" && normalizeText(child.textContent) === normalizeText(label)
+            )
+          : children.length - 1;
+        const slot = labelIdx > 0 ? children[labelIdx - 1] : null;
+        if (slot === null) return target;
+        const icon = makeIcon();
+        if (slot.tagName === "SVG") {
+          slot.replaceWith(icon);
+        } else {
+          while (slot.firstChild) slot.removeChild(slot.firstChild);
+          slot.appendChild(icon);
+        }
+        return target;
+      };
+
       ctx.effect(() => {
         if (typeof document === "undefined" || typeof MutationObserver === "undefined") {
           return () => {};
         }
-        const SVG_NS = "http://www.w3.org/2000/svg";
-        const ICON_MARK = "data-dsh-account-injected";
-        const makeIcon = () => {
-          const svg = document.createElementNS(SVG_NS, "svg");
-          svg.setAttribute("viewBox", "0 0 16 16");
-          svg.setAttribute("width", "16");
-          svg.setAttribute("height", "16");
-          svg.setAttribute("aria-hidden", "true");
-          svg.setAttribute(ICON_MARK, "1");
-          svg.style.display = "block";
-          const addPath = (d) => {
-            const p = document.createElementNS(SVG_NS, "path");
-            p.setAttribute("fill", "currentColor");
-            p.setAttribute("d", d);
-            svg.appendChild(p);
-          };
-          addPath(ACCOUNT_ICON_D1);
-          addPath(ACCOUNT_ICON_D2);
-          return svg;
-        };
-        const alreadyOurs = (btn) => {
-          const svg = btn.querySelector("svg[" + ICON_MARK + "]");
-          if (!svg) return false;
-          const first = svg.querySelector("path");
-          return !!(first && first.getAttribute("d") === ACCOUNT_ICON_D1);
-        };
-        const inject = () => {
-          let label;
-          try { label = t("nav"); } catch { label = undefined; }
-          if (!label) return;
-          const rows = document.querySelectorAll('[role="dialog"] nav button');
-          for (let i = 0; i < rows.length; i++) {
-            const btn = rows[i];
-            if (btn.textContent.replace(/\s+/g, " ").trim() !== label) continue;
-            if (alreadyOurs(btn)) continue;
-            // 图标槽 = 导航 label span 的前一个兄弟；找不到 label span 时，
-            // 若首个子元素不是 span（裸 svg 结构）也视作图标槽直接替换。
-            const children = Array.from(btn.children);
-            const labelIdx = children.findIndex(
-              (c) => c.tagName === "SPAN" && c.textContent.replace(/\s+/g, " ").trim() === label
-            );
-            const slot = labelIdx > 0 ? children[labelIdx - 1] : null;
-            if (!slot) continue;
-            const icon = makeIcon();
-            if (slot.tagName === "SVG") {
-              slot.replaceWith(icon);
-            } else {
-              while (slot.firstChild) slot.removeChild(slot.firstChild);
-              slot.appendChild(icon);
-            }
-          }
-        };
-        inject();
-        const mo = new MutationObserver(inject);
-        mo.observe(document.body, { childList: true, subtree: true, characterData: true });
-        return () => mo.disconnect();
+        paintNavIcons();
+        const observer = new MutationObserver(() => {
+          paintNavIcons();
+        });
+        observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+        return () => observer.disconnect();
       }, "dsh-account-usage: settings nav icon injection");
+
+      // —— 账户菜单余额入口 ——
+      let balanceState = { at: 0, body: null, loading: false };
+      const attachedRows = new Set();
+
+      const paintBalanceRow = (row, body) => {
+        const labelNode = row.querySelector("[" + BALANCE_LABEL_ATTR + "]");
+        const text = balanceTextOf(body, t);
+        if (labelNode && labelNode.textContent !== text) labelNode.textContent = text;
+        row.setAttribute("aria-label", `${text} ${t("menuOpenAccount")}`);
+        row.title = `${t("menuBalanceTitle")} · ${t("menuOpenAccount")}`;
+      };
+
+      const paintAttachedBalanceRows = () => {
+        for (const row of Array.from(attachedRows)) {
+          if (row.isConnected) paintBalanceRow(row, balanceState.body);
+          else attachedRows.delete(row);
+        }
+      };
+
+      const refreshBalance = () => {
+        if (balanceState.loading) return;
+        if (balanceState.body !== null && Date.now() - balanceState.at < 30000) {
+          paintAttachedBalanceRows();
+          return;
+        }
+        balanceState.loading = true;
+        fetchJson("/api/account-usage/deepseek-summary")
+          .then((body) => {
+            balanceState = { at: Date.now(), body, loading: false };
+            paintAttachedBalanceRows();
+          })
+          .catch(() => {
+            balanceState = { at: Date.now(), body: { ok: false }, loading: false };
+            paintAttachedBalanceRows();
+          });
+      };
+
+      const makeBalanceIcon = () => {
+        const svg = document.createElementNS(SVG_NS, "svg");
+        svg.setAttribute("viewBox", "0 0 1024 1024");
+        svg.setAttribute("width", "16");
+        svg.setAttribute("height", "16");
+        svg.setAttribute("fill", "none");
+        svg.setAttribute("aria-hidden", "true");
+        svg.setAttribute("focusable", "false");
+        svg.style.display = "block";
+        const addPath = (d) => {
+          const p = document.createElementNS(SVG_NS, "path");
+          p.setAttribute("fill", "currentColor");
+          p.setAttribute("d", d);
+          svg.appendChild(p);
+        };
+        // 图标来源：assets/icons/balance.svg（余额图标，¥ 圆形，1024 viewBox）。
+        // 这里内联 path，避免运行时依赖静态资源 URL；fill 改为 currentColor 以跟随主题。
+        addPath(
+          "M491.530806 968.943057c-237.409085 0-430.567339-193.158255-430.567339-430.567339S254.121721 107.808378 491.530806 107.808378s430.567339 193.158255 430.567339 430.567339S728.939891 968.943057 491.530806 968.943057zM491.530806 170.540118c-202.817242 0-367.835599 165.018358-367.835599 367.835599s165.018358 367.835599 367.835599 367.835599S859.366406 741.192959 859.366406 538.375717 694.348048 170.540118 491.530806 170.540118z"
+        );
+        addPath(
+          "M606.641497 670.333098 376.440581 670.333098c-17.316387 0-31.366382-14.048971-31.366382-31.366382s14.048971-31.366382 31.366382-31.366382l230.200916 0c17.316387 0 31.366382 14.048971 31.366382 31.366382S623.957885 670.333098 606.641497 670.333098z"
+        );
+        addPath(
+          "M627.592668 575.806211 355.468944 575.806211c-17.316387 0-31.366382-14.048971-31.366382-31.366382s14.048971-31.366382 31.366382-31.366382l272.124747 0c17.316387 0 31.366382 14.048971 31.366382 31.366382S644.909056 575.806211 627.592668 575.806211z"
+        );
+        addPath(
+          "M491.530806 766.228145c-17.316387 0-31.366382-14.048971-31.366382-31.366382L460.164425 479.646128c0-17.316387 14.048971-31.366382 31.366382-31.366382 17.316387 0 31.366382 14.048971 31.366382 31.366382l0 255.215636C522.896164 752.179175 508.847194 766.228145 491.530806 766.228145z"
+        );
+        addPath(
+          "M491.530806 516.362354c-8.024767 0-16.050558-3.062755-22.177092-9.18929L366.455159 404.254044c-12.252045-12.252045-12.252045-32.101115 0-44.353161s32.101115-12.252045 44.353161 0l102.899578 102.920044c12.252045 12.252045 12.252045 32.101115 0 44.353161C507.581364 513.299599 499.555573 516.362354 491.530806 516.362354z"
+        );
+        addPath(
+          "M491.285213 516.362354c-8.024767 0-16.050558-3.062755-22.177092-9.18929-12.252045-12.252045-12.252045-32.101115 0-44.353161l108.739587-108.760053c12.252045-12.252045 32.101115-12.252045 44.353161 0 12.252045 12.252045 12.252045 32.101115 0 44.353161L513.462305 507.173065C507.33577 513.299599 499.311003 516.362354 491.285213 516.362354z"
+        );
+        return svg;
+      };
+
+      const findSettingsMenuItem = (menu) => {
+        if (!(menu instanceof Element)) return null;
+        const items = Array.from(menu.querySelectorAll('button[role="menuitem"]')).filter(
+          (item) => !item.hasAttribute(BALANCE_ATTR)
+        );
+        if (items.length === 0) return null;
+        const match = items.find((item) => {
+          const text = normalizeText(item.textContent);
+          const shortcut = item.getAttribute("aria-keyshortcuts") ?? "";
+          return /设置|Settings/i.test(text) || /Comma/i.test(shortcut);
+        });
+        return match ?? items[0] ?? null;
+      };
+
+      const activateAccountSection = (attempt = 0) => {
+        if (typeof document === "undefined" || typeof window === "undefined") return;
+        const dialog = document.querySelector('[role="dialog"]');
+        const target = dialog === null ? null : paintNavIcons();
+        if (target !== null) {
+          if (target.getAttribute("aria-current") !== "true") target.click();
+          return;
+        }
+        if (attempt < 40) window.setTimeout(() => activateAccountSection(attempt + 1), 50);
+      };
+
+      const openAccountSection = (menu) => {
+        if (typeof document === "undefined") return;
+        if (document.querySelector('[role="dialog"]') === null) {
+          const item = findSettingsMenuItem(menu);
+          if (item !== null) {
+            item.click();
+          } else {
+            // 旧版壳层没有账户菜单时，回退到设置齿轮触发器。
+            const gear = document.querySelector('[data-slot="settings.launcher"] button[aria-haspopup="dialog"]');
+            if (gear !== null) gear.click();
+          }
+        }
+        activateAccountSection(0);
+      };
+
+      const createBalanceRow = () => {
+        const row = document.createElement("button");
+        row.type = "button";
+        row.className = "dsh-account-balance-item";
+        row.setAttribute("role", "menuitem");
+        row.setAttribute(BALANCE_ATTR, "1");
+        const icon = document.createElement("span");
+        icon.className = "dsh-account-balance-icon";
+        icon.appendChild(makeBalanceIcon());
+        const label = document.createElement("span");
+        label.className = "dsh-account-balance-label";
+        label.setAttribute(BALANCE_LABEL_ATTR, "1");
+        label.textContent = t("menuBalance") + "…";
+        row.appendChild(icon);
+        row.appendChild(label);
+        row.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          openAccountSection(row.closest('[role="menu"]'));
+        });
+        return row;
+      };
+
+      const injectMenuStyles = () => {
+        if (document.querySelector('style[data-plugin-css="' + MENU_STYLE_ID + '"]') !== null) return;
+        const style = document.createElement("style");
+        style.dataset.plugin = "dsh-account-usage";
+        style.dataset.pluginCss = MENU_STYLE_ID;
+        style.textContent = MENU_CSS;
+        document.head.appendChild(style);
+      };
+
+      const findLauncherTrigger = () => {
+        const triggers = document.querySelectorAll('[data-slot="settings.launcher"] [aria-haspopup="menu"]');
+        for (const trigger of triggers) {
+          if (normalizeText(trigger.getAttribute("aria-expanded")) !== "true") continue;
+          const rect = trigger.getBoundingClientRect();
+          if (rect.width > 0 && rect.height > 0) return trigger;
+        }
+        return null;
+      };
+
+      const findAccountMenu = (trigger) => {
+        const triggerRect = trigger.getBoundingClientRect();
+        const menus = Array.from(document.querySelectorAll('[role="menu"]'));
+        let best = null;
+        let bestScore = Infinity;
+        for (const menu of menus) {
+          const rect = menu.getBoundingClientRect();
+          if (!(rect.width > 0 && rect.height > 0)) continue;
+          // 账户菜单由 Menu 的 side=top 渲染：底边贴近触发器顶边，左对齐（或至少水平重叠）。
+          const vertical = Math.abs(triggerRect.top - rect.bottom);
+          const horizontal = Math.abs(triggerRect.left - rect.left);
+          const overlap = rect.left < triggerRect.right && rect.right > triggerRect.left;
+          const score = vertical + horizontal;
+          if (vertical <= 14 && (horizontal <= 28 || overlap) && score < bestScore) {
+            best = menu;
+            bestScore = score;
+          }
+        }
+        if (best !== null) return best;
+        // 几何兜底失败时按菜单内容识别（设置 + 反馈/退出/登录）。
+        for (const menu of menus) {
+          const texts = Array.from(menu.querySelectorAll('button[role="menuitem"]')).map(
+            (item) => item.textContent ?? ""
+          );
+          if (
+            texts.some((text) => /设置|Settings/i.test(text)) &&
+            texts.some((text) => /反馈|Feedback|退出|Sign out|登录|Sign in/i.test(text))
+          ) {
+            return menu;
+          }
+        }
+        return null;
+      };
+
+      const attachBalanceRow = (menu) => {
+        const existing = menu.querySelector("[" + BALANCE_ATTR + "]");
+        if (existing !== null) {
+          attachedRows.add(existing);
+          refreshBalance();
+          return;
+        }
+        const viewport =
+          Array.from(menu.children).find((child) => child.getAttribute("role") === "presentation") ?? menu;
+        const firstNative = Array.from(viewport.querySelectorAll('button[role="menuitem"]')).find(
+          (item) => !item.hasAttribute(BALANCE_ATTR)
+        );
+        const row = createBalanceRow();
+        if (firstNative !== null && firstNative !== undefined) {
+          const wrapper = firstNative.parentElement;
+          if (wrapper !== null && wrapper !== viewport && viewport.contains(wrapper)) {
+            viewport.insertBefore(row, wrapper);
+          } else {
+            viewport.insertBefore(row, firstNative);
+          }
+        } else {
+          viewport.appendChild(row);
+        }
+        attachedRows.add(row);
+        paintBalanceRow(row, balanceState.body);
+        refreshBalance();
+      };
+
+      const scanAccountMenu = () => {
+        injectMenuStyles();
+        for (const row of Array.from(attachedRows)) {
+          if (!row.isConnected) attachedRows.delete(row);
+        }
+        const trigger = findLauncherTrigger();
+        if (trigger === null) return;
+        const menu = findAccountMenu(trigger);
+        if (menu !== null) attachBalanceRow(menu);
+      };
+
+      ctx.effect(() => {
+        if (
+          typeof document === "undefined" ||
+          typeof window === "undefined" ||
+          typeof MutationObserver === "undefined"
+        ) {
+          return () => {};
+        }
+        let scheduled = null;
+        const schedule = () => {
+          if (scheduled !== null) return;
+          scheduled = window.setTimeout(() => {
+            scheduled = null;
+            scanAccountMenu();
+          }, 0);
+        };
+        schedule();
+        const observer = new MutationObserver(schedule);
+        observer.observe(document.body, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ["aria-expanded"]
+        });
+        return () => {
+          observer.disconnect();
+          if (scheduled !== null) window.clearTimeout(scheduled);
+        };
+      }, "dsh-account-usage: account menu balance");
     }
 
     exports.NS = NS;
@@ -1326,6 +2122,8 @@ window.__ModuleLoader__.load({
     exports.BarChart = BarChart;
     exports.TokenChart = TokenChart;
     exports.fmtCountdown = fmtCountdown;
+    exports.balanceTextOf = balanceTextOf;
+    exports.toolLabelOf = toolLabelOf;
     return module.exports;
   }
 });

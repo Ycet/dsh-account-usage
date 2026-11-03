@@ -8,7 +8,7 @@
 DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」页，一站式查看 DeepSeek 平台余额/用量与 OpenCode Go 配额。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.1.26-blue.svg?style=for-the-badge)](package.json)
+[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg?style=for-the-badge)](package.json)
 [![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.6%2B-purple.svg?style=for-the-badge)](https://github.com/deepseek-ai/deepseek-harness)
 
 </div>
@@ -33,7 +33,7 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 
 ## 📸 界面预览
 
-**DeepSeek 平台页**：余额概览、时间维度与自定义区间、每日消费/Token 柱状图、按模型明细表。
+**DeepSeek 平台页**：余额概览、时间维度与自定义区间、每日消费/Token 柱状图、网页搜索/抓取用量图表、按模型明细表。
 
 ![DeepSeek 平台「账户」页界面截图](assets/images/account-usage-U--01.png)
 
@@ -49,6 +49,8 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 |------|------|
 | **DeepSeek 平台概览** | 充值余额、赠送余额、累计消费金额、本月消费金额、本月 Tokens |
 | **每日柱状图** | 消费金额与 Token 消耗双图表，SVG 渲染，鼠标悬停查看每日明细 |
+| **网页搜索 / 抓取用量** | 按日展示 tool-search / tool-fetch 的调用次数、调用类型费用与分工具面积图，随所选时间维度联动；超过 31 天自动分段查询 |
+| **账户菜单余额入口** | 在账户菜单「设置」上方显示「余额：¥x.xx」（充值余额 + 赠送余额），点击直达本插件「账户」页 |
 | **时间维度切换** | 今天 / 近 7 天 / 近 30 天 / 近 90 天 / 本月 / 上月 / 自定义区间 |
 | **按模型明细表** | deepseek-v4-flash / deepseek-v4-pro / 其他：请求次数、输入/缓存/输出 Tokens、费用 |
 | **OpenCode Go 配额** | 5 小时滚动 / 每周 / 每月三个窗口的用量百分比与下次重置时间 |
@@ -57,7 +59,7 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 | **官方账户页共存** | 使用独立的设置分区 ID，兼容桌面端官方「账号与余额」入口 |
 
 > [!NOTE]
-> `0.1.26` 修复了桌面端设置入口 ID 冲突。升级后重启 DSH，自制「账户」页与官方「账号与余额」页可同时出现；官方入口仍按 DSH 的账户登录状态显示。已在 DSH 桌面端 `0.2.0-rc.2` 验证。
+> `0.2.0` 新增网页搜索/抓取用量图表与账户菜单余额入口。余额入口适配 DSH 桌面端 `0.2.1-rc.5` 的原生账户菜单结构：旧版本没有该菜单、或上游重做菜单时入口会静默不显示，不影响「账户」页。分工具用量接口单次最多 31 天，插件会自动分段合并。升级后需完全退出并重开 DSH 桌面端。
 
 ---
 
@@ -138,6 +140,8 @@ DEEPSEEK_PLATFORM_TOKEN: <令牌>
 - 在设置面板「账户」页顶部切换 **deepseek / opencode go** 两个标签查看对应数据；
 - DeepSeek 页可切换时间维度（今天 / 近 7 天 / 近 30 天 / 近 90 天 / 本月 / 上月），或选择「自定义区间」后点击「应用」；
 - 柱状图支持鼠标悬停查看每日明细；模型明细表展示所选区间内各模型的请求次数、Tokens 与费用；
+- 「网页搜索与抓取」模块展示所选区间内 tool-search / tool-fetch 的调用次数、调用类型费用与每日面积图；超过 31 天的区间会自动分段查询后合并；
+- 账户菜单（侧栏账户头像菜单）中「设置」上方新增「余额：¥x.xx」入口，数值为充值余额 + 赠送余额，点击后打开设置并定位到本插件「账户」页；
 - OpenCode Go 页展示三个配额窗口的用量百分比、下次重置时间与限额参考，可一键「跳转」到 opencode.ai 或「刷新」；
 - 页面挂载期间每 60 秒自动刷新；「打开配置文件」按钮可直接定位本机 DSH 凭据文件。
 
@@ -149,9 +153,9 @@ DEEPSEEK_PLATFORM_TOKEN: <令牌>
 
 | 部分 | 文件 | 作用 |
 |------|------|------|
-| 宿主 | `index.js` | 注册三条 `GET /api/account-usage/*` 精确路由（`deepseek-summary` / `deepseek-usage` / `opencode`）；经 `ctx.credentials` 解析密钥，固定白名单上游 URL，15s 超时 + 30s 缓存 |
-| 解析聚合 | `lib/aggregate.js` | 纯函数：平台信封解包后的每日/每模型 token、费用、请求次数聚合 |
-| 浏览器 | `client.js` | 手写惰性 CJS 客户端包：注册 `settings.section`（id `account-usage`），渲染账户页（SVG 柱状图、维度选择器、模型表、配额进度条），挂载期间每 60s 自动刷新 |
+| 宿主 | `index.js` | 注册三条 `GET /api/account-usage/*` 精确路由（`deepseek-summary` / `deepseek-usage` / `opencode`）；经 `ctx.credentials` 解析密钥，固定白名单上游 URL，15s 超时 + 30s 缓存；`deepseek-usage` 同时合并模型用量与网页搜索/抓取用量 |
+| 解析聚合 | `lib/aggregate.js` | 纯函数：平台信封解包后的每日/每模型 token、费用、请求次数聚合；网页搜索/抓取的时间窗口切分、函数用量与费用合并 |
+| 浏览器 | `client.js` | 手写惰性 CJS 客户端包：注册 `settings.section`（id `account-usage`），渲染账户页（SVG 柱状图/面积图、维度选择器、模型表、配额进度条），挂载期间每 60s 自动刷新；运行时 DOM 增强设置导航图标与账户菜单余额入口 |
 | 组合 | `cordis.patch.yml` | `dsh.bundle` 补丁层，安装时自动合入 |
 
 ### 数据源
@@ -161,6 +165,8 @@ DEEPSEEK_PLATFORM_TOKEN: <令牌>
 | 账户概要 | `platform.deepseek.com/api/v0/users/get_user_summary`（+`/get_user_info`） | `Bearer <userToken>` |
 | 每日 token 明细 | `platform.deepseek.com/api/v0/usage/amount?month=&year=` | `Bearer <userToken>` |
 | 每日费用明细 | `platform.deepseek.com/api/v0/usage/cost?month=&year=` | `Bearer <userToken>` |
+| 网页搜索/抓取调用次数 | `platform.deepseek.com/api/v0/usage/by_api_key/amount?start=&end=&tz=`（≤31 天/次） | `Bearer <userToken>` |
+| 网页搜索/抓取费用 | `platform.deepseek.com/api/v0/usage/by_api_key/cost?start=&end=&tz=`（≤31 天/次） | `Bearer <userToken>` |
 | OpenCode Go 配额 | `opencode.ai/zen/go/v1/usage`（官方） | `Bearer <sk-opencode-…>` |
 
 ---
@@ -180,6 +186,8 @@ DEEPSEEK_PLATFORM_TOKEN: <令牌>
 
 - DeepSeek 平台用量接口为**未公开的私有接口**，字段可能随平台升级变化；插件对响应做防御式解析，字段缺失时降级为「—」而非报错。若页面长期显示「—」，请重新抓包确认字段并反馈。
 - 「累计消费金额」「API 请求次数」字段不在公开文档中：累计消费按命名启发式在概要响应中搜索（找不到则显示「—」），请求次数读取模型条目上的 `count/requests/request_count/req_count/calls` 字段。两者均在真实令牌实测后校准。
+- 网页搜索/抓取用量接口单次最多查询 31 天；插件按 31 天窗口自动分段，区间过长时请求数会相应增加。工具名来自平台返回的 `functions` 数组（当前为 `tool-search` / `tool-fetch`），未知工具原样展示。
+- 账户菜单余额入口依赖 DSH 0.2.x 的原生账户菜单 DOM；上游重做菜单结构时入口可能暂时不显示，但不影响「账户」页与其余功能。该入口只读取本插件已配置的平台令牌，不会额外保存余额数据。
 - OpenCode Go 的限额（$12/$30/$60）为套餐参考值，端点未返回限额；套餐调整时以 opencode.ai 页面为准。
 - 服务绑定 `0.0.0.0` 时本插件路由对局域网可达（与 DSH 其他本地插件相同的既有限制，默认 `127.0.0.1` 无此问题）。
 
@@ -189,7 +197,7 @@ DEEPSEEK_PLATFORM_TOKEN: <令牌>
 
 ```sh
 npm run check  # 宿主、客户端和聚合模块语法检查
-npm test       # 凭据与 OpenCode Go 响应回归测试
+npm test       # 凭据、OpenCode Go、工具用量解析与路由回归测试
 
 # 本地安装（开发迭代）：
 dsh plugin --profile web add <absolute-path-to-plugin>
