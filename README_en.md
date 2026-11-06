@@ -78,11 +78,14 @@ A DeepSeek Harness (DSH) web-GUI plugin: adds an "Account" page to the settings 
 # Option 1: install from a local source directory (development)
 dsh plugin --profile web add <absolute-path-to-plugin>
 
-# Option 2: install from GitHub
-dsh plugin --profile web add github:Ycet/dsh-account-usage
+# Option 2: install from GitHub (pinned to a release tag; requires git)
+dsh plugin --profile web add "github:Ycet/dsh-account-usage#v0.3.0"
+
+# Option 3: install from a Release asset (tarball; no git, no npm account)
+dsh plugin --profile web add "https://github.com/Ycet/dsh-account-usage/releases/download/v0.3.0/dsh-account-usage-0.3.0.tgz"
 ```
 
-The package declares a `dsh.bundle` patch layer; `dsh plugin` merges the loader entry into the profile's bundle layer automatically — no manual editing of `cordis.patch.yml` required.
+The package declares a `dsh.bundle` patch layer; `dsh plugin` merges the loader entry into the profile's bundle layer automatically — no manual editing of `cordis.patch.yml` required. None of these options needs an npm account; for the desktop app replace `--profile web` with `--profile desktop` (using the desktop-bundled CLI).
 
 <details>
 <summary>Manual patch-layer merge (optional)</summary>
