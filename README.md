@@ -80,11 +80,14 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 # 方式一：从本地源码安装（开发）
 dsh plugin --profile web add <absolute-path-to-plugin>
 
-# 方式二：从 GitHub 安装
-dsh plugin --profile web add github:Ycet/dsh-account-usage
+# 方式二：从 GitHub 安装（锁定版本 tag，需本机有 git）
+dsh plugin --profile web add "github:Ycet/dsh-account-usage#v0.3.0"
+
+# 方式三：从 Release 资产安装（tarball，无需 git、无需 npm 账号）
+dsh plugin --profile web add "https://github.com/Ycet/dsh-account-usage/releases/download/v0.3.0/dsh-account-usage-0.3.0.tgz"
 ```
 
-包声明了 `dsh.bundle` 补丁层，`dsh plugin` 会自动把加载项合入 profile 的 bundle 层，无需手动编辑 `cordis.patch.yml`。
+包声明了 `dsh.bundle` 补丁层，`dsh plugin` 会自动把加载项合入 profile 的 bundle 层，无需手动编辑 `cordis.patch.yml`。以上方式均无需 npm 账号；桌面端把 `--profile web` 换成 `--profile desktop`（使用桌面端自带 CLI）。
 
 <details>
 <summary>手动合并补丁层（可选）</summary>
