@@ -1,7 +1,7 @@
 {
   "name": "dsh-account-usage",
-  "version": "0.2.1",
-  "description": "DeepSeek Harness web-GUI plugin: a Settings「账户」page showing DeepSeek platform balance/usage (daily cost chart, per-model requests & tokens, web search/fetch call type usage, selectable time range), an account-menu balance entry, and the OpenCode Go 5h/weekly/monthly quota with reset times.",
+  "version": "0.3.0",
+  "description": "DeepSeek Harness web-GUI plugin: merges a DeepSeek platform balance/usage page into the official settings「账号与余额」page (daily cost chart, per-model requests & tokens, web search/fetch call type usage, selectable time range), with a fallback account section when the official page is unavailable, an account-menu balance entry, and the OpenCode Go 5h/weekly/monthly quota with reset times.",
   "type": "module",
   "main": "index.js",
   "files": [

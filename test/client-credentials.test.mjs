@@ -17,9 +17,15 @@ async function loadClientBundle() {
     url.searchParams.set("test", String(Date.now()));
     await import(url.href);
     assert.ok(descriptor, "client bundle should register with ModuleLoader");
+    const ReactStub = {
+      createElement: (...args) => ({ type: args[0], props: args[1], children: args.slice(2) }),
+      Fragment: Symbol("Fragment")
+    };
     return descriptor.factory((name) => {
-      assert.equal(name, "react");
-      return { createElement: (...args) => ({ type: args[0], props: args[1], children: args.slice(2) }) };
+      if (name === "react") return ReactStub;
+      if (name === "react-dom/client") return { createRoot: () => ({ render() {}, unmount() {} }) };
+      if (name === "react-dom") return { render() {}, unmountComponentAtNode: () => true };
+      throw new Error("unexpected require: " + name);
     });
   } finally {
     if (previousWindow === undefined) delete globalThis.window;
@@ -50,12 +56,20 @@ function accountRegistration(client, remote, runtimeSlots) {
       register(spec, component) {
         registrations.push(spec);
         return runtimeSlots ? runtimeSlots.register(spec, component) : () => {};
+      },
+      entries(name) {
+        return runtimeSlots && typeof runtimeSlots.entries === "function"
+          ? runtimeSlots.entries(name)
+          : undefined;
+      },
+      subscribe(name, listener) {
+        return runtimeSlots && typeof runtimeSlots.subscribe === "function"
+          ? runtimeSlots.subscribe(name, listener)
+          : () => {};
       }
     }
   });
-  const registration = registrations.find((item) => item.name === "settings.section");
-  assert.ok(registration, "account settings section should register");
-  return registration;
+  return registrations.find((item) => item.name === "settings.section") ?? null;
 }
 
 test("rc.1 client credentials use remote.credentials instead of ConnectionHandle.api", async () => {
@@ -112,8 +126,8 @@ test("credential bridge remains unavailable when rc.1 remote.credentials is abse
   assert.equal(registration.inject().credApi, null);
 });
 
-// 使用真实桌面槽位注册器，验证两种加载顺序及卸载，不用宽松 mock 掩盖 ID 冲突。
-for (const officialFirst of [true, false]) test(`desktop account sections coexist (officialFirst=${officialFirst})`, {
+// 使用真实桌面槽位注册器，验证“官方账户页优先、插件兜底分区按需注册”的行为。
+for (const officialFirst of [true, false]) test(`official account page wins over fallback (officialFirst=${officialFirst})`, {
   skip: !process.env.DSH_TEST_INSTALL_ROOT
 }, async (t) => {
   const base = process.env.DSH_TEST_INSTALL_ROOT + "/node_modules/@deepseek-ai/";
@@ -121,11 +135,14 @@ for (const officialFirst of [true, false]) test(`desktop account sections coexis
   const core = new SlotCore();
   const unregisterRoot = core.register({
     name: "root",
-    children: { "settings.section": { kind: "list", scope: "root" } }
+    children: {
+      "settings.section": { kind: "list", scope: "root" },
+      "settings.section.icon": { kind: "list", scope: "root", inline: true }
+    }
   }, () => null);
   t.after(unregisterRoot);
 
-  // DSH 0.2.0-rc.2 官方账户页的注册契约：account，默认优先级，order=-10。
+  // 官方账户页注册契约：account，默认优先级，order=-10；插件内容此时嵌入官方页。
   const OfficialAccount = () => null;
   const registerOfficial = () => core.register({
     name: "settings.section", id: "account", order: -10, locale: "settings.account"
@@ -134,26 +151,41 @@ for (const officialFirst of [true, false]) test(`desktop account sections coexis
 
   const disposers = [];
   const client = await loadClientBundle();
-  const registration = accountRegistration(client, {}, {
-    inject(name, callback) {
-      assert.equal(name, "settings.section");
-      const dispose = callback();
-      disposers.push(dispose);
-      t.after(dispose);
-      return dispose;
+  // 官方页存在时不会注册兜底分区，因此这里直接 apply 而不用 accountRegistration 的帮助。
+  client.apply({
+    remote: {},
+    effect(callback) {
+      return callback();
     },
-    register(spec, component) {
-      return core.register(spec, component);
+    locale: {
+      register() {},
+      bind() {
+        return (key) => key;
+      }
+    },
+    slots: {
+      inject(name, callback) {
+        const dispose = callback();
+        if (typeof dispose === "function") {
+          disposers.push(dispose);
+          t.after(dispose);
+        }
+        return dispose;
+      },
+      register(spec, component) {
+        return core.register(spec, component);
+      },
+      entries(name) {
+        return core.entries(name);
+      },
+      subscribe(name, listener) {
+        return core.subscribe(name, listener);
+      }
     }
   });
   if (!officialFirst) t.after(registerOfficial());
+  await new Promise((resolve) => setTimeout(resolve, 0));
 
-  assert.deepEqual(core.entriesOfSlot("settings.section").map((entry) => entry.options.id), ["account", "account-usage"]);
-  assert.equal(core.entriesOfSlot("settings.section")[0].component, OfficialAccount);
-  assert.equal(registration.id, "account-usage");
-  assert.equal(registration.priority ?? 0, 0, "both pages should coexist at the default priority");
-
-  for (const dispose of disposers) dispose();
-  assert.deepEqual(core.entriesOfSlot("settings.section").map((entry) => entry.options.id), ["account"]);
-  assert.equal(core.entriesOfSlot("settings.section")[0].component, OfficialAccount);
+  const ids = core.entriesOfSlot("settings.section").map((entry) => entry.options.id);
+  assert.deepEqual(ids, ["account"]);
 });
