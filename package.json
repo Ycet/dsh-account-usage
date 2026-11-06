@@ -1,6 +1,6 @@
 {
   "name": "dsh-account-usage",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "DeepSeek Harness web-GUI plugin: a Settings「账户」page showing DeepSeek platform balance/usage (daily cost chart, per-model requests & tokens, web search/fetch call type usage, selectable time range), an account-menu balance entry, and the OpenCode Go 5h/weekly/monthly quota with reset times.",
   "type": "module",
   "main": "index.js",
@@ -21,6 +21,9 @@
   "scripts": {
     "test": "node --test test/*.test.mjs",
     "check": "node --check index.js && node --check client.js && node --check lib/aggregate.js"
+  },
+  "engines": {
+    "dsh": ">=0.2.1-rc.2"
   },
   "dsh": {
     "bundle": {
@@ -53,9 +56,6 @@
   "peerDependencies": {
     "react": "^18.2.0",
     "@deepseek-ai/cordis": "^4.0.1"
-  },
-  "dependencies": {
-    "@deepseek-ai/dsh-credentials": "0.1.7-rc.1"
   },
   "license": "MIT"
 }

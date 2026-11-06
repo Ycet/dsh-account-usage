@@ -1726,6 +1726,23 @@ window.__ModuleLoader__.load({
         )
       );
 
+      // 官方 0.2.2 起提供正式的分区导航图标插槽 settings.section.icon：
+      // 注册 id 必须等于对应 settings.section 的 id，命中后壳层不再渲染默认齿轮。
+      // 旧版壳没有该插槽，inject 静默不注册，继续由下面的 DOM 钩子兜底；
+      // 两条路径靠 svg 上的 data-dsh-account-injected 标记互斥，不会重复绘制。
+      ctx.slots.inject("settings.section.icon", () =>
+        ctx.slots.register(
+          {
+            name: "settings.section.icon",
+            id: "account-usage",
+            order: 45,
+            label: () => t("nav"),
+            locale: NS
+          },
+          () => ACCOUNT_ICON
+        )
+      );
+
       // ---- 设置导航图标 / 账户菜单余额（运行时 DOM 增强） ----
       // 上游 settings.section 不原生支持“每个分区自定义图标”，设置壳层的
       // navIcon() 只对 models / agent-presets / plugins 三个固定 id 有专属图标；
