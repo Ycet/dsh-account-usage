@@ -92,4 +92,10 @@ test("apply still registers the account section without a DOM", async () => {
   assert.ok(section);
   assert.equal(section.id, "account-usage");
   assert.equal(section.order, 45);
+  // 官方 0.2.2 起的分区图标插槽：注册 id 必须等于分区 id，壳层才渲染本插件的图标。
+  assert.ok(injectedSlots.includes("settings.section.icon"), "应注入官方分区图标槽");
+  const icon = registrations.find((registration) => registration.name === "settings.section.icon");
+  assert.ok(icon, "应注册分区图标");
+  assert.equal(icon.id, "account-usage");
+  assert.equal(icon.order, 45);
 });

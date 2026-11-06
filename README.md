@@ -8,7 +8,7 @@
 DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」页，一站式查看 DeepSeek 平台余额/用量与 OpenCode Go 配额。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg?style=for-the-badge)](package.json)
+[![Version](https://img.shields.io/badge/version-0.2.1-blue.svg?style=for-the-badge)](package.json)
 [![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.6%2B-purple.svg?style=for-the-badge)](https://github.com/deepseek-ai/deepseek-harness)
 
 </div>
@@ -59,6 +59,8 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 | **官方账户页共存** | 使用独立的设置分区 ID，兼容桌面端官方「账号与余额」入口 |
 
 > [!NOTE]
+> `0.2.1` 修正与 DSH 0.2.2-rc.1 相关的两处兼容问题：① 去掉对 `@deepseek-ai/dsh-credentials` 的内置依赖——本插件只用该包的一个纯函数（凭证引用名语法校验），内联后插件目录不再携带第二份 `@deepseek-ai/cordis`，消除双实例隐患；② 设置导航图标改走官方 `settings.section.icon` 插槽，旧壳继续由 DOM 钩子兜底（两者靠 svg 标记互斥，不会重影）。同时补上 `engines.dsh: >=0.2.1-rc.2`，让 DSH 的插件兼容性门禁对本事生效。
+
 > `0.2.0` 新增网页搜索/抓取用量图表与账户菜单余额入口。余额入口适配 DSH 桌面端 `0.2.1-rc.5` 的原生账户菜单结构：旧版本没有该菜单、或上游重做菜单时入口会静默不显示，不影响「账户」页。分工具用量接口单次最多 31 天，插件会自动分段合并。升级后需完全退出并重开 DSH 桌面端。
 
 ---

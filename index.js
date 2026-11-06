@@ -37,7 +37,6 @@
  *          "unauthorized"|"network"|"bad-json"|"http-<n>"|"biz-error",
  *          message: string }
  */
-import { credentialRef } from "@deepseek-ai/dsh-credentials";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { readFile } from "node:fs/promises";
@@ -84,6 +83,32 @@ const OPENCODE_CACHE_TTL_MS = envNum("DSH_ACCOUNT_USAGE_OPENCODE_CACHE_MS", 6000
 
 const DEEPSEEK_PLATFORM_BASE = "https://platform.deepseek.com/api/v0";
 const OPENCODE_USAGE_URL = "https://opencode.ai/zen/go/v1/usage";
+
+/**
+ * 凭证引用名的语法，与官方 `@deepseek-ai/dsh-credentials` 的 `REF_PATTERN`
+ * 完全一致（0.1.7-rc.1 至 0.2.2-rc.1 未变）：POSIX 环境变量名。
+ *
+ * 这里刻意内联，不再 import 官方包：
+ *   - 该包只提供这一个纯函数（官方实现即「正则校验 + brandString」，而 brandString
+ *     在运行期就是原值），内联后 `ctx.credentials.resolve()` 拿到的仍是同一个字符串；
+ *   - 官方包会连带拉起它自己的 `@deepseek-ai/cordis`，在 0.2.2 运行时里形成第二份
+ *     cordis 模块实例（双实例隐患），而本插件只用到这一个纯函数。
+ */
+const CREDENTIAL_REF_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+/**
+ * 把环境变量名标记成凭证引用（语法校验，语义同官方 `credentialRef`）。
+ * 导出仅为便于单测锁定语法，不参与插件生命周期。
+ * @param {unknown} value 候选引用名
+ * @returns {string} 同一个字符串
+ */
+export function credentialRef(value) {
+  if (typeof value !== "string" || !CREDENTIAL_REF_PATTERN.test(value)) {
+    throw new TypeError(`credential ref "${String(value)}" must match ${String(CREDENTIAL_REF_PATTERN)}`);
+  }
+  return value;
+}
+
 const PLATFORM_TOKEN_REF = credentialRef("DEEPSEEK_PLATFORM_TOKEN");
 const OPENCODE_KEY_REF = credentialRef("OPENCODE_GO_API_KEY");
 
