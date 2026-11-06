@@ -1,10 +1,11 @@
 // Client half of the dsh-account-usage plugin.
 // Hand-written browser bundle in the lazy-CJS format the client module loader
 // expects: it only REGISTERS the factory; the body runs at materialization.
-// It registers a settings.section entry ("账户") and renders the account page:
-// DeepSeek platform balance/usage (chart, per-model table, time range) plus
-// the OpenCode Go 5h/weekly/monthly quota. All data arrives from same-origin
-// routes registered by the host half; secrets never enter the browser.
+// Its content is normally embedded below the native cards of the official
+// settings "Account & balance" page; when that page is unavailable (signed out
+// or an older DSH), it falls back to its own settings.section entry. All data
+// arrives from same-origin routes registered by the host half; secrets never
+// enter the browser.
 window.__ModuleLoader__.load({
   id: "dsh-account-usage",
   factory: (require) => {
@@ -12,6 +13,23 @@ window.__ModuleLoader__.load({
     var exports = module.exports;
     Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
     const React = require("react");
+    // 嵌入官方「账号与余额」页需要在插件自己的 DOM 容器里挂一个 React 根。
+    // DSH 0.2.2 提供 react-dom/client；旧运行时退回 ReactDOM.render。
+    let ReactDOMClient = null;
+    let ReactDOM = null;
+    try {
+      ReactDOMClient = require("react-dom/client");
+    } catch {
+      ReactDOMClient = null;
+    }
+    try {
+      ReactDOM = require("react-dom");
+    } catch {
+      ReactDOM = null;
+    }
+    const canEmbedReact =
+      (ReactDOMClient !== null && typeof ReactDOMClient.createRoot === "function") ||
+      (ReactDOM !== null && typeof ReactDOM.render === "function");
 
     const NS = "settings.accountUsage";
     const inject = ["slots", "locale", "remote", "remote.credentials"];
@@ -1680,12 +1698,13 @@ window.__ModuleLoader__.load({
     }
 
     function AccountPage(props) {
-      const { t, credApi } = props;
+      const { t, credApi, embedded } = props;
       const [tab, setTab] = React.useState("deepseek");
       // 两个面板常驻挂载（CSS 隐藏未激活项）：切换标签零等待，
       // 数据在后台按各自 60s 周期保持新鲜。
-      return React.createElement("div", { style: styles.wrap },
-        React.createElement("h2", { style: styles.panelTitle }, t("title")),
+      // 嵌入官方账户页时隐藏独立页标题，并跟随官方内容宽度。
+      return React.createElement("div", { style: embedded ? { ...styles.wrap, maxWidth: "none" } : styles.wrap },
+        embedded ? null : React.createElement("h2", { style: styles.panelTitle }, t("title")),
         React.createElement("div", { style: styles.tabsRow },
           React.createElement("button", {
             style: tab === "deepseek" ? styles.tabActive : styles.tab,
@@ -1710,21 +1729,89 @@ window.__ModuleLoader__.load({
       const t = ctx.locale.bind(NS);
       const credApi = createCredentialApi(ctx.remote);
       const injected = () => ({ t, credApi });
-      ctx.slots.inject("settings.section", () =>
-        ctx.slots.register(
-          {
-            name: "settings.section",
-            // 官方账号与余额页使用 account；独立 ID 保证两页同时注册。
-            id: "account-usage",
-            order: 45,
-            label: () => t("nav"),
-            icon: ACCOUNT_ICON,
-            locale: NS,
-            inject: injected
-          },
-          AccountPage
-        )
-      );
+      const SECTION_ID = "account-usage";
+      const OFFICIAL_ACCOUNT_SECTION_ID = "account";
+
+      // ---- 官方账户页存在性探测 ------------------------------------------------
+      // 官方「账号与余额」页由 dsh-client-ui-settings-account 在登录后注册
+      // settings.section(id=account)。它存在时本插件不再注册独立分区，而是把
+      // 内容嵌入该页；未登录/旧版没有官方页时才注册兜底分区，避免双重入口。
+      const sectionEntries = () => {
+        try {
+          if (typeof ctx.slots.entries !== "function") return null;
+          const entries = ctx.slots.entries("settings.section");
+          return Array.isArray(entries) ? entries : null;
+        } catch {
+          return null;
+        }
+      };
+      const sectionRows = () => {
+        const entries = sectionEntries();
+        if (entries === null) return null;
+        return entries
+          .map((entry) => ({
+            id: entry?.options?.id,
+            order: typeof entry?.options?.order === "number" ? entry.options.order : 0
+          }))
+          .sort((a, b) => a.order - b.order);
+      };
+      const hasSection = (id) => {
+        const entries = sectionEntries();
+        if (entries === null) return false;
+        return entries.some((entry) => entry?.options?.id === id);
+      };
+
+      ctx.slots.inject("settings.section", () => {
+        let stopped = false;
+        let unregisterFallbackSection = null;
+        const syncFallbackSection = () => {
+          if (stopped) return;
+          // 无法嵌入 React 内容时始终保留独立分区，保证功能可访问。
+          const officialAccount = hasSection(OFFICIAL_ACCOUNT_SECTION_ID) && canEmbedReact;
+          if (officialAccount) {
+            unregisterFallbackSection?.();
+            unregisterFallbackSection = null;
+            return;
+          }
+          if (unregisterFallbackSection === null) {
+            try {
+              unregisterFallbackSection = ctx.slots.register(
+                {
+                  name: "settings.section",
+                  // 官方账号与余额页使用 account；独立 ID 保证兜底页可单独注册。
+                  id: SECTION_ID,
+                  order: 45,
+                  label: () => t("nav"),
+                  icon: ACCOUNT_ICON,
+                  locale: NS,
+                  inject: injected
+                },
+                AccountPage
+              );
+            } catch {
+              // 槽位在插件卸载后可能已不可用；保持无兜底状态即可。
+              unregisterFallbackSection = null;
+            }
+          }
+        };
+        const disposers = [];
+        if (typeof ctx.slots.subscribe === "function") {
+          disposers.push(ctx.slots.subscribe("settings.section", syncFallbackSection));
+        }
+        syncFallbackSection();
+        return () => {
+          stopped = true;
+          for (const dispose of disposers) {
+            try {
+              dispose();
+            } catch {
+              /* ignore cleanup failure */
+            }
+          }
+          unregisterFallbackSection?.();
+          unregisterFallbackSection = null;
+        };
+      });
 
       // 官方 0.2.2 起提供正式的分区导航图标插槽 settings.section.icon：
       // 注册 id 必须等于对应 settings.section 的 id，命中后壳层不再渲染默认齿轮。
@@ -1744,21 +1831,16 @@ window.__ModuleLoader__.load({
       );
 
       // ---- 设置导航图标 / 账户菜单余额（运行时 DOM 增强） ----
-      // 上游 settings.section 不原生支持“每个分区自定义图标”，设置壳层的
-      // navIcon() 只对 models / agent-presets / plugins 三个固定 id 有专属图标；
-      // 账户菜单（settings.launcher 由官方账户插件占用）也没有可插入菜单项的 Slot。
-      // 因此这里用运行时 DOM 增强：
-      //   1) 设置导航：按 Slot 条目顺序定位本插件分区（id account-usage），只替换
-      //      该行图标，避免官方「账户」页同名时被误改；
-      //   2) 账户菜单：在「设置」项上方插入一行「余额：¥x.xx」，点击后打开设置并
-      //      切到本插件账户页。
+      // 官方 settings.section.icon 插槽覆盖兜底分区图标；旧壳继续由 DOM 钩子兜底。
+      // 账户菜单（settings.launcher 由官方账户插件占用）没有可插入菜单项的 Slot，
+      // 这里在「设置」项上方插入「余额：¥x.xx」；点击后打开官方「账号与余额」页，
+      // 官方页不可用时回退到本插件兜底分区。
       const SVG_NS = "http://www.w3.org/2000/svg";
       const ICON_MARK = "data-dsh-account-injected";
       const NAV_ATTR = "data-dsh-account-usage-nav";
       const BALANCE_ATTR = "data-dsh-account-balance";
       const BALANCE_LABEL_ATTR = "data-dsh-account-balance-label";
       const MENU_STYLE_ID = "dsh-account-usage/menu.css";
-      const SECTION_ID = "account-usage";
       const normalizeText = (value) => String(value ?? "").replace(/\s+/g, " ").trim();
       const MENU_CSS = [
         ".dsh-account-balance-item{display:flex;align-items:center;gap:6px;width:100%;min-height:34px;padding:6px 8px;border:none;border-radius:var(--dsw-radius-md);background:transparent;cursor:pointer;font:inherit;font-size:13px;line-height:20px;color:var(--dsw-alias-label-primary);text-align:left}",
@@ -1794,28 +1876,45 @@ window.__ModuleLoader__.load({
         return !!(first && first.getAttribute("d") === ACCOUNT_ICON_D1);
       };
 
-      /**
-       * 本插件在 settings.section 列表中的下标（与设置面板的 order 排序一致）。
-       * 返回值：>=0 命中；-1 条目列表可用但本插件尚未注册；null 旧运行时无 entries。
-       */
-      const sectionIndexOf = () => {
-        try {
-          if (typeof ctx.slots.entries !== "function") return null;
-          const entries = ctx.slots.entries("settings.section");
-          if (!Array.isArray(entries)) return null;
-          const rows = entries
-            .map((entry) => ({
-              id: entry?.options?.id,
-              order: typeof entry?.options?.order === "number" ? entry.options.order : 0
-            }))
-            .sort((a, b) => a.order - b.order);
-          return rows.findIndex((row) => row.id === SECTION_ID);
-        } catch {
-          return null;
-        }
+      /** 设置面板对话框（优先精确匹配 settings 模态，旧壳退回首个 dialog）。 */
+      const findSettingsDialog = () =>
+        document.querySelector('[role="dialog"][data-shortcut-modal="settings"]') ||
+        document.querySelector('[role="dialog"]');
+
+      /** settings.section 条目下标；null 表示旧运行时无 entries。 */
+      const sectionIndexById = (id) => {
+        const rows = sectionRows();
+        if (rows === null) return null;
+        return rows.findIndex((row) => row.id === id);
       };
 
-      /** 给设置导航中的本插件行注入图标；返回该 nav button（找不到返回 null）。 */
+      /** 按 section id 定位设置导航行；索引不可用时按已知文案兜底。 */
+      const navButtonForSection = (id) => {
+        if (typeof document === "undefined") return null;
+        const dialog = findSettingsDialog();
+        if (dialog === null) return null;
+        const buttons = Array.from(dialog.querySelectorAll("nav button"));
+        if (buttons.length === 0) return null;
+        const index = sectionIndexById(id);
+        if (index !== null && index >= 0 && index < buttons.length) return buttons[index];
+        if (index !== null) return null;
+        const labels =
+          id === OFFICIAL_ACCOUNT_SECTION_ID
+            ? ["账号与余额", "Account"]
+            : [(() => {
+                try {
+                  return t("nav");
+                } catch {
+                  return "账户";
+                }
+              })()];
+        const match = buttons.find((btn) =>
+          labels.some((label) => normalizeText(btn.textContent) === normalizeText(label))
+        );
+        return match ?? null;
+      };
+
+      /** 给设置导航中的本插件兜底行注入图标；返回该 nav button（找不到返回 null）。 */
       const paintNavIcons = () => {
         if (typeof document === "undefined") return null;
         let label;
@@ -1824,16 +1923,17 @@ window.__ModuleLoader__.load({
         } catch {
           label = undefined;
         }
-        const buttons = Array.from(document.querySelectorAll('[role="dialog"] nav button'));
+        const dialog = findSettingsDialog();
+        if (dialog === null) return null;
+        const buttons = Array.from(dialog.querySelectorAll("nav button"));
         for (const btn of buttons) btn.removeAttribute(NAV_ATTR);
         let target = null;
-        const index = sectionIndexOf();
+        const index = sectionIndexById(SECTION_ID);
         if (index !== null && index >= 0 && index < buttons.length) target = buttons[index];
         if (target === null && label) {
           const matches = buttons.filter((btn) => normalizeText(btn.textContent) === normalizeText(label));
-          // 同名分区（官方「账户」order -10，本插件 order 45）时取最后一个；
-          // 条目列表可用但本插件尚未注册时无法确认归属，跳过以免误改官方图标。
-          // 旧运行时（无 slots.entries）退回按文本匹配，保持旧版行为。
+          // 同名分区时取最后一个；条目列表可用但本插件尚未注册时无法确认归属，
+          // 跳过以免误改官方图标。旧运行时（无 slots.entries）退回按文本匹配。
           if (matches.length >= 2) target = matches[matches.length - 1];
           else if (matches.length === 1 && (index === null || alreadyOurs(matches[0]))) target = matches[0];
         }
@@ -1959,20 +2059,25 @@ window.__ModuleLoader__.load({
         return match ?? items[0] ?? null;
       };
 
-      const activateAccountSection = (attempt = 0) => {
+      /** 余额入口应打开的设置分区：官方账户页优先，否则回退兜底页。 */
+      const preferredAccountSectionId = () =>
+        hasSection(OFFICIAL_ACCOUNT_SECTION_ID) && canEmbedReact
+          ? OFFICIAL_ACCOUNT_SECTION_ID
+          : SECTION_ID;
+
+      const activatePreferredAccountSection = (attempt = 0) => {
         if (typeof document === "undefined" || typeof window === "undefined") return;
-        const dialog = document.querySelector('[role="dialog"]');
-        const target = dialog === null ? null : paintNavIcons();
+        const target = navButtonForSection(preferredAccountSectionId());
         if (target !== null) {
           if (target.getAttribute("aria-current") !== "true") target.click();
           return;
         }
-        if (attempt < 40) window.setTimeout(() => activateAccountSection(attempt + 1), 50);
+        if (attempt < 40) window.setTimeout(() => activatePreferredAccountSection(attempt + 1), 50);
       };
 
       const openAccountSection = (menu) => {
         if (typeof document === "undefined") return;
-        if (document.querySelector('[role="dialog"]') === null) {
+        if (findSettingsDialog() === null) {
           const item = findSettingsMenuItem(menu);
           if (item !== null) {
             item.click();
@@ -1982,7 +2087,7 @@ window.__ModuleLoader__.load({
             if (gear !== null) gear.click();
           }
         }
-        activateAccountSection(0);
+        activatePreferredAccountSection(0);
       };
 
       const createBalanceRow = () => {
@@ -2129,6 +2234,167 @@ window.__ModuleLoader__.load({
           if (scheduled !== null) window.clearTimeout(scheduled);
         };
       }, "dsh-account-usage: account menu balance");
+
+      // ---- 官方「账号与余额」页内容嵌入 --------------------------------------
+      // 官方页面没有提供内容 Slot：把插件内容追加到官方 AccountSection 的
+      // <section> 末尾（原生卡片下方），切到其他分区时仅摘除容器、保留 React
+      // 根以保存 tab/区间；关闭设置面板时卸载根并停止轮询。
+      const EMBED_ATTR = "data-dsh-account-usage-embedded";
+      let embeddedRoot = null;
+      let embeddedContainer = null;
+      let embeddedSection = null;
+      let destroyEmbeddedRoot = null;
+
+      /** 当前激活的设置分区 id（按 settings.section 排序与导航行一一对应）。 */
+      const activeSettingsSectionId = () => {
+        if (typeof document === "undefined") return null;
+        const dialog = findSettingsDialog();
+        if (dialog === null) return null;
+        const rows = sectionRows();
+        if (rows === null || rows.length === 0) return null;
+        const buttons = Array.from(dialog.querySelectorAll("nav button"));
+        const activeIndex = buttons.findIndex((button) => button.getAttribute("aria-current") === "true");
+        if (activeIndex < 0 || activeIndex >= rows.length) return null;
+        return rows[activeIndex]?.id ?? null;
+      };
+
+      /** 官方账户页 AccountSection 根节点（[data-slot] outlet 内的 <section>）。 */
+      const findActiveAccountSection = () => {
+        if (typeof document === "undefined") return null;
+        const dialog = findSettingsDialog();
+        if (dialog === null) return null;
+        const outlet = dialog.querySelector('[data-slot="settings.section"]');
+        if (outlet === null) return null;
+        const section = Array.from(outlet.children).find((child) => child.tagName === "SECTION");
+        return section ?? null;
+      };
+
+      const renderEmbeddedContent = () => {
+        if (embeddedContainer === null) return;
+        try {
+          const element = React.createElement(AccountPage, { t, credApi, embedded: true });
+          if (embeddedRoot !== null) {
+            embeddedRoot.render(element);
+            return;
+          }
+          if (ReactDOMClient !== null && typeof ReactDOMClient.createRoot === "function") {
+            embeddedRoot = ReactDOMClient.createRoot(embeddedContainer);
+            destroyEmbeddedRoot = () => embeddedRoot?.unmount();
+            embeddedRoot.render(element);
+          } else if (ReactDOM !== null && typeof ReactDOM.render === "function") {
+            embeddedRoot = {
+              render: (next) => ReactDOM.render(next, embeddedContainer),
+              unmount: () => ReactDOM.unmountComponentAtNode(embeddedContainer)
+            };
+            destroyEmbeddedRoot = () => embeddedRoot?.unmount();
+            embeddedRoot.render(element);
+          }
+        } catch (error) {
+          ctx.logger?.warn?.("dsh-account-usage: embedded account content render failed");
+          ctx.logger?.warn?.(error);
+        }
+      };
+
+      const attachEmbeddedContent = (section) => {
+        if (!canEmbedReact) return;
+        if (embeddedContainer === null) {
+          embeddedContainer = document.createElement("div");
+          embeddedContainer.setAttribute(EMBED_ATTR, "1");
+          embeddedContainer.style.display = "contents";
+        }
+        if (embeddedSection !== section || embeddedContainer.parentNode !== section) {
+          section.appendChild(embeddedContainer);
+          embeddedSection = section;
+        } else if (section.lastElementChild !== embeddedContainer) {
+          section.appendChild(embeddedContainer);
+        }
+        if (embeddedRoot === null) renderEmbeddedContent();
+      };
+
+      const detachEmbeddedContent = () => {
+        if (embeddedContainer !== null && embeddedContainer.parentNode !== null) {
+          embeddedContainer.parentNode.removeChild(embeddedContainer);
+        }
+        embeddedSection = null;
+      };
+
+      const destroyEmbeddedContent = () => {
+        detachEmbeddedContent();
+        if (destroyEmbeddedRoot !== null) {
+          try {
+            destroyEmbeddedRoot();
+          } catch {
+            /* ignore unmount failure */
+          }
+          destroyEmbeddedRoot = null;
+        }
+        embeddedRoot = null;
+        embeddedContainer = null;
+      };
+
+      const scanEmbeddedContent = () => {
+        if (typeof document === "undefined") return;
+        if (!canEmbedReact) {
+          detachEmbeddedContent();
+          return;
+        }
+        const dialog = findSettingsDialog();
+        if (dialog === null) {
+          destroyEmbeddedContent();
+          return;
+        }
+        if (
+          activeSettingsSectionId() !== OFFICIAL_ACCOUNT_SECTION_ID ||
+          !hasSection(OFFICIAL_ACCOUNT_SECTION_ID)
+        ) {
+          detachEmbeddedContent();
+          return;
+        }
+        const section = findActiveAccountSection();
+        if (section === null) {
+          detachEmbeddedContent();
+          return;
+        }
+        attachEmbeddedContent(section);
+      };
+
+      ctx.effect(() => {
+        if (
+          typeof document === "undefined" ||
+          typeof window === "undefined" ||
+          typeof MutationObserver === "undefined"
+        ) {
+          return () => {};
+        }
+        let scheduled = null;
+        const schedule = () => {
+          if (scheduled !== null) return;
+          scheduled = window.setTimeout(() => {
+            scheduled = null;
+            scanEmbeddedContent();
+          }, 0);
+        };
+        schedule();
+        const observer = new MutationObserver(schedule);
+        observer.observe(document.body, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ["aria-current", "data-shortcut-modal"]
+        });
+        let disposeLocale = null;
+        if (typeof ctx.locale.subscribe === "function") {
+          disposeLocale = ctx.locale.subscribe(() => {
+            if (embeddedRoot !== null) renderEmbeddedContent();
+          });
+        }
+        return () => {
+          observer.disconnect();
+          if (scheduled !== null) window.clearTimeout(scheduled);
+          if (typeof disposeLocale === "function") disposeLocale();
+          destroyEmbeddedContent();
+        };
+      }, "dsh-account-usage: official account page embedding");
     }
 
     exports.NS = NS;

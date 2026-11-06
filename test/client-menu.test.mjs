@@ -16,10 +16,16 @@ async function loadClientBundle() {
     url.searchParams.set("test", String(Date.now()) + Math.random());
     await import(url.href);
     assert.ok(descriptor, "client bundle should register with ModuleLoader");
-    return descriptor.factory(() => ({
+    const ReactStub = {
       createElement: (...args) => ({ type: args[0], props: args[1], children: args.slice(2) }),
       Fragment: Symbol("Fragment")
-    }));
+    };
+    return descriptor.factory((name) => {
+      if (name === "react") return ReactStub;
+      if (name === "react-dom/client") return { createRoot: () => ({ render() {}, unmount() {} }) };
+      if (name === "react-dom") return { render() {}, unmountComponentAtNode: () => true };
+      throw new Error("unexpected require: " + name);
+    });
   } finally {
     if (previousWindow === undefined) delete globalThis.window;
     else globalThis.window = previousWindow;
