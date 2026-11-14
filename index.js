@@ -1,5 +1,5 @@
 /**
- * dsh-account-usage — host half.
+ * @ycet/dsh-account-usage — host half.
  *
  * 在 DSH web 服务器上注册三条精确 GET 路由，供设置页「账户」使用：
  *
@@ -70,7 +70,7 @@ import {
   percentGridMax
 } from "./lib/aggregate.js";
 
-const name = "dsh-account-usage";
+const name = "@ycet/dsh-account-usage";
 const inject = ["credentials", "webServer"];
 
 // ---- tunables（环境变量覆盖，默认值即插即用） ------------------------------

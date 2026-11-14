@@ -7,8 +7,11 @@
 
 DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」页，一站式查看 DeepSeek 平台余额/用量、OpenCode Go 配额，以及当前订阅周期的额度消耗趋势与期末预测。
 
+> npm 包名：`@ycet/dsh-account-usage`。npm 上同名的 [`dsh-account-usage`](https://www.npmjs.com/package/dsh-account-usage) 是另一个作者的独立项目，与本插件无关，请勿混装。
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.4.0-blue.svg?style=for-the-badge)](package.json)
+[![Version](https://img.shields.io/badge/version-0.4.1-blue.svg?style=for-the-badge)](package.json)
+[![npm](https://img.shields.io/npm/v/%40ycet%2Fdsh-account-usage?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@ycet/dsh-account-usage)
 [![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.6%2B-purple.svg?style=for-the-badge)](https://github.com/deepseek-ai/deepseek-harness)
 
 </div>
@@ -62,6 +65,9 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 | **兜底独立账户页** | 未登录 DSH 官方账号或旧版没有官方账户页时，自动注册插件独立「账户」分区，保证令牌与用量仍可访问 |
 
 > [!NOTE]
+> `0.4.1` 发布到 npm：包名改为 **`@ycet/dsh-account-usage`**（npm 上的 `dsh-account-usage` 已被他人占用，是另一个项目），同步更新 `cordis.patch.yml` 的加载项名与客户端模块 id，并补全 `repository` / `homepage` / `bugs` / `publishConfig` 等 npm 元数据。已安装旧名字副本的请先 `dsh plugin --profile web remove dsh-account-usage` 再按新版安装命令安装，然后完全退出重开 DSH。
+
+> [!NOTE]
 > `0.4.0` 在 opencode go 页签的三张额度卡下方新增「用量趋势（当前订阅周期）」：宿主每 15 分钟采样一次官方配额百分比并落盘（`~/.dsh/storages/dsh-account-usage/opencode-samples.v1.json`，保留 180 天），据此画出按天的累计已用额度曲线，并用「已用% ÷ 已过天数」线性外推到重置日。可选的 OpenCode Console Cookie 能解锁官方日榜（每日请求数、按模型占比、0.1% 精度），但不配置也能正常出图。**注意**：本地采样从插件开始记录那天起累积，首次安装后当前周期只有安装之后的数据；需要完整历史请配置 Console Cookie。升级后需完全退出并重开 DSH 桌面端。
 
 > [!NOTE]
@@ -82,17 +88,22 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 ### 安装
 
 ```sh
-# 方式一：从本地源码安装（开发）
+# 方式一：从 npm 安装（推荐，支持插件页一键更新）
+dsh plugin --profile web add @ycet/dsh-account-usage@0.4.1
+
+# 方式二：从本地源码安装（开发）
 dsh plugin --profile web add <absolute-path-to-plugin>
 
-# 方式二：从 GitHub 安装（锁定版本 tag，需本机有 git）
-dsh plugin --profile web add "github:Ycet/dsh-account-usage#v0.3.0"
+# 方式三：从 GitHub 安装（锁定版本 tag，需本机有 git，无需 npm 账号）
+dsh plugin --profile web add "github:Ycet/dsh-account-usage#v0.4.1"
 
-# 方式三：从 Release 资产安装（tarball，无需 git、无需 npm 账号）
-dsh plugin --profile web add "https://github.com/Ycet/dsh-account-usage/releases/download/v0.3.0/dsh-account-usage-0.3.0.tgz"
+# 方式四：从 Release 资产安装（tarball，无需 git、无需 npm 账号）
+dsh plugin --profile web add "https://github.com/Ycet/dsh-account-usage/releases/download/v0.4.1/dsh-account-usage-0.4.1.tgz"
 ```
 
-包声明了 `dsh.bundle` 补丁层，`dsh plugin` 会自动把加载项合入 profile 的 bundle 层，无需手动编辑 `cordis.patch.yml`。以上方式均无需 npm 账号；桌面端把 `--profile web` 换成 `--profile desktop`（使用桌面端自带 CLI）。
+包声明了 `dsh.bundle` 补丁层，`dsh plugin` 会自动把加载项合入 profile 的 bundle 层，无需手动编辑 `cordis.patch.yml`。方式二～四均无需 npm 账号；桌面端把 `--profile web` 换成 `--profile desktop`（使用桌面端自带 CLI）。
+
+> 从 npm 安装的副本可在「插件 → 已安装」里直接升级；从 GitHub tag 或 Release 压缩包安装的副本不支持页内更新，需要先卸载再重新安装。
 
 <details>
 <summary>手动合并补丁层（可选）</summary>
@@ -101,7 +112,7 @@ dsh plugin --profile web add "https://github.com/Ycet/dsh-account-usage/releases
 # ~/.dsh/profiles/web/cordis.patch.yml
 - insert:
     - id: account-usage
-      name: dsh-account-usage
+      name: '@ycet/dsh-account-usage'
 ```
 </details>
 

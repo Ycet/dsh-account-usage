@@ -1,4 +1,4 @@
-// Client half of the dsh-account-usage plugin.
+// Client half of the @ycet/dsh-account-usage plugin.
 // Hand-written browser bundle in the lazy-CJS format the client module loader
 // expects: it only REGISTERS the factory; the body runs at materialization.
 // Its content is normally embedded below the native cards of the official
@@ -7,7 +7,7 @@
 // arrives from same-origin routes registered by the host half; secrets never
 // enter the browser.
 window.__ModuleLoader__.load({
-  id: "dsh-account-usage",
+  id: "@ycet/dsh-account-usage",
   factory: (require) => {
     var module = { exports: {} };
     var exports = module.exports;

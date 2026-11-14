@@ -7,8 +7,11 @@
 
 A DeepSeek Harness (DSH) web-GUI plugin: adds an "Account" page to the settings panel for a one-stop view of DeepSeek platform balance/usage, OpenCode Go quotas, and the current subscription period's quota-consumption trend with an end-of-period forecast.
 
+> npm package: `@ycet/dsh-account-usage`. The unscoped [`dsh-account-usage`](https://www.npmjs.com/package/dsh-account-usage) on npm is an unrelated project by another author — do not mix the two.
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.4.0-blue.svg?style=for-the-badge)](package.json)
+[![Version](https://img.shields.io/badge/version-0.4.1-blue.svg?style=for-the-badge)](package.json)
+[![npm](https://img.shields.io/npm/v/%40ycet%2Fdsh-account-usage?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@ycet/dsh-account-usage)
 [![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.6%2B-purple.svg?style=for-the-badge)](https://github.com/deepseek-ai/deepseek-harness)
 
 </div>
@@ -62,6 +65,9 @@ A DeepSeek Harness (DSH) web-GUI plugin: adds an "Account" page to the settings 
 | **Fallback standalone page** | When DSH is signed out or the official account page does not exist, the plugin registers its own "Account" section so the token and usage stay reachable |
 
 > [!NOTE]
+> `0.4.1` publishes to npm under the scoped name **`@ycet/dsh-account-usage`** (the unscoped `dsh-account-usage` is taken by another project). The `cordis.patch.yml` loader entry name and the client module id follow the package name, and the manifest now carries `repository` / `homepage` / `bugs` / `publishConfig`. If you installed an older copy under the previous name, run `dsh plugin --profile web remove dsh-account-usage` first, then install with the command above and fully quit and reopen DSH.
+
+> [!NOTE]
 > `0.4.0` adds a "Usage trend (current period)" card below the three quota cards in the opencode go tab: the host samples the official quota percentage every 15 minutes and persists it (`~/.dsh/storages/dsh-account-usage/opencode-samples.v1.json`, kept for 180 days), which drives the per-day cumulative line and a linear forecast (`used% ÷ elapsed days × remaining days`). An optional OpenCode Console cookie unlocks the official daily report (daily requests, per-model shares, 0.1% precision); the chart works without it. **Note**: local sampling only accumulates from the day the plugin starts recording, so right after installing the current period only holds post-install data — configure the Console cookie for the full period. Fully quit and reopen DSH desktop after upgrading.
 
 > [!NOTE]
@@ -80,17 +86,22 @@ A DeepSeek Harness (DSH) web-GUI plugin: adds an "Account" page to the settings 
 ### Install
 
 ```sh
-# Option 1: install from a local source directory (development)
+# Option 1: install from npm (recommended; can be updated from the plugin page)
+dsh plugin --profile web add @ycet/dsh-account-usage@0.4.1
+
+# Option 2: install from a local source directory (development)
 dsh plugin --profile web add <absolute-path-to-plugin>
 
-# Option 2: install from GitHub (pinned to a release tag; requires git)
-dsh plugin --profile web add "github:Ycet/dsh-account-usage#v0.3.0"
+# Option 3: install from GitHub (pinned to a release tag; requires git, no npm account)
+dsh plugin --profile web add "github:Ycet/dsh-account-usage#v0.4.1"
 
-# Option 3: install from a Release asset (tarball; no git, no npm account)
-dsh plugin --profile web add "https://github.com/Ycet/dsh-account-usage/releases/download/v0.3.0/dsh-account-usage-0.3.0.tgz"
+# Option 4: install from a Release asset (tarball; no git, no npm account)
+dsh plugin --profile web add "https://github.com/Ycet/dsh-account-usage/releases/download/v0.4.1/dsh-account-usage-0.4.1.tgz"
 ```
 
-The package declares a `dsh.bundle` patch layer; `dsh plugin` merges the loader entry into the profile's bundle layer automatically — no manual editing of `cordis.patch.yml` required. None of these options needs an npm account; for the desktop app replace `--profile web` with `--profile desktop` (using the desktop-bundled CLI).
+The package declares a `dsh.bundle` patch layer; `dsh plugin` merges the loader entry into the profile's bundle layer automatically — no manual editing of `cordis.patch.yml` required. Options 2–4 need no npm account; for the desktop app replace `--profile web` with `--profile desktop` (using the desktop-bundled CLI).
+
+> Copies installed from npm can be updated from "Plugins → Installed"; copies installed from a GitHub tag or a Release tarball cannot be updated in place — uninstall and reinstall instead.
 
 <details>
 <summary>Manual patch-layer merge (optional)</summary>
@@ -99,7 +110,7 @@ The package declares a `dsh.bundle` patch layer; `dsh plugin` merges the loader 
 # ~/.dsh/profiles/web/cordis.patch.yml
 - insert:
     - id: account-usage
-      name: dsh-account-usage
+      name: '@ycet/dsh-account-usage'
 ```
 </details>
 
