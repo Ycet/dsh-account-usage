@@ -3,3 +3,6 @@ node_modules/
 package-lock.json
 *.tgz
 *.log
+
+# 本地 npm 缓存（沙箱内发布时用）
+/.npm-tmp-cache/

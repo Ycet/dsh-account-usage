@@ -1,4 +1,4 @@
-// Client half of the dsh-account-usage plugin.
+// Client half of the @ycet/dsh-account-usage plugin.
 // Hand-written browser bundle in the lazy-CJS format the client module loader
 // expects: it only REGISTERS the factory; the body runs at materialization.
 // Its content is normally embedded below the native cards of the official
@@ -7,7 +7,7 @@
 // arrives from same-origin routes registered by the host half; secrets never
 // enter the browser.
 window.__ModuleLoader__.load({
-  id: "dsh-account-usage",
+  id: "@ycet/dsh-account-usage",
   factory: (require) => {
     var module = { exports: {} };
     var exports = module.exports;
@@ -144,7 +144,40 @@ window.__ModuleLoader__.load({
       httpError: "接口返回 HTTP {status}",
       menuBalance: "余额：",
       menuBalanceTitle: "DeepSeek 平台余额",
-      menuOpenAccount: "打开账户设置"
+      menuOpenAccount: "打开账户设置",
+      trendTitle: "用量趋势（当前订阅周期）",
+      trendEmpty: "暂无趋势数据",
+      trendCurrent: "当前已用",
+      trendPace: "日均消耗",
+      trendPaceUnit: "%/天",
+      trendProjected: "预计期末",
+      trendInsufficient: "周期刚开始",
+      trendUsed: "已用",
+      trendDayDelta: "当日",
+      trendRequests: "请求数",
+      trendNotRecorded: "未记录",
+      trendLegendUsage: "已用",
+      trendLegendForecast: "预测",
+      trendLegendLimit: "月度上限",
+      trendSourceSampling: "来源：本地采样",
+      trendSourceConsole: "来源：OpenCode 官方日榜",
+      trendSince: "自",
+      cookieConfigure: "配置 Console Cookie",
+      cookieUpdate: "更新 Console Cookie",
+      cookieHint: "控制台日榜只认浏览器登录态：在 opencode.ai 控制台按 F12 → Network → 刷新页面 → 点任意一条 console/api 请求 → Headers 里的 Request Headers 找到 cookie 那一行，复制冒号后的整段值贴到下面（连 cookie: 前缀一起粘也认）。它只保存在本机 DSH 凭据里、由宿主读取，不会出现在浏览器界面、日志或任何响应中；会话过期后需要重新粘贴。",
+      cookiePlaceholder: "粘贴 cookie 的值（整行 cookie: ... 也认）",
+      cookieSave: "保存",
+      cookieClear: "清除",
+      cookieSaved: "已保存，正在重新拉取官方日榜",
+      cookieSaveFailed: "保存失败，请重试",
+      cookieConfigured: "已配置 Console Cookie，日榜数据来自官方控制台",
+      cookieMissing: "未配置 Console Cookie，当前使用本地采样",
+      consoleExpired: "Console Cookie 已失效或被拒绝，已回退到本地采样数据",
+      consoleUnavailable: "Console 日榜暂不可用，已回退到本地采样数据",
+      consoleCookieLooksShort: "这条 Cookie 只有 {pairs} 段，很可能不含 HttpOnly 的会话 Cookie：请从 Network → Request Headers 复制整行，而不是 document.cookie",
+      modelsTitle: "本周期模型用量",
+      modelsTokens: "Tokens",
+      modelsSource: "数据来自 OpenCode 官方日榜 CSV（本周期合计）"
     };
 
     const en = {
@@ -240,7 +273,40 @@ window.__ModuleLoader__.load({
       httpError: "Endpoint returned HTTP {status}",
       menuBalance: "Balance: ",
       menuBalanceTitle: "DeepSeek platform balance",
-      menuOpenAccount: "Open account settings"
+      menuOpenAccount: "Open account settings",
+      trendTitle: "Usage trend (current period)",
+      trendEmpty: "No trend data yet",
+      trendCurrent: "Used",
+      trendPace: "Daily pace",
+      trendPaceUnit: "%/day",
+      trendProjected: "Projected at reset",
+      trendInsufficient: "Period just started",
+      trendUsed: "Used",
+      trendDayDelta: "That day",
+      trendRequests: "Requests",
+      trendNotRecorded: "not recorded",
+      trendLegendUsage: "Usage",
+      trendLegendForecast: "Forecast",
+      trendLegendLimit: "Monthly limit",
+      trendSourceSampling: "Source: local sampling",
+      trendSourceConsole: "Source: OpenCode Console daily report",
+      trendSince: "recording since",
+      cookieConfigure: "Configure Console cookie",
+      cookieUpdate: "Update Console cookie",
+      cookieHint: "The Console report only accepts a browser session. On the opencode.ai console open DevTools → Network, pick any console request, and paste the cookie request-header value below. It is stored in this machine's DSH credentials and read only by the host — it never reaches the browser UI, logs, or any response. Paste a fresh value after the session expires.",
+      cookiePlaceholder: "Paste the cookie value (a whole cookie: ... line also works)",
+      cookieSave: "Save",
+      cookieClear: "Clear",
+      cookieSaved: "Saved, refetching the Console report",
+      cookieSaveFailed: "Save failed, try again",
+      cookieConfigured: "Console cookie configured; the report comes from the official console",
+      cookieMissing: "No Console cookie configured; using local sampling",
+      consoleExpired: "The Console cookie expired or was rejected; falling back to local sampling",
+      consoleUnavailable: "The Console report is unavailable right now; falling back to local sampling",
+      consoleCookieLooksShort: "This cookie has only {pairs} pair(s) and probably lacks the HttpOnly session cookie: copy the whole request-header line from Network, not document.cookie",
+      modelsTitle: "Models this period",
+      modelsTokens: "Tokens",
+      modelsSource: "From the official OpenCode Console daily CSV (current period totals)"
     };
 
     const styles = {
@@ -295,6 +361,20 @@ window.__ModuleLoader__.load({
       chipActive: { border: "1px solid var(--dsw-alias-state-business-primary)", color: "var(--dsw-alias-state-business-primary)", font: "inherit", cursor: "pointer", background: "transparent", borderRadius: 999, padding: "4px 12px", fontSize: 12 },
       legendRow: { display: "flex", flexWrap: "wrap", gap: 14, alignItems: "center" },
       swatch: { display: "inline-block", width: 10, height: 10, borderRadius: 3, marginRight: 5, verticalAlign: -1 },
+      legendItem: { display: "inline-flex", alignItems: "center", color: "var(--dsw-alias-label-tertiary)", fontSize: 12 },
+      trendSummary: { display: "flex", flexWrap: "wrap", gap: 24 },
+      trendSummaryItem: { display: "flex", flexDirection: "column", gap: 2 },
+      trendSummaryValue: { margin: 0, fontSize: 20, fontWeight: 600, fontVariantNumeric: "tabular-nums", color: "var(--dsw-alias-label-primary)" },
+      cookieBox: { border: "1px solid var(--dsw-alias-border-l2)", background: "var(--dsw-alias-bg-layer-3)", borderRadius: 10, padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8 },
+      modelList: { display: "flex", flexDirection: "column", gap: 10 },
+      modelRow: { display: "flex", flexDirection: "column", gap: 4 },
+      modelRowHead: { display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 },
+      modelName: { color: "var(--dsw-alias-label-primary)", fontSize: 13, fontWeight: 600 },
+      modelShare: { color: "var(--dsw-alias-label-secondary)", fontSize: 13, fontVariantNumeric: "tabular-nums" },
+      modelBarTrack: { height: 6, borderRadius: 3, background: "var(--dsw-alias-bg-layer-1)", overflow: "hidden" },
+      modelBarFill: { height: "100%", borderRadius: 3, background: "var(--dsw-alias-state-success-primary)", opacity: 0.75 },
+      modelTotals: { display: "flex", flexWrap: "wrap", gap: 24, marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--dsw-alias-border-l2)" },
+      modelTotalItem: { display: "flex", flexDirection: "column", gap: 2 },
       tabsRow: { display: "flex", gap: 4, borderBottom: "1px solid var(--dsw-alias-border-l2)", marginBottom: 4 },
       tab: { border: "none", background: "transparent", color: "var(--dsw-alias-label-secondary)", font: "inherit", fontSize: 14, padding: "8px 14px", cursor: "pointer", borderBottom: "2px solid transparent", marginBottom: -1 },
       tabActive: { border: "none", background: "transparent", color: "var(--dsw-alias-label-primary)", font: "inherit", fontSize: 14, fontWeight: 600, padding: "8px 14px", cursor: "pointer", borderBottom: "2px solid var(--dsw-alias-state-business-primary)", marginBottom: -1 }
@@ -1600,7 +1680,651 @@ window.__ModuleLoader__.load({
       );
     }
 
-    function OpencodePanel({ t }) {
+    // ---- OpenCode 用量趋势（0.4.0 新增） -------------------------------------
+    // 当前订阅周期的「按天已用额度」曲线 + 线性外推预测。数据来自宿主路由
+    // /api/account-usage/opencode-history：宿主优先用官方 Console 日榜，
+    // 未配置 Cookie 时退回本地 15 分钟采样（历史从插件开始记录那天起算）。
+
+    /** Console 会话 Cookie 的凭据引用名（与宿主侧常量一致）。 */
+    const CONSOLE_COOKIE_REF = "OPENCODE_CONSOLE_COOKIE";
+
+    /** 趋势图坐标系；宽高与 ChartTooltip 的换算口径保持一致。 */
+    const TREND_W = 640;
+    const TREND_H = 200;
+    const TREND_PAD_L = 34;
+    const TREND_PAD_R = 46;
+    const TREND_PAD_T = 12;
+    const TREND_PAD_B = 20;
+    const TREND_PATTERN_ID = "dsh-account-usage-trend-hatch";
+    /** 趋势数据刷新周期（额度卡仍按 60 秒刷新，历史序列没必要那么勤）。 */
+    const TREND_REFRESH_MS = 10 * 60 * 1000;
+
+    /** `YYYY-MM-DD` → 本地 Date（避免 new Date("2026-11-02") 被当成 UTC 零点）。 */
+    function parseLocalDateKey(key) {
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(typeof key === "string" ? key : "");
+      if (m === null) return null;
+      return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    }
+
+    /** 星期缩写（跟随浏览器语言；无法解析时返回空串）。 */
+    function weekdayShort(key) {
+      const date = parseLocalDateKey(key);
+      if (date === null) return "";
+      try {
+        return date.toLocaleDateString(undefined, { weekday: "short" });
+      } catch {
+        return "";
+      }
+    }
+
+    /** 大数字紧凑展示：17,236 / 1.23M / 3.784B。 */
+    function fmtCompactCount(value) {
+      if (value === null || value === undefined || Number.isNaN(Number(value))) return "—";
+      const n = Number(value);
+      const trim = (s) => s.replace(/\.?0+$/, "");
+      if (Math.abs(n) >= 1e9) return `${trim((n / 1e9).toFixed(3))}B`;
+      if (Math.abs(n) >= 1e6) return `${trim((n / 1e6).toFixed(2))}M`;
+      return Math.round(n).toLocaleString();
+    }
+
+    /** 百分比展示：精度 1 时取整，否则保留一位小数。 */
+    function fmtPercent(value, precision) {
+      if (value === null || value === undefined || Number.isNaN(Number(value))) return "—";
+      const n = Number(value);
+      return precision === 1 ? `${Math.round(n)}%` : `${(Math.round(n * 10) / 10).toFixed(1)}%`;
+    }
+
+    /**
+     * 累计已用额度 + 预测折线图（纯 SVG）。
+     * - 历史段：相邻两天都有记录的连续片段各画一条折线（缺口断开，不插值）；
+     * - 预测段：从今天到周期末的虚线 + 斜线填充；
+     * - 悬浮：按天热区，复用 ChartTooltip 的边缘钳制逻辑。
+     */
+    function OpenCodeTrendChart({ data, t }) {
+      const [hovered, setHovered] = React.useState(null);
+      const wrapRef = React.useRef(null);
+      const days = Array.isArray(data.days) ? data.days : [];
+      if (days.length === 0) {
+        return React.createElement("p", { style: styles.hint }, t("trendEmpty"));
+      }
+      const precision = data.precision === 1 ? 1 : 0.1;
+      const gridMax = Math.max(100, Number(data.gridMax) || 100);
+      const innerW = TREND_W - TREND_PAD_L - TREND_PAD_R;
+      const innerH = TREND_H - TREND_PAD_T - TREND_PAD_B;
+      const slot = innerW / days.length;
+      const xOf = (index) => TREND_PAD_L + (index + 0.5) * slot;
+      const yOf = (percent) =>
+        TREND_PAD_T + innerH * (1 - Math.max(0, Math.min(percent, gridMax)) / gridMax);
+      const baseY = yOf(0);
+
+      // 网格线 + 百分比刻度
+      const gridLines = [];
+      for (let p = 0; p <= gridMax; p += 50) {
+        const y = yOf(p);
+        gridLines.push(
+          React.createElement("line", {
+            key: `grid-${p}`,
+            x1: TREND_PAD_L,
+            x2: TREND_W - TREND_PAD_R,
+            y1: y,
+            y2: y,
+            stroke: "var(--dsw-alias-border-l2)",
+            strokeWidth: 1,
+            opacity: 0.6
+          }),
+          React.createElement("text", {
+            key: `grid-label-${p}`,
+            x: TREND_PAD_L - 6,
+            y: y + 3.5,
+            textAnchor: "end",
+            style: { fill: "var(--dsw-alias-label-tertiary)", fontSize: 10 }
+          }, `${p}%`)
+        );
+      }
+
+      // 历史段：按「连续有记录」切段，缺口不连线
+      const segments = [];
+      let current = [];
+      days.forEach((day, index) => {
+        if (day.recorded && day.cumulativePercent !== null && day.cumulativePercent !== undefined) {
+          current.push({ x: xOf(index), y: yOf(day.cumulativePercent), index });
+        } else if (current.length > 0) {
+          segments.push(current);
+          current = [];
+        }
+      });
+      if (current.length > 0) segments.push(current);
+
+      const historyShapes = [];
+      segments.forEach((segment, segIndex) => {
+        const line = segment
+          .map((point, i) => `${i === 0 ? "M" : "L"} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`)
+          .join(" ");
+        if (segment.length > 1) {
+          const first = segment[0];
+          const last = segment[segment.length - 1];
+          const area = `${line} L ${last.x.toFixed(1)} ${baseY.toFixed(1)} L ${first.x.toFixed(1)} ${baseY.toFixed(1)} Z`;
+          historyShapes.push(
+            React.createElement("path", {
+              key: `area-${segIndex}`,
+              d: area,
+              fill: "var(--dsw-alias-state-success-primary)",
+              opacity: 0.12,
+              stroke: "none"
+            })
+          );
+          historyShapes.push(
+            React.createElement("path", {
+              key: `line-${segIndex}`,
+              d: line,
+              fill: "none",
+              stroke: "var(--dsw-alias-state-success-primary)",
+              strokeWidth: 2,
+              strokeLinecap: "round",
+              strokeLinejoin: "round"
+            })
+          );
+        } else {
+          historyShapes.push(
+            React.createElement("circle", {
+              key: `dot-${segIndex}`,
+              cx: segment[0].x,
+              cy: segment[0].y,
+              r: 2.5,
+              fill: "var(--dsw-alias-state-success-primary)"
+            })
+          );
+        }
+      });
+
+      // 预测段：从今天的锚点外推到周期末
+      const todayKey = data.today !== undefined && data.today !== null ? data.today : data.now ? data.now.date : null;
+      const todayIndex = days.findIndex((day) => day.date === todayKey);
+      const forecast = data.forecast || {};
+      const currentPercent =
+        todayIndex >= 0 && days[todayIndex].cumulativePercent !== null
+          ? days[todayIndex].cumulativePercent
+          : forecast.currentPercent;
+      const hasForecast =
+        forecast.sufficient === true &&
+        todayIndex >= 0 &&
+        forecast.projectedEndPercent !== null &&
+        forecast.projectedEndPercent !== undefined &&
+        currentPercent !== null &&
+        currentPercent !== undefined;
+      let forecastShapes = null;
+      if (hasForecast) {
+        const startX = xOf(todayIndex);
+        const startY = yOf(currentPercent);
+        const endX = xOf(days.length - 1);
+        const endY = yOf(forecast.projectedEndPercent);
+        const hatchPath = `M ${startX.toFixed(1)} ${startY.toFixed(1)} L ${endX.toFixed(1)} ${endY.toFixed(1)} L ${endX.toFixed(1)} ${baseY.toFixed(1)} L ${startX.toFixed(1)} ${baseY.toFixed(1)} Z`;
+        forecastShapes = React.createElement("g", null,
+          React.createElement("path", {
+            d: hatchPath,
+            fill: `url(#${TREND_PATTERN_ID})`,
+            stroke: "none"
+          }),
+          React.createElement("line", {
+            x1: startX,
+            y1: startY,
+            x2: endX,
+            y2: endY,
+            stroke: "var(--dsw-alias-state-warn-primary)",
+            strokeWidth: 2,
+            strokeDasharray: "5 4",
+            strokeLinecap: "round"
+          }),
+          React.createElement("circle", {
+            cx: endX,
+            cy: endY,
+            r: 3.5,
+            fill: "var(--dsw-alias-bg-layer-3)",
+            stroke: "var(--dsw-alias-state-warn-primary)",
+            strokeWidth: 2
+          }),
+          React.createElement("text", {
+            x: Math.min(endX + 8, TREND_W - 2),
+            y: endY - 6,
+            textAnchor: "end",
+            style: { fill: "var(--dsw-alias-state-warn-primary)", fontSize: 11, fontWeight: 600 }
+          }, fmtPercent(forecast.projectedEndPercent, precision))
+        );
+      }
+
+      // 今天的锚点
+      let todayMarker = null;
+      if (todayIndex >= 0 && currentPercent !== null && currentPercent !== undefined) {
+        todayMarker = React.createElement("circle", {
+          cx: xOf(todayIndex),
+          cy: yOf(currentPercent),
+          r: 3.5,
+          fill: "var(--dsw-alias-bg-layer-3)",
+          stroke: "var(--dsw-alias-state-success-primary)",
+          strokeWidth: 2
+        });
+      }
+
+      // 横轴刻度：首日 / 三分之一 / 三分之二 / 末日
+      const axisIndexes = days.length <= 2
+        ? [0, days.length - 1]
+        : [0, Math.round((days.length - 1) / 3), Math.round(((days.length - 1) * 2) / 3), days.length - 1];
+      const axisLabels = [...new Set(axisIndexes)].map((index, order, list) =>
+        React.createElement("text", {
+          key: `axis-${index}`,
+          x: index === 0
+            ? TREND_PAD_L
+            : index === days.length - 1
+              ? TREND_W - TREND_PAD_R
+              : xOf(index),
+          y: TREND_H - 6,
+          textAnchor: index === 0 ? "start" : index === days.length - 1 ? "end" : "middle",
+          style: { fill: "var(--dsw-alias-label-tertiary)", fontSize: 10 }
+        }, index === 0 || index === days.length - 1 ? days[index].date : days[index].date.slice(5))
+      );
+
+      // 悬浮热区（每天一条竖带）
+      const hitAreas = days.map((day, index) =>
+        React.createElement("rect", {
+          key: `hit-${day.date}`,
+          x: TREND_PAD_L + index * slot,
+          y: TREND_PAD_T,
+          width: slot,
+          height: innerH,
+          fill: "transparent",
+          pointerEvents: "all",
+          onMouseEnter: () => setHovered(index),
+          onMouseLeave: () => setHovered(null)
+        })
+      );
+
+      let tooltip = null;
+      if (hovered !== null && days[hovered] !== undefined) {
+        const day = days[hovered];
+        const weekday = weekdayShort(day.date);
+        const rows = [
+          React.createElement("p", { key: "used", style: styles.tooltipRow },
+            `${t("trendUsed")}: ${day.recorded ? fmtPercent(day.cumulativePercent, precision) : t("trendNotRecorded")}`
+          ),
+          React.createElement("p", { key: "delta", style: styles.tooltipRow },
+            `${t("trendDayDelta")}: ${day.deltaPercent === null || day.deltaPercent === undefined
+              ? "—"
+              : `${day.deltaPercent >= 0 ? "+" : ""}${fmtPercent(day.deltaPercent, precision)}`}`
+          ),
+          React.createElement("p", { key: "requests", style: styles.tooltipRow },
+            `${t("trendRequests")}: ${day.requests === null || day.requests === undefined ? "—" : fmtCompactCount(day.requests)}`
+          )
+        ];
+        tooltip = React.createElement(ChartTooltip, {
+          anchorX: xOf(hovered),
+          count: days.length,
+          wrapRef,
+          chartWidth: TREND_W,
+          chartHeight: TREND_H
+        },
+          React.createElement("p", { style: styles.tooltipTitle }, weekday === "" ? day.date : `${day.date} · ${weekday}`),
+          rows
+        );
+      }
+
+      return React.createElement("div", { ref: wrapRef, style: styles.chartWrap },
+        React.createElement("svg", {
+          width: "100%",
+          viewBox: `0 0 ${TREND_W} ${TREND_H}`,
+          style: { display: "block" },
+          onMouseLeave: () => setHovered(null)
+        },
+          React.createElement("defs", null,
+            React.createElement("pattern", {
+              id: TREND_PATTERN_ID,
+              width: 6,
+              height: 6,
+              patternUnits: "userSpaceOnUse",
+              patternTransform: "rotate(45)"
+            },
+              React.createElement("line", {
+                x1: 0,
+                y1: 0,
+                x2: 0,
+                y2: 6,
+                stroke: "var(--dsw-alias-state-warn-primary)",
+                strokeWidth: 1.5,
+                opacity: 0.35
+              })
+            )
+          ),
+          gridLines,
+          // 100% 月度上限参考线
+          React.createElement("line", {
+            x1: TREND_PAD_L,
+            x2: TREND_W - TREND_PAD_R,
+            y1: yOf(Math.min(100, gridMax)),
+            y2: yOf(Math.min(100, gridMax)),
+            stroke: "var(--dsw-alias-label-tertiary)",
+            strokeWidth: 1,
+            strokeDasharray: "4 4",
+            opacity: 0.7
+          }),
+          historyShapes,
+          forecastShapes,
+          todayMarker,
+          hovered !== null ? React.createElement("line", {
+            x1: xOf(hovered),
+            x2: xOf(hovered),
+            y1: TREND_PAD_T,
+            y2: baseY,
+            stroke: "var(--dsw-alias-label-tertiary)",
+            strokeWidth: 1,
+            opacity: 0.35
+          }) : null,
+          axisLabels,
+          hitAreas
+        ),
+        tooltip
+      );
+    }
+
+    /** Console Cookie 配置（无 Cookie 时展开在趋势卡内；保存到 DSH 凭据）。 */
+    function ConsoleCookieEditor({ credApi, t, onSaved }) {
+      const [state, setState] = React.useState({ kind: "loading" });
+      const [value, setValue] = React.useState("");
+      const [busy, setBusy] = React.useState(false);
+      const [message, setMessage] = React.useState(null);
+
+      const load = React.useCallback(() => {
+        if (!credApi) {
+          setState({ kind: "unavailable" });
+          return;
+        }
+        Promise.resolve()
+          .then(() => credApi.describe({ refs: [CONSOLE_COOKIE_REF] }))
+          .then((r) => {
+            const result = unwrapRpc(r);
+            if (result === null || result.ok !== true || !result.value || !result.value.credentials) {
+              setState({ kind: "unavailable" });
+              return;
+            }
+            const view = result.value.credentials[CONSOLE_COOKIE_REF];
+            setState({ kind: "done", configured: !!(view && view.configured) });
+          })
+          .catch(() => setState({ kind: "unavailable" }));
+      }, [credApi]);
+
+      React.useEffect(() => {
+        load();
+      }, [load]);
+
+      const save = React.useCallback(() => {
+        const v = value.trim();
+        if (v === "" || busy || !credApi) return;
+        setBusy(true);
+        setMessage(null);
+        credApi.set({ ref: CONSOLE_COOKIE_REF, value: v })
+          .then((r) => {
+            setBusy(false);
+            const result = unwrapRpc(r);
+            if (result === null || result.ok !== true) {
+              setMessage(t("cookieSaveFailed"));
+              return;
+            }
+            setValue("");
+            setMessage(t("cookieSaved"));
+            load();
+            if (onSaved) onSaved();
+          })
+          .catch(() => {
+            setBusy(false);
+            setMessage(t("cookieSaveFailed"));
+          });
+      }, [value, busy, credApi, load, onSaved, t]);
+
+      const clear = React.useCallback(() => {
+        if (busy || !credApi) return;
+        setBusy(true);
+        setMessage(null);
+        credApi.unset({ ref: CONSOLE_COOKIE_REF })
+          .then((r) => {
+            setBusy(false);
+            const result = unwrapRpc(r);
+            if (result === null || result.ok !== true) {
+              setMessage(t("cookieSaveFailed"));
+              return;
+            }
+            load();
+            if (onSaved) onSaved();
+          })
+          .catch(() => {
+            setBusy(false);
+            setMessage(t("cookieSaveFailed"));
+          });
+      }, [busy, credApi, load, onSaved, t]);
+
+      let status = null;
+      if (state.kind === "done") {
+        status = React.createElement("p", { style: state.configured ? styles.ok : styles.hint },
+          state.configured ? t("cookieConfigured") : t("cookieMissing"));
+      } else if (state.kind === "unavailable") {
+        status = React.createElement("p", { style: styles.error }, t("tokenUnavailable"));
+      }
+
+      return React.createElement("div", { style: styles.cookieBox },
+        React.createElement("p", { style: styles.hint }, t("cookieHint")),
+        status,
+        React.createElement("div", { style: styles.tokenRow },
+          React.createElement("input", {
+            type: "password",
+            value,
+            placeholder: t("cookiePlaceholder"),
+            onChange: (e) => setValue(e.target.value),
+            style: styles.input,
+            "aria-label": t("cookiePlaceholder")
+          }),
+          React.createElement("button", { style: styles.button, onClick: save, disabled: busy }, t("cookieSave")),
+          React.createElement("button", { style: styles.button, onClick: clear, disabled: busy }, t("cookieClear"))
+        ),
+        message !== null ? React.createElement("p", { style: styles.ok }, message) : null
+      );
+    }
+
+    /** 本周期模型用量卡（仅官方日榜可用时渲染）。 */
+    function OpenCodeModelsCard({ data, t }) {
+      const models = Array.isArray(data.models) ? data.models : [];
+      if (models.length === 0) return null;
+      const rows = models.map((model, index) => {
+        const sharePercent = Math.round((model.share ?? 0) * 1000) / 10;
+        return React.createElement("div", { key: `${model.provider ?? ""}/${model.model}/${index}`, style: styles.modelRow },
+          React.createElement("div", { style: styles.modelRowHead },
+            React.createElement("span", { style: styles.modelName }, model.model),
+            React.createElement("span", { style: styles.modelShare }, `${sharePercent.toFixed(1)}%`)
+          ),
+          React.createElement("div", { style: styles.modelBarTrack },
+            React.createElement("div", {
+              style: { ...styles.modelBarFill, width: `${Math.max(1, Math.min(100, sharePercent))}%` }
+            })
+          )
+        );
+      });
+      const totals = data.totals || {};
+      return React.createElement(ModuleCard, { title: t("modelsTitle") },
+        React.createElement("div", { style: styles.modelList }, rows),
+        React.createElement("div", { style: styles.modelTotals },
+          React.createElement("div", { style: styles.modelTotalItem },
+            React.createElement("p", { style: styles.statLabel }, t("trendRequests")),
+            React.createElement("p", { style: styles.statValue }, fmtCompactCount(totals.requests))
+          ),
+          React.createElement("div", { style: styles.modelTotalItem },
+            React.createElement("p", { style: styles.statLabel }, t("modelsTokens")),
+            React.createElement("p", { style: styles.statValue }, fmtCompactCount(totals.tokens))
+          )
+        ),
+        React.createElement("p", { style: styles.hint }, t("modelsSource"))
+      );
+    }
+
+    /**
+     * 用量趋势卡：拉 /api/account-usage/opencode-history 并渲染。
+     * 挂载时取一次，之后每 10 分钟刷新；点刷新按钮走 ?refresh=1 绕过宿主缓存。
+     */
+    function OpenCodeTrendCard({ t, credApi }) {
+      const [state, setState] = React.useState({ kind: "loading" });
+      const [showCookie, setShowCookie] = React.useState(false);
+
+      const load = React.useCallback((force) => {
+        const path = force ? "/api/account-usage/opencode-history?refresh=1" : "/api/account-usage/opencode-history";
+        fetchJson(path)
+          .then((body) => setState({ kind: "done", value: body }))
+          .catch((e) => setState({ kind: "failure", message: String((e && e.message) || e) }));
+      }, []);
+
+      React.useEffect(() => {
+        load(false);
+      }, [load]);
+
+      React.useEffect(() => {
+        const id = window.setInterval(() => load(false), TREND_REFRESH_MS);
+        return () => window.clearInterval(id);
+      }, [load]);
+
+      const refresh = React.useCallback(() => load(true), [load]);
+      const retry = React.useCallback(() => load(false), [load]);
+
+      if (state.kind === "loading") {
+        return React.createElement(ModuleCard, { title: t("trendTitle") },
+          React.createElement("p", { style: styles.hint }, t("loading"))
+        );
+      }
+      if (state.kind === "failure") {
+        return React.createElement(ModuleCard, { title: t("trendTitle") },
+          React.createElement("p", { style: styles.error }, state.message),
+          React.createElement("div", { style: styles.buttonsRow },
+            React.createElement(RefreshButton, { onClick: retry, t })
+          )
+        );
+      }
+      if (state.value.ok !== true) {
+        return React.createElement(ModuleCard, { title: t("trendTitle") },
+          React.createElement("p", { style: styles.error }, errorText(state.value, t)),
+          React.createElement("div", { style: styles.buttonsRow },
+            React.createElement(RefreshButton, { onClick: retry, t })
+          )
+        );
+      }
+
+      const value = state.value;
+      const days = Array.isArray(value.days) ? value.days : [];
+      const forecast = value.forecast || {};
+      const consoleInfo = value.console || {};
+      const precision = value.precision === 1 ? 1 : 0.1;
+      const isConsole = value.source === "console";
+
+      // 顶部摘要：当前已用 · 日均 · 期末预测
+      const summary = [];
+      summary.push(
+        React.createElement("div", { key: "current", style: styles.trendSummaryItem },
+          React.createElement("p", { style: styles.statLabel }, t("trendCurrent")),
+          React.createElement("p", { style: styles.trendSummaryValue }, fmtPercent(value.now && value.now.currentPercent, precision))
+        )
+      );
+      if (forecast.sufficient) {
+        summary.push(
+          React.createElement("div", { key: "pace", style: styles.trendSummaryItem },
+            React.createElement("p", { style: styles.statLabel }, t("trendPace")),
+            React.createElement("p", { style: styles.trendSummaryValue },
+              `${(Math.round((forecast.pacePercentPerDay ?? 0) * 10) / 10).toFixed(1)}${t("trendPaceUnit")}`)
+          ),
+          React.createElement("div", { key: "projected", style: styles.trendSummaryItem },
+            React.createElement("p", { style: styles.statLabel }, t("trendProjected")),
+            React.createElement("p", {
+              style: {
+                ...styles.trendSummaryValue,
+                color: forecast.projectedEndPercent > 100
+                  ? "var(--dsw-alias-state-warn-primary)"
+                  : "var(--dsw-alias-label-primary)"
+              }
+            }, `${(Math.round((forecast.projectedEndPercent ?? 0) * 10) / 10).toFixed(1)}%`)
+          )
+        );
+      } else {
+        summary.push(
+          React.createElement("div", { key: "insufficient", style: styles.trendSummaryItem },
+            React.createElement("p", { style: styles.statLabel }, t("trendProjected")),
+            React.createElement("p", { style: styles.trendSummaryValue }, t("trendInsufficient"))
+          )
+        );
+      }
+
+      // 数据来源行 + 降级提示
+      let sourceText = isConsole ? t("trendSourceConsole") : t("trendSourceSampling");
+      if (!isConsole && value.sampledSince) sourceText = `${sourceText} · ${t("trendSince")} ${value.sampledSince}`;
+      const consoleStatus = consoleInfo.status;
+      const degraded = consoleStatus === "expired" || consoleStatus === "unavailable";
+      // 把上游状态码带出来，用户（和排查者）能一眼区分「Cookie 错」与「接口结构变」
+      const diagnostics = consoleInfo.diagnostics || {};
+      const httpStatus = [
+        diagnostics.orgsStatus,
+        diagnostics.statusStatus,
+        diagnostics.activityStatus,
+        diagnostics.exportStatus
+      ].find((code) => typeof code === "number" && code !== 200 && code !== 0);
+      const cookiePairs = typeof diagnostics.cookiePairs === "number" ? diagnostics.cookiePairs : null;
+      const shortCookie = degraded && cookiePairs !== null && cookiePairs <= 3 && consoleStatus !== "expired";
+      let degradedText = consoleStatus === "expired"
+        ? t("consoleExpired")
+        : `${t("consoleUnavailable")}${httpStatus === undefined ? "" : ` · HTTP ${httpStatus}`}`;
+      if (shortCookie) {
+        degradedText = `${degradedText} — ${t("consoleCookieLooksShort").replace("{pairs}", String(cookiePairs))}`;
+      }
+      const cookieButtonLabel = consoleInfo.configured ? t("cookieUpdate") : t("cookieConfigure");
+
+      return React.createElement(React.Fragment, null,
+        React.createElement(ModuleCard, { title: t("trendTitle") },
+          React.createElement("div", { style: styles.trendSummary }, summary),
+          React.createElement(OpenCodeTrendChart, {
+            data: {
+              days,
+              forecast,
+              gridMax: value.grid ? value.grid.max : 100,
+              precision,
+              today: value.now ? value.now.date : null
+            },
+            t
+          }),
+          React.createElement("div", { style: styles.legendRow },
+            React.createElement("span", { style: styles.legendItem },
+              React.createElement("i", { style: { ...styles.swatch, background: "var(--dsw-alias-state-success-primary)" } }),
+              t("trendLegendUsage")
+            ),
+            React.createElement("span", { style: styles.legendItem },
+              React.createElement("i", { style: { ...styles.swatch, background: "var(--dsw-alias-state-warn-primary)" } }),
+              t("trendLegendForecast")
+            ),
+            React.createElement("span", { style: styles.legendItem },
+              React.createElement("i", { style: { ...styles.swatch, background: "var(--dsw-alias-label-tertiary)" } }),
+              t("trendLegendLimit")
+            )
+          ),
+          React.createElement("div", { style: styles.buttonsRow },
+            React.createElement("button", { style: styles.button, onClick: () => setShowCookie((v) => !v) }, cookieButtonLabel),
+            React.createElement(RefreshButton, { onClick: refresh, t })
+          ),
+          React.createElement("p", { style: styles.hint }, sourceText),
+          degraded
+            ? React.createElement("p", { style: styles.error }, degradedText)
+            : null,
+          showCookie ? React.createElement(ConsoleCookieEditor, {
+            credApi,
+            t,
+            onSaved: () => {
+              setShowCookie(false);
+              load(true);
+            }
+          }) : null
+        ),
+        React.createElement(OpenCodeModelsCard, { data: value, t })
+      );
+    }
+
+    function OpencodePanel({ t, credApi }) {
       const [state, setState] = React.useState({ kind: "loading" });
 
       const load = React.useCallback(() => {
@@ -1693,7 +2417,9 @@ window.__ModuleLoader__.load({
           windowData: state.value.usage?.monthly,
           countdown: fmtCountdown(state.value.usage?.monthly?.resetsAt, "monthly", t),
           t
-        })
+        }),
+        // 三张额度卡下方：当前订阅周期的按天趋势 + 预测（数据来自宿主侧采样/官方日榜）
+        React.createElement(OpenCodeTrendCard, { t, credApi })
       );
     }
 
@@ -1719,7 +2445,7 @@ window.__ModuleLoader__.load({
           React.createElement(DeepSeekPanel, { credApi, t })
         ),
         React.createElement("div", { style: tab === "opencode" ? { display: "block" } : { display: "none" } },
-          React.createElement(OpencodePanel, { t })
+          React.createElement(OpencodePanel, { credApi, t })
         )
       );
     }
@@ -2407,6 +3133,16 @@ window.__ModuleLoader__.load({
     exports.fmtCountdown = fmtCountdown;
     exports.balanceTextOf = balanceTextOf;
     exports.toolLabelOf = toolLabelOf;
+    // 用量趋势相关纯函数（供单测锁定格式与坐标系换算）
+    exports.fmtCompactCount = fmtCompactCount;
+    exports.fmtPercent = fmtPercent;
+    exports.parseLocalDateKey = parseLocalDateKey;
+    exports.OpenCodeTrendChart = OpenCodeTrendChart;
+    exports.OpenCodeModelsCard = OpenCodeModelsCard;
+    exports.OpenCodeTrendCard = OpenCodeTrendCard;
+    exports.ConsoleCookieEditor = ConsoleCookieEditor;
     return module.exports;
   }
 });
+
+// client reload probe 1794632730
