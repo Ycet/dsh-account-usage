@@ -5,10 +5,10 @@
 
 <div align="center">
 
-A DeepSeek Harness (DSH) web-GUI plugin: adds an "Account" page to the settings panel for a one-stop view of DeepSeek platform balance/usage and OpenCode Go quotas.
+A DeepSeek Harness (DSH) web-GUI plugin: adds an "Account" page to the settings panel for a one-stop view of DeepSeek platform balance/usage, OpenCode Go quotas, and the current subscription period's quota-consumption trend with an end-of-period forecast.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.3.0-blue.svg?style=for-the-badge)](package.json)
+[![Version](https://img.shields.io/badge/version-0.4.0-blue.svg?style=for-the-badge)](package.json)
 [![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.6%2B-purple.svg?style=for-the-badge)](https://github.com/deepseek-ai/deepseek-harness)
 
 </div>
@@ -37,7 +37,7 @@ A DeepSeek Harness (DSH) web-GUI plugin: adds an "Account" page to the settings 
 
 ![Screenshot of the DeepSeek platform "Account" page](assets/images/account-usage-U--01.png)
 
-**OpenCode Go tab**: usage progress bars, reset times and reference limits for the 5-hour rolling / weekly / monthly windows.
+**OpenCode Go tab**: usage progress bars, reset times and reference limits for the 5-hour rolling / weekly / monthly windows, plus a "Usage trend (current period)" card below them: a per-day cumulative-used line, a linear end-of-period forecast, and a hover tooltip with that day's cumulative usage, that day's increment and that day's request count.
 
 ![Screenshot of the OpenCode Go quota "Account" page](assets/images/account-usage-UI--02.png)
 
@@ -55,9 +55,14 @@ A DeepSeek Harness (DSH) web-GUI plugin: adds an "Account" page to the settings 
 | **Time-range switching** | Today / last 7 days / last 30 days / last 90 days / this month / last month / custom range |
 | **Per-model table** | deepseek-v4-flash / deepseek-v4-pro / others: request count, input/cached/output tokens, cost |
 | **OpenCode Go quotas** | Usage percentage and next reset time for the 5-hour rolling / weekly / monthly windows |
+| **Quota trend & forecast** | Per-day cumulative quota line for the current subscription period plus a linear forecast to the reset date; hover shows date, cumulative used, that day's increment and that day's requests; gaps are labelled, never interpolated |
+| **Models this period (cookie only)** | With an OpenCode Console cookie: the period's most-used models with shares, total requests and total tokens (from the official daily report) |
 | **Auto refresh** | Polls for fresh data every 60 seconds while the page is mounted |
 | **Bilingual UI** | Full Chinese/English switching |
 | **Fallback standalone page** | When DSH is signed out or the official account page does not exist, the plugin registers its own "Account" section so the token and usage stay reachable |
+
+> [!NOTE]
+> `0.4.0` adds a "Usage trend (current period)" card below the three quota cards in the opencode go tab: the host samples the official quota percentage every 15 minutes and persists it (`~/.dsh/storages/dsh-account-usage/opencode-samples.v1.json`, kept for 180 days), which drives the per-day cumulative line and a linear forecast (`used% ÷ elapsed days × remaining days`). An optional OpenCode Console cookie unlocks the official daily report (daily requests, per-model shares, 0.1% precision); the chart works without it. **Note**: local sampling only accumulates from the day the plugin starts recording, so right after installing the current period only holds post-install data — configure the Console cookie for the full period. Fully quit and reopen DSH desktop after upgrading.
 
 > [!NOTE]
 > `0.3.0` merges the plugin content into the official "Account & balance" page: when that page exists, no separate "Account" nav entry is shown and the content appears below the native cards; embedded mode keeps the full "top-up / granted / cumulative spend" balance display alongside the official balance card (the two may refresh at slightly different times). The account-menu balance entry now opens the official page. The standalone fallback page remains for signed-out users / older DSH. Fully quit and reopen DSH desktop after upgrading.
@@ -139,6 +144,19 @@ The plugin looks it up automatically in this order:
 1. DSH credential `OPENCODE_GO_API_KEY` (`~/.dsh/.credentials.yaml`; usually already present when opencode-go is configured in Settings → Models);
 2. OpenCode's own `~/.local/share/opencode/auth.json` (the `opencode-go` entry with `type: api`).
 
+### OpenCode Console cookie (optional; only affects the official daily report in the usage trend)
+
+The public `GET /zen/go/v1/usage` endpoint returns only the current three windows' percentages and **no history at all**; the Console daily report (daily requests, per-model shares, 0.1%-precision percentages) only accepts a browser session. To let the trend chart cover the whole period and show daily requests, configure the Console cookie once:
+
+1. Sign in at https://opencode.ai/console in a browser;
+2. Open DevTools → Network, reload the page and pick any request to `console/api/...`;
+3. Copy the `cookie` request-header value (e.g. `session=...; other=...`);
+4. In the plugin's "Usage trend" card click "Configure Console cookie", paste it and save (stored as `OPENCODE_CONSOLE_COOKIE` in the DSH credential store).
+
+Security contract: the cookie is read only inside the DSH host process and is used only for three fixed whitelisted URLs (`/console/api/go/status`, `/console/api/activity/go`, `/console/api/v2/usage/export`). It never appears in the browser UI, logs, or any response body; diagnostics expose only status codes and the CSV header row. When the session expires the card says so — paste a fresh value, or use "Clear" at any time.
+
+It is optional: without it the trend falls back to local sampling (labelled "local sampling").
+
 ---
 
 ## 📖 Usage
@@ -150,6 +168,9 @@ The plugin looks it up automatically in this order:
 - The "Web Search & Fetch" module shows daily `tool-search` / `tool-fetch` call counts, call-type cost and per-tool area charts for the selected range; ranges over 31 days are split and merged automatically;
 - The account menu (sidebar account avatar) gets a "Balance: ¥x.xx" entry above "Settings" (top-up + granted balance); clicking it opens Settings on the official "Account & balance" page (or the fallback page when the official one is unavailable);
 - On the OpenCode Go tab, view usage percentage, next reset time and reference limit for each quota window, with one-click "Go to opencode.ai" and "Refresh" buttons;
+- Below the three quota cards, "Usage trend (current period)" uses the current subscription period as its x-axis (derived by stepping one calendar month back from the monthly reset time): the green line is cumulative quota used, the dashed amber line is the forecast to the reset date, and the dashed grey line is the 100% limit; hover any day for date / used / that day / requests;
+- The summary row shows current used, daily pace and the projected end value; when the period just started (under one day) it says "Period just started" and makes no forecast;
+- With a Console cookie configured, a "Models this period" card (model shares, requests, tokens) appears below the trend card;
 - Data auto-refreshes every 60 seconds while the page is mounted; "Open config file" locates your local DSH credentials file.
 
 ---
@@ -160,8 +181,8 @@ A dual-half plugin (host + browser) with data flowing through same-origin HTTP r
 
 | Part | File | Role |
 |------|------|------|
-| Host | `index.js` | Registers three precise `GET /api/account-usage/*` routes (`deepseek-summary` / `deepseek-usage` / `opencode`); resolves keys via `ctx.credentials`, uses a fixed allow-listed upstream URL, 15s timeout + 30s cache; `deepseek-usage` merges model usage with web search/fetch usage |
-| Parsing/aggregation | `lib/aggregate.js` | Pure functions: daily/per-model token, cost and request-count aggregation; time-window splitting and function-usage merge for web search/fetch |
+| Host | `index.js` | Registers four precise `GET /api/account-usage/*` routes (`deepseek-summary` / `deepseek-usage` / `opencode` / `opencode-history`); resolves keys via `ctx.credentials`, uses fixed allow-listed upstream URLs, 15s timeout + 30s cache; `deepseek-usage` merges model usage with web search/fetch usage; a 15-minute background sampler writes the local sample store |
+| Parsing/aggregation | `lib/aggregate.js` | Pure functions: daily/per-model token, cost and request-count aggregation; time-window splitting and function-usage merge for web search/fetch; subscription-period derivation, sample compaction, Console CSV/JSON parsing, daily-series building and linear forecasting |
 | Browser | `client.js` | Hand-written lazy CJS client bundle: when the official account page exists, mounts its content root below the native cards of its `settings.section` `<section>` using `react-dom/client` (detaches DOM but keeps the root on section switches; unmounts when settings closes); otherwise registers the fallback `settings.section` (id `account-usage`). Also renders the SVG charts, 60s refresh, settings nav icon and account-menu balance entry |
 | Composition | `cordis.patch.yml` | `dsh.bundle` patch layer, merged automatically on install |
 
@@ -175,6 +196,25 @@ A dual-half plugin (host + browser) with data flowing through same-origin HTTP r
 | Web search/fetch call counts | `platform.deepseek.com/api/v0/usage/by_api_key/amount?start=&end=&tz=` (≤31 days per request) | `Bearer <userToken>` |
 | Web search/fetch cost | `platform.deepseek.com/api/v0/usage/by_api_key/cost?start=&end=&tz=` (≤31 days per request) | `Bearer <userToken>` |
 | OpenCode Go quota | `opencode.ai/zen/go/v1/usage` (official) | `Bearer <sk-opencode-…>` |
+| Console Go meters (optional) | `opencode.ai/console/api/go/status` | browser session cookie |
+| Console daily activity (optional) | `opencode.ai/console/api/activity/go?range=30d` | browser session cookie |
+| Console usage export CSV (optional) | `opencode.ai/console/api/v2/usage/export?range=30d` | browser session cookie |
+
+### How the trend numbers are derived
+
+```
+sample every 15 min ──► sample store (percent + resetsAt) ──┐
+                                                            ├─► buildDailySeries ──► daily series ──► forecastSeries ──► line + forecast
+Console daily report (optional) ──► daily cost/requests/tokens ┘        ▲
+                                                                       └── official live percentage (anchors today's point)
+```
+
+- **Period**: one calendar month stepped back from the monthly `resetsAt` (reset on 11/20 → period starts 10/20);
+- **Sampling mode**: each day's last sample becomes that day's cumulative value; days when DSH was not running stay "not recorded" and the line breaks — no interpolation; today's point is always anchored to the official live percentage;
+- **Official daily-report mode**: the daily report's **cumulative cost share** is multiplied by the **official live percentage** (shape from the report, magnitude from the official meter), which avoids the non-linear per-model conversion;
+- **Daily increment**: computed only between two adjacent recorded days, left empty across gaps;
+- **Forecast**: `pace = used% ÷ elapsed days`, `end = used% + pace × remaining days`; no forecast while the period is under one day old;
+- **Privacy**: the sample store holds percentages and timestamps only — no session content, model names or request content.
 
 ---
 
@@ -186,6 +226,11 @@ A dual-half plugin (host + browser) with data flowing through same-origin HTTP r
 | `DSH_ACCOUNT_USAGE_CACHE_MS` | `30000` | Platform data cache TTL (ms) |
 | `DSH_ACCOUNT_USAGE_MAX_MONTHS` | `3` | Max months a single query may span (truncated automatically) |
 | `DSH_ACCOUNT_USAGE_OPENCODE_CACHE_MS` | `60000` | OpenCode quota cache TTL (ms) |
+| `DSH_ACCOUNT_USAGE_SAMPLE_INTERVAL_MS` | `900000` | Background sampling interval (ms; 15 minutes by default) |
+| `DSH_ACCOUNT_USAGE_SAMPLE_FIRST_DELAY_MS` | `30000` | Delay before the first sample after the plugin loads (ms) |
+| `DSH_ACCOUNT_USAGE_SAMPLING` | unset | Set to `off` to disable background sampling entirely |
+| `DSH_ACCOUNT_USAGE_DATA_DIR` | `~/.dsh/storages/dsh-account-usage` | Sample store directory |
+| `DSH_ACCOUNT_USAGE_CONSOLE_CACHE_MS` | `600000` | Console report cache TTL (ms; invalidated immediately when the cookie changes) |
 
 ---
 
@@ -198,6 +243,11 @@ A dual-half plugin (host + browser) with data flowing through same-origin HTTP r
 - The merged content relies on the official "Account & balance" page DOM (the `<section>` inside `[data-slot="settings.section"]`). If upstream rewrites that page, the embedded content may stop appearing; the fallback page is not shown while the official page exists.
 - Within one settings session, switching sections preserves the embedded tab/time range; closing and reopening settings resets them to deepseek / this month. The official page only exists when signed in to a DSH official account; signed-out users get the fallback page.
 - OpenCode Go limits ($12/$30/$60) are reference values for the plans; the endpoint does not return limits. Check opencode.ai when plans change.
+- Without a Console cookie the trend relies on local sampling: history only accumulates from the day the plugin starts recording (right after install, the current period only holds post-install data), and the percentage precision is limited to the official endpoint's whole percents (1%). Configure the cookie for the full period and daily request counts.
+- The Console API (`/console/api/*`) is an **undocumented internal API** that only accepts a browser session cookie and may break when upstream changes it. The plugin parses fields by alias, falls back to sampled data on failure, and exposes only status codes and the CSV header row in diagnostics (never the cookie or business data). Expired cookies must be re-pasted.
+- The official daily report buckets days in UTC while the plugin renders local dates, so a day may differ by one around midnight; the report also lags, so a just-finished request may only appear the next day.
+- The Console cookie is an **account-level session credential** (more powerful than the API key): it stays in the local DSH credential store, is read only by the host, and is only sent to the three fixed whitelisted URLs. Never paste it into any third-party tool.
+- Linear extrapolation is a rough "current pace" estimate that ignores weekday/weekend differences; a limit hit or a plan change will skew it.
 - When bound to `0.0.0.0`, this plugin's routes are reachable on the LAN (the same pre-existing limitation as other local DSH plugins; the default `127.0.0.1` is unaffected).
 
 ---

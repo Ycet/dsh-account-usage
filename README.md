@@ -5,10 +5,10 @@
 
 <div align="center">
 
-DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」页，一站式查看 DeepSeek 平台余额/用量与 OpenCode Go 配额。
+DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」页，一站式查看 DeepSeek 平台余额/用量、OpenCode Go 配额，以及当前订阅周期的额度消耗趋势与期末预测。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.3.0-blue.svg?style=for-the-badge)](package.json)
+[![Version](https://img.shields.io/badge/version-0.4.0-blue.svg?style=for-the-badge)](package.json)
 [![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.6%2B-purple.svg?style=for-the-badge)](https://github.com/deepseek-ai/deepseek-harness)
 
 </div>
@@ -37,7 +37,7 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 
 ![DeepSeek 平台「账户」页界面截图](assets/images/account-usage-U--01.png)
 
-**OpenCode Go 配额页**：5 小时滚动 / 每周 / 每月三个窗口的用量进度条、重置时间与限额参考。
+**OpenCode Go 配额页**：5 小时滚动 / 每周 / 每月三个窗口的用量进度条、重置时间与限额参考，下方「用量趋势（当前订阅周期）」按天展示已用额度曲线、期末线性外推预测，鼠标悬浮任一天显示当日累计、当日增量与当日请求数。
 
 ![OpenCode Go 配额「账户」页界面截图](assets/images/account-usage-UI--02.png)
 
@@ -55,9 +55,14 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 | **时间维度切换** | 今天 / 近 7 天 / 近 30 天 / 近 90 天 / 本月 / 上月 / 自定义区间 |
 | **按模型明细表** | deepseek-v4-flash / deepseek-v4-pro / 其他：请求次数、输入/缓存/输出 Tokens、费用 |
 | **OpenCode Go 配额** | 5 小时滚动 / 每周 / 每月三个窗口的用量百分比与下次重置时间 |
+| **额度消耗趋势与预测** | 当前订阅周期内按天的累计已用额度折线 + 到重置日的线性外推虚线；悬浮显示日期、累计已用、当日增量、当日请求数；缺口如实标注、不插值 |
+| **本周期模型用量（需 Cookie）** | 配置 OpenCode Console Cookie 后展示本周期最常用模型及占比、总请求数与总 Tokens（数据来自官方日榜） |
 | **自动刷新** | 页面挂载期间每 60 秒自动轮询最新数据 |
 | **双语言界面** | 完整的中英文切换支持 |
 | **兜底独立账户页** | 未登录 DSH 官方账号或旧版没有官方账户页时，自动注册插件独立「账户」分区，保证令牌与用量仍可访问 |
+
+> [!NOTE]
+> `0.4.0` 在 opencode go 页签的三张额度卡下方新增「用量趋势（当前订阅周期）」：宿主每 15 分钟采样一次官方配额百分比并落盘（`~/.dsh/storages/dsh-account-usage/opencode-samples.v1.json`，保留 180 天），据此画出按天的累计已用额度曲线，并用「已用% ÷ 已过天数」线性外推到重置日。可选的 OpenCode Console Cookie 能解锁官方日榜（每日请求数、按模型占比、0.1% 精度），但不配置也能正常出图。**注意**：本地采样从插件开始记录那天起累积，首次安装后当前周期只有安装之后的数据；需要完整历史请配置 Console Cookie。升级后需完全退出并重开 DSH 桌面端。
 
 > [!NOTE]
 > `0.3.0` 将插件内容合并进官方「账号与余额」页：官方账户页存在时不再显示独立「账户」导航项，内容显示在官方原生卡片下方；嵌入模式保留完整的「充值余额 / 赠送余额 / 累计消费金额」展示，与官方余额卡并列（两者刷新时间可能略有差异）。账户菜单余额入口改为打开官方「账号与余额」页。未登录/旧版无官方页时仍保留独立兜底页。升级后需完全退出并重开 DSH 桌面端。
@@ -141,6 +146,19 @@ DEEPSEEK_PLATFORM_TOKEN: <令牌>
 1. DSH 凭据 `OPENCODE_GO_API_KEY`（`~/.dsh/.credentials.yaml`，在「设置 → 模型」配置 opencode-go 时通常已存在）；
 2. OpenCode 自身的 `~/.local/share/opencode/auth.json`（`opencode-go` 条目，type 为 `api`）。
 
+### OpenCode Console Cookie（可选，仅影响「用量趋势」的官方日榜）
+
+官方 `GET /zen/go/v1/usage` 只返回当前三个窗口的百分比，**没有任何历史序列**；控制台日榜（每日请求数、按模型占比、0.1% 精度百分比）只认浏览器登录态。想让趋势图回推整个周期并显示每日请求数，需要配置一次 Console Cookie：
+
+1. 浏览器登录 https://opencode.ai/console ；
+2. 打开 DevTools → Network，刷新页面，任选一条发往 `console/api/...` 的请求；
+3. 复制 Request Headers 里的 `cookie` 值（形如 `session=...; other=...`）；
+4. 在插件「用量趋势」卡片点「配置 Console Cookie」，粘贴并保存（写入 DSH 凭据 `OPENCODE_CONSOLE_COOKIE`）。
+
+安全约定：Cookie 只在 DSH 宿主进程内读取，只用于请求三个固定的白名单 URL（`/console/api/go/status`、`/console/api/activity/go`、`/console/api/v2/usage/export`）；它不会出现在浏览器界面、日志或任何接口响应里，诊断信息只回传状态码与 CSV 表头列名。会话过期后卡片会提示「已失效」，重新粘贴即可；也可以随时点「清除」。
+
+不配置也能用：趋势图会退回本地采样数据（来源标注为「本地采样」）。
+
 ---
 
 ## 📖 使用说明
@@ -152,6 +170,9 @@ DEEPSEEK_PLATFORM_TOKEN: <令牌>
 - 「网页搜索与抓取」模块展示所选区间内 tool-search / tool-fetch 的调用次数、调用类型费用与每日面积图；超过 31 天的区间会自动分段查询后合并；
 - 账户菜单（侧栏账户头像菜单）中「设置」上方新增「余额：¥x.xx」入口，数值为充值余额 + 赠送余额，点击后打开设置并定位到官方「账号与余额」页（无官方页时定位到插件兜底页）；
 - OpenCode Go 页展示三个配额窗口的用量百分比、下次重置时间与限额参考，可一键「跳转」到 opencode.ai 或「刷新」；
+- 三张额度卡下方是「用量趋势（当前订阅周期）」：横轴为本次订阅周期（由每月窗口的重置时间倒推一个自然月），绿线为已用额度累计、黄虚线为到期预测、灰虚线为 100% 上限；鼠标悬浮任意一天可看「日期 / 已用 / 当日 / 请求数」；
+- 顶部摘要显示「当前已用 / 日均消耗 / 预计期末」；周期刚开始（不足 1 天）时只显示「周期刚开始」，不做预测；
+- 配置了 Console Cookie 时，趋势卡下方会多出「本周期模型用量」卡（模型占比、请求数、Tokens）；
 - 页面挂载期间每 60 秒自动刷新；「打开配置文件」按钮可直接定位本机 DSH 凭据文件。
 
 ---
@@ -162,8 +183,8 @@ DEEPSEEK_PLATFORM_TOKEN: <令牌>
 
 | 部分 | 文件 | 作用 |
 |------|------|------|
-| 宿主 | `index.js` | 注册三条 `GET /api/account-usage/*` 精确路由（`deepseek-summary` / `deepseek-usage` / `opencode`）；经 `ctx.credentials` 解析密钥，固定白名单上游 URL，15s 超时 + 30s 缓存；`deepseek-usage` 同时合并模型用量与网页搜索/抓取用量 |
-| 解析聚合 | `lib/aggregate.js` | 纯函数：平台信封解包后的每日/每模型 token、费用、请求次数聚合；网页搜索/抓取的时间窗口切分、函数用量与费用合并 |
+| 宿主 | `index.js` | 注册四条 `GET /api/account-usage/*` 精确路由（`deepseek-summary` / `deepseek-usage` / `opencode` / `opencode-history`）；经 `ctx.credentials` 解析密钥，固定白名单上游 URL，15s 超时 + 30s 缓存；`deepseek-usage` 同时合并模型用量与网页搜索/抓取用量；另有 15 分钟后台采样器写入本地样本库 |
+| 解析聚合 | `lib/aggregate.js` | 纯函数：平台信封解包后的每日/每模型 token、费用、请求次数聚合；网页搜索/抓取的时间窗口切分、函数用量与费用合并；订阅周期推算、采样折叠、控制台 CSV/JSON 解析、按天序列与线性外推预测 |
 | 浏览器 | `client.js` | 手写惰性 CJS 客户端包：官方账户页存在时用 `react-dom/client` 把内容根挂到官方 `settings.section` 的 `<section>` 末尾（切分区摘除 DOM、保留根；关闭设置卸载）；官方页不可用时注册兜底 `settings.section`（id `account-usage`）。同时负责 SVG 图表、60s 刷新、设置导航图标与账户菜单余额入口 |
 | 组合 | `cordis.patch.yml` | `dsh.bundle` 补丁层，安装时自动合入 |
 
@@ -177,6 +198,25 @@ DEEPSEEK_PLATFORM_TOKEN: <令牌>
 | 网页搜索/抓取调用次数 | `platform.deepseek.com/api/v0/usage/by_api_key/amount?start=&end=&tz=`（≤31 天/次） | `Bearer <userToken>` |
 | 网页搜索/抓取费用 | `platform.deepseek.com/api/v0/usage/by_api_key/cost?start=&end=&tz=`（≤31 天/次） | `Bearer <userToken>` |
 | OpenCode Go 配额 | `opencode.ai/zen/go/v1/usage`（官方） | `Bearer <sk-opencode-…>` |
+| 控制台 Go 计量（可选） | `opencode.ai/console/api/go/status` | 浏览器会话 Cookie |
+| 控制台每日活动（可选） | `opencode.ai/console/api/activity/go?range=30d` | 浏览器会话 Cookie |
+| 控制台用量导出的 CSV（可选） | `opencode.ai/console/api/v2/usage/export?range=30d` | 浏览器会话 Cookie |
+
+### 趋势图的数据口径
+
+```
+每 15 分钟采样 ──► 样本库(百分比+重置时间) ──┐
+                                             ├─► buildDailySeries ──► 日序列 ──► forecastSeries ──► 曲线+预测
+Console 日榜(可选) ──► 每日费用/请求数/Tokens ─┘        ▲
+                                                       └── 官方实时百分比（锚定今天这一点）
+```
+
+- **周期**：由每月窗口的 `resetsAt` 倒推一个自然月（如 11/20 重置 → 10/20 起算）；
+- **采样模式**：每天取当天最后一条样本作为「当天累计已用」；DSH 未运行的日期保持「未记录」，曲线断开、不插值；今天这一点永远用官方实时百分比锚定；
+- **官方日榜模式**：把日榜的**累计费用占比**乘以**官方实时百分比**折算成每天的量级（形状来自日榜、量级来自官方口径，避免混合模型换算非线性带来的偏差）；
+- **日增量**：只在相邻两天都有数据时计算，跨缺口留空；
+- **预测**：`日均 = 已用% ÷ 已过天数`，`期末 = 已用% + 日均 × 剩余天数`，与截图口径一致；不足 1 天不做预测；
+- **隐私**：样本库只存百分比与时间戳，不存任何会话内容、模型名或请求内容。
 
 ---
 
@@ -188,6 +228,11 @@ DEEPSEEK_PLATFORM_TOKEN: <令牌>
 | `DSH_ACCOUNT_USAGE_CACHE_MS` | `30000` | 平台数据缓存 TTL（毫秒） |
 | `DSH_ACCOUNT_USAGE_MAX_MONTHS` | `3` | 单次查询可覆盖的最大月份数（超出自动裁剪） |
 | `DSH_ACCOUNT_USAGE_OPENCODE_CACHE_MS` | `60000` | OpenCode 配额缓存 TTL（毫秒） |
+| `DSH_ACCOUNT_USAGE_SAMPLE_INTERVAL_MS` | `900000` | 后台采样间隔（毫秒，默认 15 分钟） |
+| `DSH_ACCOUNT_USAGE_SAMPLE_FIRST_DELAY_MS` | `30000` | 插件加载后首次采样延迟（毫秒） |
+| `DSH_ACCOUNT_USAGE_SAMPLING` | 未设置 | 设为 `off` 可完全关闭后台采样 |
+| `DSH_ACCOUNT_USAGE_DATA_DIR` | `~/.dsh/storages/dsh-account-usage` | 样本库目录 |
+| `DSH_ACCOUNT_USAGE_CONSOLE_CACHE_MS` | `600000` | 控制台日榜缓存 TTL（毫秒，Cookie 变化时立即失效） |
 
 ---
 
@@ -200,6 +245,11 @@ DEEPSEEK_PLATFORM_TOKEN: <令牌>
 - 合并内容依赖官方「账号与余额」页的 DOM（`[data-slot="settings.section"]` 内的 `<section>`）；上游重写账户页结构时嵌入内容可能不再显示，此时可等待插件适配或暂时依赖兜底页（官方页存在时兜底页不会显示）。
 - 嵌入内容在同一设置会话内切换分区会保留 tab/时间维度；关闭设置再打开会重置为 deepseek / 本月。官方页仅登录 DSH 官方账号后存在，未登录时使用兜底页。
 - OpenCode Go 的限额（$12/$30/$60）为套餐参考值，端点未返回限额；套餐调整时以 opencode.ai 页面为准。
+- 趋势图在**未配置 Console Cookie** 时依赖本地采样：历史只能从插件开始记录那天起累积（首次安装后当前周期只有安装之后的数据），百分比精度受官方接口整数限制（1%）。需要完整周期与每日请求数请配置 Cookie。
+- 控制台接口（`/console/api/*`）是**未公开的内部接口**，只认浏览器会话 Cookie，且可能随上游改版失效。插件对结构做别名容忍解析，失败时自动退回采样数据，并在响应里只回传状态码与 CSV 表头列名以便定位（不含 Cookie、不含业务数据）。Cookie 过期需重新粘贴。
+- 官方日榜的日期口径为 UTC，插件按本地时区展示，跨零点附近可能差 1 天；日榜本身也有聚合延迟，刚完成的请求可能次日才计入。
+- Console Cookie 是**账号级会话凭据**（权限高于 API Key）：只保存在本机 DSH 凭据库、仅宿主读取、只用于三个固定白名单 URL；请勿把它粘贴到任何第三方工具。
+- 线性外推是「按当前速度」的粗略估计，不含周末/工作日差异；命中上限或额度调整时预测会偏。
 - 服务绑定 `0.0.0.0` 时本插件路由对局域网可达（与 DSH 其他本地插件相同的既有限制，默认 `127.0.0.1` 无此问题）。
 
 ---

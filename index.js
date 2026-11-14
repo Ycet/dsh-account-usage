@@ -38,8 +38,8 @@
  *          message: string }
  */
 import { homedir } from "node:os";
-import { join } from "node:path";
-import { readFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import {
   localDate,
   parseDateParam,
@@ -56,7 +56,18 @@ import {
   splitDateWindows,
   parseFunctionAmount,
   parseFunctionCost,
-  mergeToolUsage
+  mergeToolUsage,
+  periodRangeOf,
+  compactSamples,
+  buildDailySeries,
+  forecastSeries,
+  parseConsoleMeters,
+  parseConsoleActivity,
+  parseConsoleOrgIds,
+  parseUsageCsv,
+  rollupCsvDaily,
+  rollupCsvModels,
+  percentGridMax
 } from "./lib/aggregate.js";
 
 const name = "dsh-account-usage";
@@ -551,6 +562,433 @@ async function handleOpencode(ctx, res) {
   sendJson(res, 200, result);
 }
 
+// ---- OpenCode 用量趋势：采样、持久化与控制台日榜 ----------------------------
+//
+// 官方 `GET /zen/go/v1/usage` 只给当前三个窗口的整数百分比，没有历史序列；
+// 控制台日榜（`/console/api/*`）只认浏览器登录态 Cookie。因此这里两条腿走路：
+//
+//   1) 采样：每 15 分钟把 monthly.percent 落盘到
+//      ~/.dsh/storages/dsh-account-usage/opencode-samples.v1.json；
+//   2) 可选 Console Cookie：配置后由宿主用固定白名单 URL 拉官方日榜
+//      （请求数 / Tokens / 模型 / 精确百分比）。
+//
+// 安全约定：
+//   - Cookie 只经 ctx.credentials 在宿主侧解析，绝不进入浏览器、日志或响应体；
+//   - 三个控制台 URL 全部是常量，不接受任何来自浏览器的 URL；
+//   - 响应体积、超时、错误码全部有界，失败即降级到采样数据。
+
+/** Console 会话 Cookie 的凭据引用名（用户可在设置面板里粘贴/清除）。 */
+const CONSOLE_COOKIE_REF = credentialRef("OPENCODE_CONSOLE_COOKIE");
+
+/** 控制台接口白名单（四条固定 URL，绝不拼接用户输入）。 */
+const CONSOLE_ORGS_URL = "https://opencode.ai/console/api/orgs";
+const CONSOLE_GO_STATUS_URL = "https://opencode.ai/console/api/go/status";
+const CONSOLE_GO_ACTIVITY_URL = "https://opencode.ai/console/api/activity/go?range=30d";
+const CONSOLE_USAGE_EXPORT_URL = "https://opencode.ai/console/api/v2/usage/export?range=30d";
+
+/** 采样间隔（默认 15 分钟 = 96 次/天，对上游很轻）。 */
+const SAMPLE_INTERVAL_MS = envNum("DSH_ACCOUNT_USAGE_SAMPLE_INTERVAL_MS", 15 * 60 * 1000);
+/** 首次采样延迟：避免插件加载时和页面首屏抢带宽。 */
+const SAMPLE_FIRST_DELAY_MS = envNum("DSH_ACCOUNT_USAGE_SAMPLE_FIRST_DELAY_MS", 30000);
+/** 控制台日榜缓存（10 分钟；Cookie 变化时立即失效）。 */
+const CONSOLE_CACHE_TTL_MS = envNum("DSH_ACCOUNT_USAGE_CONSOLE_CACHE_MS", 10 * 60 * 1000);
+/** 控制台单个响应体上限（防御异常大 CSV）。 */
+const CONSOLE_MAX_BYTES = envNum("DSH_ACCOUNT_USAGE_CONSOLE_MAX_BYTES", 4 * 1024 * 1024);
+/** 实时用量快照复用窗口（采样器与趋势路由共用，避免重复请求）。 */
+const USAGE_SNAPSHOT_TTL_MS = 60 * 1000;
+/** 快照过期但仍可用于锚定的宽限窗口。 */
+const USAGE_STALE_TTL_MS = 15 * 60 * 1000;
+
+function sendHistoryError(res, code, message) {
+  sendJson(res, 200, { ok: false, code, message });
+}
+
+/** 采样库目录（可用环境变量覆盖，跨平台由 node:path 处理分隔符）。 */
+function sampleDirectory() {
+  const override = process.env.DSH_ACCOUNT_USAGE_DATA_DIR;
+  if (typeof override === "string" && override.trim() !== "") return override.trim();
+  return join(homedir(), ".dsh", "storages", "dsh-account-usage");
+}
+
+function sampleFilePath() {
+  return join(sampleDirectory(), "opencode-samples.v1.json");
+}
+
+/** 采样库内存态：{ samples } 或 null（未加载）。 */
+let sampleStore = null;
+/** 写入串行化：同一进程内不会有两个写入交错。 */
+let sampleWriteChain = Promise.resolve();
+
+/** 懒加载采样库；文件缺失/损坏时按空库处理，绝不抛错。 */
+async function loadSampleStore() {
+  if (sampleStore !== null) return sampleStore;
+  let samples = [];
+  try {
+    const raw = JSON.parse(await readFile(sampleFilePath(), "utf8"));
+    if (Array.isArray(raw?.samples)) samples = raw.samples;
+  } catch {
+    /* 首次运行、文件缺失或损坏：按空库处理 */
+  }
+  sampleStore = { samples: compactSamples(samples, Date.now()) };
+  return sampleStore;
+}
+
+/** 原子写采样库：先写同目录临时文件再 rename，避免半截 JSON。 */
+function persistSamples(ctx, samples) {
+  sampleWriteChain = sampleWriteChain
+    .catch(() => {})
+    .then(async () => {
+      const file = sampleFilePath();
+      await mkdir(dirname(file), { recursive: true });
+      const tmp = `${file}.${process.pid}.tmp`;
+      await writeFile(tmp, JSON.stringify({ version: 1, samples }), "utf8");
+      await rename(tmp, file);
+    })
+    .catch((error) => {
+      // 写失败只影响历史精度，不影响配额展示与趋势图的当前值
+      ctx.logger?.warn?.("dsh-account-usage: 用量采样写入失败");
+      ctx.logger?.warn?.(error);
+    });
+  return sampleWriteChain;
+}
+
+/** 追加一条采样点（按保留策略折叠后落盘）。 */
+async function appendSample(ctx, sample) {
+  const store = await loadSampleStore();
+  store.samples = compactSamples([...store.samples, sample], Date.now());
+  await persistSamples(ctx, store.samples);
+}
+
+/** 实时用量快照缓存（采样器与趋势路由共用）。 */
+const usageSnapshot = { at: 0, value: null };
+
+/**
+ * 取一份尽量新鲜的 OpenCode 用量快照。
+ * 失败时若还有 15 分钟内的旧快照，仍然返回它并标记 stale（用于锚定趋势末点）。
+ */
+async function latestOpencodeUsage(ctx) {
+  if (usageSnapshot.value !== null && Date.now() - usageSnapshot.at < USAGE_SNAPSHOT_TTL_MS) {
+    return usageSnapshot.value;
+  }
+  const value = await fetchOpencodeUsage(ctx);
+  if (value.ok === true) {
+    usageSnapshot.at = Date.now();
+    usageSnapshot.value = value;
+    return value;
+  }
+  if (usageSnapshot.value !== null && Date.now() - usageSnapshot.at < USAGE_STALE_TTL_MS) {
+    return { ...usageSnapshot.value, stale: true };
+  }
+  return value;
+}
+
+/** 单次采样：只记录每月窗口百分比（趋势图的锚点）。 */
+async function sampleOpencodeOnce(ctx) {
+  const result = await fetchOpencodeUsage(ctx);
+  if (result.ok !== true) return;
+  const monthly = result.usage?.monthly;
+  const percent = monthly?.percent;
+  if (percent === null || percent === undefined || !Number.isFinite(Number(percent))) return;
+  usageSnapshot.at = Date.now();
+  usageSnapshot.value = result;
+  await appendSample(ctx, {
+    t: Date.now(),
+    percent: Number(percent),
+    resetsAt: typeof monthly.resetsAt === "string" ? monthly.resetsAt : null
+  });
+}
+
+/**
+ * 启动后台采样器。生命周期挂到 ctx.effect：插件卸载/重载时定时器必须被清掉。
+ * 定时器全部 unref，避免拖住进程退出。
+ */
+function startSampleScheduler(ctx) {
+  if (process.env.DSH_ACCOUNT_USAGE_SAMPLING === "off") return () => {};
+  const tick = () => {
+    sampleOpencodeOnce(ctx).catch((error) => {
+      ctx.logger?.warn?.("dsh-account-usage: 用量采样失败");
+      ctx.logger?.warn?.(error);
+    });
+  };
+  const first = setTimeout(tick, SAMPLE_FIRST_DELAY_MS);
+  first.unref?.();
+  const timer = setInterval(tick, SAMPLE_INTERVAL_MS);
+  timer.unref?.();
+  return () => {
+    clearTimeout(first);
+    clearInterval(timer);
+  };
+}
+
+/**
+ * 归一化用户粘贴的 Console Cookie。
+ * 用户经常会把「整行 Request Headers」或「cookie: 前缀」一起复制进来，
+ * 这里统一处理：取 cookie 那一行 → 去掉前缀 → 去掉首尾引号 → 长度防御。
+ */
+export function normalizeConsoleCookie(raw) {
+  if (typeof raw !== "string") return undefined;
+  let value = raw.trim();
+  if (value === "") return undefined;
+  const cookieLine = value.split(/\r?\n/).find((line) => /^\s*cookie\s*:/i.test(line));
+  value = (cookieLine === undefined ? value : cookieLine).replace(/^\s*cookie\s*:/i, "").trim();
+  // 只保留第一行（换行会让 HTTP 头非法）
+  value = value.split(/\r?\n/)[0].trim();
+  // 去掉整体包裹的引号，以及末尾多余的分号
+  value = value.replace(/^['"]|['"]$/g, "").trim().replace(/;\s*$/, "");
+  if (value === "" || value.length > 8192) return undefined;
+  return value;
+}
+
+/** 解析控制台会话 Cookie（只在宿主侧使用，永不外泄）。 */
+async function resolveConsoleCookie(ctx) {
+  try {
+    const hit = await ctx.credentials.resolve(CONSOLE_COOKIE_REF);
+    if (hit !== undefined && typeof hit.value === "string") {
+      return normalizeConsoleCookie(hit.value);
+    }
+  } catch {
+    /* 未配置或凭据服务不可用 */
+  }
+  return undefined;
+}
+
+/** 带 Cookie 抓取一条白名单控制台 URL；永不抛异常。 */
+async function fetchConsoleResource(ctx, url, cookie, extraHeaders) {
+  let response;
+  const headers = {
+    Cookie: cookie,
+    Accept: "application/json, text/csv;q=0.9, */*;q=0.8",
+    "User-Agent": BROWSER_UA
+  };
+  if (extraHeaders !== undefined && extraHeaders !== null) {
+    for (const [key, value] of Object.entries(extraHeaders)) {
+      if (typeof value === "string" && value !== "") headers[key] = value;
+    }
+  }
+  try {
+    response = await fetch(url, { headers, signal: AbortSignal.timeout(TIMEOUT_MS) });
+  } catch {
+    return { ok: false, status: 0, code: "network" };
+  }
+  const status = response.status;
+  const contentType = response.headers?.get?.("content-type") ?? "";
+  if (status === 401 || status === 403) return { ok: false, status, code: "unauthorized", contentType };
+  if (!response.ok) return { ok: false, status, code: `http-${status}`, contentType };
+  let text;
+  try {
+    text = await response.text();
+  } catch {
+    return { ok: false, status, code: "read-failed", contentType };
+  }
+  if (typeof text === "string" && text.length > CONSOLE_MAX_BYTES) {
+    return { ok: false, status, code: "too-large", contentType };
+  }
+  return { ok: true, status, contentType, text };
+}
+
+/** 控制台日榜缓存（Cookie 变化时立即失效）。 */
+const consoleCache = { at: 0, cookie: null, value: null };
+
+/** 解析 JSON 文本，失败返回 null。 */
+function safeJson(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 拉取控制台三份数据并归一：
+ *   - `/go/status`       → 精确额度计量 + 周期起点
+ *   - `/activity/go`     → 每日费用/Tokens（CSV 不可用时的退路）
+ *   - `/v2/usage/export` → 每日 × 模型的 CSV（请求数 / Tokens / 模型占比）
+ */
+async function loadConsoleUsage(ctx, force = false) {
+  const cookie = await resolveConsoleCookie(ctx);
+  if (cookie === undefined) {
+    return {
+      configured: false,
+      status: "unconfigured",
+      days: null,
+      limitMicroCents: null,
+      csv: null,
+      activityDays: null,
+      meters: null,
+      diagnostics: null
+    };
+  }
+  if (
+    !force &&
+    consoleCache.value !== null &&
+    consoleCache.cookie === cookie &&
+    Date.now() - consoleCache.at < CONSOLE_CACHE_TTL_MS
+  ) {
+    return consoleCache.value;
+  }
+  // 控制台接口除会话 Cookie 外还要求工作区/组织头（缺失一律 HTTP 400），
+  // 先用 /console/api/orgs 拿到当前账号的组织 id，再带上 `x-org-id` 请求三条数据接口。
+  const orgsRes = await fetchConsoleResource(ctx, CONSOLE_ORGS_URL, cookie);
+  const orgIds = orgsRes.ok === true ? parseConsoleOrgIds(safeJson(orgsRes.text)) : null;
+  const orgHeaders = {};
+  if (orgIds !== null && orgIds.orgId !== null) orgHeaders["x-org-id"] = orgIds.orgId;
+  if (orgIds !== null && orgIds.workspaceId !== null && orgIds.workspaceId !== orgIds.orgId) {
+    orgHeaders["x-workspace-id"] = orgIds.workspaceId;
+  }
+  const [statusRes, activityRes, exportRes] = await Promise.all([
+    fetchConsoleResource(ctx, CONSOLE_GO_STATUS_URL, cookie, orgHeaders),
+    fetchConsoleResource(ctx, CONSOLE_GO_ACTIVITY_URL, cookie, orgHeaders),
+    fetchConsoleResource(ctx, CONSOLE_USAGE_EXPORT_URL, cookie, orgHeaders)
+  ]);
+  const meters = statusRes.ok ? parseConsoleMeters(safeJson(statusRes.text)) : null;
+  const activityDays = activityRes.ok ? parseConsoleActivity(safeJson(activityRes.text)) : null;
+  const csv = exportRes.ok ? parseUsageCsv(exportRes.text) : null;
+  // 日序列优先用 CSV（带请求数/模型），否则用活动接口；两者都没有则日榜不可用
+  let days = null;
+  if (csv !== null && csv.rows.length > 0) {
+    days = [...rollupCsvDaily(csv.rows).entries()]
+      .map(([date, rec]) => ({
+        date,
+        costMicroCents: rec.costMicroCents,
+        requests: rec.requests,
+        tokens: rec.tokens
+      }))
+      .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  } else if (activityDays !== null && activityDays.length > 0) {
+    days = activityDays;
+  }
+  const unauthorized =
+    orgsRes.code === "unauthorized" ||
+    statusRes.code === "unauthorized" ||
+    activityRes.code === "unauthorized" ||
+    exportRes.code === "unauthorized";
+  let status;
+  if (days !== null || (meters !== null && meters.monthly !== null)) status = "ok";
+  else if (unauthorized) status = "expired";
+  else status = "unavailable";
+  // Cookie 形状统计（只给「几段/多长」，不含内容）：粘贴不全时最容易看出来
+  const cookiePairs = cookie.split(";").filter((part) => part.trim() !== "").length;
+  const value = {
+    configured: true,
+    status,
+    days,
+    limitMicroCents: meters?.limitMicroCents ?? null,
+    csv,
+    activityDays,
+    meters,
+    diagnostics: {
+      // 只回传状态码/类型/CSV 表头一行/是否取到组织 id：不含 Cookie、不含业务数据
+      orgsStatus: orgsRes.status ?? null,
+      cookiePairs,
+      cookieLength: cookie.length,
+      orgIdPresent: orgHeaders["x-org-id"] !== undefined,
+      orgIdKey: orgIds === null ? null : orgIds.orgKey,
+      workspaceIdPresent: orgHeaders["x-workspace-id"] !== undefined,
+      statusStatus: statusRes.status ?? null,
+      activityStatus: activityRes.status ?? null,
+      exportStatus: exportRes.status ?? null,
+      contentType: exportRes.contentType ?? activityRes.contentType ?? null,
+      csvHeader: csv === null ? null : csv.header,
+      csvRows: csv === null ? 0 : csv.rows.length
+    }
+  };
+  consoleCache.at = Date.now();
+  consoleCache.cookie = cookie;
+  consoleCache.value = value;
+  return value;
+}
+
+/**
+ * GET /api/account-usage/opencode-history
+ * 当前订阅周期的按天已用额度序列 + 线性外推预测（+ 可选的官方日榜明细）。
+ * 浏览器契约：HTTP 200 + JSON；只有「连周期都算不出来」时才 ok:false。
+ */
+async function handleOpencodeHistory(ctx, req, res) {
+  const url = new URL(req.url ?? "/", "http://localhost");
+  const force = url.searchParams.get("refresh") === "1";
+  const [snapshot, consoleUsage, store] = await Promise.all([
+    latestOpencodeUsage(ctx),
+    loadConsoleUsage(ctx, force),
+    loadSampleStore()
+  ]);
+  const monthly = snapshot.ok === true ? snapshot.usage?.monthly ?? null : null;
+  // 实时接口挂掉时退回采样库里的最后一个重置时间/百分比：至少还能画出已记录的历史
+  const lastSample = [...store.samples].reverse().find((sample) => sample !== null && typeof sample === "object") ?? null;
+  const fallbackResetsAt = typeof lastSample?.resetsAt === "string" ? lastSample.resetsAt : null;
+  const fallbackPercent = Number.isFinite(Number(lastSample?.percent)) ? Number(lastSample.percent) : null;
+  const anchorPercent = monthly?.percent ?? fallbackPercent;
+  const period = periodRangeOf(monthly?.resetsAt ?? fallbackResetsAt);
+  if (period.start === null) {
+    sendHistoryError(
+      res,
+      "no-period",
+      "未能确定当前订阅周期（OpenCode 用量接口不可用或字段变化），请稍后重试"
+    );
+    return;
+  }
+  const todayKey = localDate();
+  const series = buildDailySeries({
+    periodStart: period.start,
+    periodEnd: period.end,
+    todayKey,
+    samples: store.samples,
+    consoleDays: consoleUsage.days,
+    limitMicroCents: consoleUsage.limitMicroCents,
+    anchorPercent
+  });
+  const forecast = forecastSeries(series, { periodStart: period.start, periodEnd: period.end, todayKey });
+  const models =
+    consoleUsage.csv === null ? null : rollupCsvModels(consoleUsage.csv.rows).slice(0, 8);
+  let totals = null;
+  if (consoleUsage.csv !== null && consoleUsage.csv.rows.length > 0) {
+    const daily = rollupCsvDaily(consoleUsage.csv.rows);
+    let requests = 0;
+    let tokens = 0;
+    for (const rec of daily.values()) {
+      requests += rec.requests;
+      tokens += rec.tokens;
+    }
+    totals = { requests: Math.round(requests), tokens: Math.round(tokens) };
+  }
+  const firstSampleDate = (() => {
+    for (const sample of store.samples) {
+      const ms = Number(sample?.t);
+      if (Number.isFinite(ms)) return localDate(new Date(ms));
+    }
+    return null;
+  })();
+  sendJson(res, 200, {
+    ok: true,
+    source: series.source,
+    precision: series.source === "console" ? 0.1 : 1,
+    period: { start: period.start, end: period.end, resetsAt: period.resetsAt },
+    now: {
+      date: todayKey,
+      currentPercent: anchorPercent,
+      stale: snapshot.stale === true,
+      status: monthly?.status ?? null
+    },
+    days: series.days,
+    forecast,
+    // 纵轴留 15% headroom：预测终点不会贴着图顶（截图即 0/50/100/150 四档）
+    grid: {
+      max: percentGridMax([
+        ...series.days.map((day) => day.cumulativePercent),
+        forecast.projectedEndPercent === null ? null : forecast.projectedEndPercent * 1.15
+      ])
+    },
+    models,
+    totals,
+    sampledSince: firstSampleDate,
+    sampleCount: store.samples.length,
+    console: {
+      configured: consoleUsage.configured,
+      status: consoleUsage.status,
+      diagnostics: consoleUsage.diagnostics
+    }
+  });
+}
+
 // ---- 插件主体 ----------------------------------------------------------------
 
 function apply(ctx) {
@@ -607,6 +1045,28 @@ function apply(ctx) {
       }),
     "dsh-account-usage: opencode route"
   );
+
+  // 用量趋势：当前订阅周期的按天已用额度 + 预测（采样 / 官方日榜两种来源）
+  ctx.effect(
+    () =>
+      ctx.webServer.register({
+        kind: "exact",
+        path: "/api/account-usage/opencode-history",
+        handler: async (req, res) => {
+          try {
+            await handleOpencodeHistory(ctx, req, res);
+          } catch (error) {
+            ctx.logger.warn("dsh-account-usage: opencode history route failed");
+            ctx.logger.warn(error);
+            sendJson(res, 500, { ok: false, code: "internal", message: "internal error" });
+          }
+        }
+      }),
+    "dsh-account-usage: opencode history route"
+  );
+
+  // 后台采样：把每月窗口百分比按 15 分钟粒度累积成历史（可 DSH_ACCOUNT_USAGE_SAMPLING=off 关闭）
+  ctx.effect(() => startSampleScheduler(ctx), "dsh-account-usage: opencode sample scheduler");
 }
 
 export { name, inject, apply };
