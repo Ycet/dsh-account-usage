@@ -54,6 +54,34 @@ window.__ModuleLoader__.load({
     const zh = {
       nav: "账户",
       title: "账户",
+      tabOverview: "概览",
+      overviewTitle: "概览",
+      overviewYear: "年度",
+      overviewScanning: "统计中…",
+      overviewEmpty: "暂无使用记录",
+      overviewUnsupported: "当前 DSH 版本不支持使用统计",
+      statsTitle: "用户使用情况",
+      statTotalTokens: "累计 Token 数",
+      statPeakTokens: "Token 使用峰值",
+      statLongestTask: "最长任务用时",
+      statLongestStreak: "最长连续天数",
+      statCurrentStreak: "当前连续天数",
+      heatmapTitle: "Token 活动",
+      heatmapDaily: "每天",
+      heatmapWeekly: "每周",
+      heatmapCumulative: "累计总量",
+      heatmapMonths: "1月,2月,3月,4月,5月,6月,7月,8月,9月,10月,11月,12月",
+      heatmapDayTip: "{date}",
+      heatmapWeekTip: "{date} 起的一周",
+      heatmapCumulativeTip: "累计至 {date}",
+      heatmapValueUnit: "个 Token",
+      numberScale: "wan",
+      durationDay: "天",
+      durationHour: "小时",
+      durationMinute: "分",
+      durationSecond: "秒",
+      daysCount: "{n} 天",
+      noValue: "—",
       tabDeepseek: "deepseek",
       tabOpencode: "opencode go",
       deepseekPanel: "DeepSeek 平台",
@@ -196,6 +224,34 @@ window.__ModuleLoader__.load({
     const en = {
       nav: "Account",
       title: "Account",
+      tabOverview: "Overview",
+      overviewTitle: "Overview",
+      overviewYear: "Year",
+      overviewScanning: "Scanning…",
+      overviewEmpty: "No usage recorded yet",
+      overviewUnsupported: "This DSH version does not support usage insights",
+      statsTitle: "Usage summary",
+      statTotalTokens: "Total tokens",
+      statPeakTokens: "Peak tokens",
+      statLongestTask: "Longest task",
+      statLongestStreak: "Longest streak",
+      statCurrentStreak: "Current streak",
+      heatmapTitle: "Token activity",
+      heatmapDaily: "Daily",
+      heatmapWeekly: "Weekly",
+      heatmapCumulative: "Cumulative",
+      heatmapMonths: "Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec",
+      heatmapDayTip: "{date}",
+      heatmapWeekTip: "Week of {date}",
+      heatmapCumulativeTip: "Cumulative to {date}",
+      heatmapValueUnit: "tokens",
+      numberScale: "short",
+      durationDay: "d",
+      durationHour: "h",
+      durationMinute: "m",
+      durationSecond: "s",
+      daysCount: "{n} d",
+      noValue: "—",
       tabDeepseek: "deepseek",
       tabOpencode: "opencode go",
       deepseekPanel: "DeepSeek Platform",
@@ -672,6 +728,322 @@ window.__ModuleLoader__.load({
         costPartial: toolCost === null,
         requestsPartial: toolCalls === null
       };
+    }
+
+    // ---- 「概览」标签页：年度聚合、热力图网格与格式化（0.5.0） ----------------
+    // 全部纯函数，便于单测锁定跨年、闰年、分位阈值等边界。
+
+    /** `YYYY-MM-DD` → 年份（非法返回 null）。 */
+    function yearOfDayKey(key) {
+      if (!isDateKey(key)) return null;
+      return Number(key.slice(0, 4));
+    }
+
+    /** 某年的全部日期 key（含闰年 2 月 29 日）。 */
+    function dayKeysOfYear(year) {
+      const keys = [];
+      const cursor = new Date(year, 0, 1);
+      while (cursor.getFullYear() === year) {
+        keys.push(fmtDate(cursor));
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      return keys;
+    }
+
+    /** 年度 token 合计。 */
+    function sumYearTokens(days, year) {
+      let total = 0;
+      for (const key of dayKeysOfYear(year)) {
+        const value = days !== null && typeof days === "object" ? days[key] : undefined;
+        if (typeof value === "number" && value > 0) total += value;
+      }
+      return total;
+    }
+
+    /** 年度峰值：{ date, tokens }；无数据时 tokens 为 0。 */
+    function peakOfYear(days, year) {
+      let best = { date: null, tokens: 0 };
+      for (const key of dayKeysOfYear(year)) {
+        const value = days !== null && typeof days === "object" ? days[key] : undefined;
+        if (typeof value !== "number" || !(value > 0)) continue;
+        if (value > best.tokens) best = { date: key, tokens: value };
+      }
+      return best;
+    }
+
+    /** 年度内最长连续「有消耗」天数。 */
+    function longestStreakOfYear(days, year) {
+      let best = 0;
+      let run = 0;
+      for (const key of dayKeysOfYear(year)) {
+        const value = days !== null && typeof days === "object" ? days[key] : undefined;
+        if (typeof value === "number" && value > 0) {
+          run += 1;
+          if (run > best) best = run;
+        } else {
+          run = 0;
+        }
+      }
+      return best;
+    }
+
+    /**
+     * 当前连续天数：从今天往回数；今天还没用量时从昨天开始数（避免早上打开就显示 0）。
+     * @param {Record<string, number>} days
+     * @param {string} todayKey
+     */
+    function currentStreakOfDays(days, todayKey) {
+      if (!isDateKey(todayKey)) return 0;
+      const has = (key) => {
+        const value = days !== null && typeof days === "object" ? days[key] : undefined;
+        return typeof value === "number" && value > 0;
+      };
+      let cursor = has(todayKey) ? todayKey : addDays(todayKey, -1);
+      let streak = 0;
+      while (has(cursor)) {
+        streak += 1;
+        cursor = addDays(cursor, -1);
+      }
+      return streak;
+    }
+
+    /**
+     * 年度热力图网格：按周分列（周日起始），首尾补齐成整周。
+     * @returns {{ year:number, weeks: Array<Array<{ key:string, inYear:boolean, day:number }>> }}
+     */
+    function buildYearWeeks(year) {
+      const first = new Date(year, 0, 1);
+      const last = new Date(year, 11, 31);
+      const start = new Date(first);
+      start.setDate(start.getDate() - first.getDay());
+      const end = new Date(last);
+      end.setDate(end.getDate() + (6 - last.getDay()));
+      const weeks = [];
+      const cursor = new Date(start);
+      while (cursor <= end) {
+        const cells = [];
+        for (let i = 0; i < 7; i += 1) {
+          const key = fmtDate(cursor);
+          cells.push({ key, inYear: cursor.getFullYear() === year, day: cursor.getDate() });
+          cursor.setDate(cursor.getDate() + 1);
+        }
+        weeks.push(cells);
+      }
+      return { year, weeks };
+    }
+
+    /**
+     * 月份刻度抽稀：列宽不足时跳过挤在一起的月份，返回实际要显示的月份。
+     * @param {{ month:number, weekIndex:number }[]} anchors 每个月的起始列
+     * @param {number} minGap 两个标签之间最少的列数
+     */
+    function thinMonthAnchors(anchors, minGap = 4) {
+      const list = Array.isArray(anchors) ? anchors : [];
+      const gap = typeof minGap === "number" && minGap >= 1 ? minGap : 4;
+      const out = [];
+      for (const anchor of list) {
+        if (anchor === null || typeof anchor !== "object") continue;
+        const previous = out[out.length - 1];
+        if (previous !== undefined && anchor.weekIndex - previous.weekIndex < gap) continue;
+        out.push(anchor);
+      }
+      return out;
+    }
+
+    /** 每周合计（只统计属于本年的天）。 */
+    function weekTotalsOf(days, weeks) {
+      return weeks.map((cells) => {
+        let total = 0;
+        for (const cell of cells) {
+          if (!cell.inYear) continue;
+          const value = days !== null && typeof days === "object" ? days[cell.key] : undefined;
+          if (typeof value === "number" && value > 0) total += value;
+        }
+        return total;
+      });
+    }
+
+    /** 每天 → 从年初起算的累计值（不属于本年的天为 0）。 */
+    function cumulativeByDay(days, weeks) {
+      const out = {};
+      let acc = 0;
+      for (const cells of weeks) {
+        for (const cell of cells) {
+          if (!cell.inYear) continue;
+          const value = days !== null && typeof days === "object" ? days[cell.key] : undefined;
+          if (typeof value === "number" && value > 0) acc += value;
+          out[cell.key] = acc;
+        }
+      }
+      return out;
+    }
+
+    /** 每周「有用量的天数」（只算属于本年的天）——决定该列从下往上填几格。 */
+    function weekActiveDaysOf(days, weeks) {
+      return weeks.map((cells) => {
+        let count = 0;
+        for (const cell of cells) {
+          if (!cell.inYear) continue;
+          const value = days !== null && typeof days === "object" ? days[cell.key] : undefined;
+          if (typeof value === "number" && value > 0) count += 1;
+        }
+        return count;
+      });
+    }
+
+    /**
+     * 每周「最后一个有效日期」：属于本年、且不晚于今天。
+     * 累计值的取值口径与提示框的日期都用它，两者才对得上。
+     */
+    function weekLastKeyOf(weeks, todayKey) {
+      return weeks.map((cells) => {
+        let last = null;
+        for (const cell of cells) {
+          if (!cell.inYear) continue;
+          if (typeof todayKey === "string" && cell.key > todayKey) break;
+          last = cell.key;
+        }
+        return last;
+      });
+    }
+
+    /**
+     * 每周的累计口径数值：取「该周最后一天（不晚于今天）」的累计值，
+     * 让同一列共用一种颜色，并保证从左到右单调不减。
+     * 整周都排在未来时该列没有代表日，沿用上一列的累计值（而不是回落成 0），
+     * 这样色阶阈值和列间比较都不会出现「末尾突然掉回去」。
+     */
+    function weekCumulativeOf(weeks, cumulative, todayKey) {
+      let carried = 0;
+      return weekLastKeyOf(weeks, todayKey).map((lastKey) => {
+        if (lastKey === null) return carried;
+        const value = cumulative !== null && typeof cumulative === "object" ? cumulative[lastKey] : undefined;
+        if (typeof value === "number") carried = value;
+        return carried;
+      });
+    }
+
+    /**
+     * 色阶阈值：在 log10 空间取 P25/P50/P75 三条边界，再换算回 Token 数值，严格递增。
+     * 用量跨 4 个数量级（万 → 亿），线性分位会把 1M 量级的日子全压进「无色」档，
+     * 所以必须按数量级分档；三条边界恰好切出四档，配合 levelOfValue
+     * 「正数至少一档」，只有 0 Token 无填充。
+     */
+    function quantileThresholds(values) {
+      const positive = (Array.isArray(values) ? values : []).filter((v) => typeof v === "number" && v > 0);
+      if (positive.length === 0) return [0, 0, 0];
+      // 在 log10 空间取分位：用量常跨 4 个数量级（万 → 亿），线性分位会把
+      // 「几万」和「几百万」压进同一档，导致大量日子看不出差别。
+      const logs = positive.map((v) => Math.log10(v + 1)).sort((a, b) => a - b);
+      const pick = (p) => logs[Math.min(logs.length - 1, Math.max(0, Math.ceil(p * logs.length) - 1))];
+      // 三条边界切出四档：< b0 为第 1 档、b0…b1 为第 2 档、b1…b2 为第 3 档、≥ b2 为第 4 档。
+      // 边界取 p75 而不是 p99，最高档才总是可达（否则最大值自己也进不了第 4 档）。
+      // 保持严格递增：数据全是同一个值时三条边界会相等，那样四档就退化成一档。
+      const out = [];
+      for (const x of [pick(0.25), pick(0.5), pick(0.75)]) {
+        const next = Math.max(Math.round(Math.pow(10, x) - 1), (out[out.length - 1] ?? -1) + 1);
+        out.push(next);
+      }
+      return out;
+    }
+
+    /**
+     * 数值 → 0（无填充）…4（最深）。
+     * 只要 value > 0 就至少落在第 1 档——颜色分级只用来区分「多与少」，
+     * 「有没有」由 0 Token 这一档单独表达。
+     */
+    function levelOfValue(value, thresholds) {
+      if (typeof value !== "number" || !(value > 0)) return 0;
+      const list = Array.isArray(thresholds) ? thresholds : [];
+      let level = 1;
+      // 越过第 i+1 条边界就升一档：越过 b0 为 2 档、b1 为 3 档、b2 为 4 档。
+      for (let i = 0; i < list.length; i += 1) {
+        if (value >= list[i]) level = i + 2;
+      }
+      return Math.min(level, 4);
+    }
+
+    /**
+     * 热力图单格色阶：把三种模式统一成「取值 → 0…4」。
+     * 每周与累计总量都采用「自下而上填充」：一列从最底格往上连续着色，
+     * 填满几格 = 那一周有几天用过（Codex / 官方平台的做法），一眼看出用了几天。
+     * - daily：按当天用量着色，只有 0 Token 留白；
+     * - weekly：整列同色（取该周合计），从底部起填「当周有用量的天数」格；
+     * - cumulative：整列同色（取截至该周末的累计值），同样从底部起填「当周有用量的天数」格。
+     */
+    function heatLevelOf(mode, key, weekIndex, context) {
+      const { days, weeklyTotals, weekCumulative, thresholds, activeDays } = context;
+      const raw = days !== null && typeof days === "object" ? days[key] : undefined;
+      const own = typeof raw === "number" && raw > 0 ? raw : 0;
+      if (mode === "weekly" || mode === "cumulative") {
+        // 行号 0 = 周日 … 6 = 周六；「自下而上」即只保留末尾 count 行。
+        const row = typeof context.rowOf === "function" ? context.rowOf(key) : null;
+        const count = Array.isArray(activeDays) ? activeDays[weekIndex] ?? 0 : 0;
+        if (typeof row !== "number" || count <= 0 || row < 7 - count) return 0;
+        const series = mode === "weekly" ? weeklyTotals : weekCumulative;
+        const value = Array.isArray(series) ? series[weekIndex] ?? 0 : 0;
+        return levelOfValue(typeof value === "number" ? value : 0, thresholds);
+      }
+      return levelOfValue(own, thresholds);
+    }
+
+    /** 去掉小数末尾多余的 0：19.10 → 19.1，20.00 → 20。 */
+    function trimTrailingZero(text) {
+      return String(text).includes(".") ? String(text).replace(/\.?0+$/, "") : String(text);
+    }
+
+    /**
+     * 提示框定位：以锚点为中心水平居中，并夹在视口内；上方不够时翻到锚点下方。
+     * 纯函数，便于单测锁定贴边行为。
+     * @returns {{ left:number, top:number }}
+     */
+    function clampTipPosition(anchorX, anchorY, boxW, boxH, viewportW, margin = 8) {
+      const w = typeof boxW === "number" && boxW > 0 ? boxW : 0;
+      const h = typeof boxH === "number" && boxH > 0 ? boxH : 0;
+      const vw = typeof viewportW === "number" && viewportW > 0 ? viewportW : 0;
+      const m = typeof margin === "number" && margin >= 0 ? margin : 8;
+      const maxLeft = Math.max(m, vw - w - m);
+      const left = Math.round(Math.min(Math.max((anchorX ?? 0) - w / 2, m), maxLeft));
+      let top = Math.round((anchorY ?? 0) - h - 6);
+      if (top < m) top = Math.round((anchorY ?? 0) + 24);
+      return { left, top };
+    }
+
+    /** token 数紧凑展示：中文 万/亿，英文 K/M/B。 */
+    function formatTokenCount(value, scale) {
+      if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return "—";
+      if (scale === "wan") {
+        if (value >= 1e8) return `${trimTrailingZero((value / 1e8).toFixed(2))}亿`;
+        if (value >= 1e4) return `${trimTrailingZero((value / 1e4).toFixed(1))}万`;
+        return Math.round(value).toLocaleString();
+      }
+      if (value >= 1e9) return `${trimTrailingZero((value / 1e9).toFixed(2))}B`;
+      if (value >= 1e6) return `${trimTrailingZero((value / 1e6).toFixed(1))}M`;
+      if (value >= 1e3) return `${trimTrailingZero((value / 1e3).toFixed(1))}K`;
+      return Math.round(value).toLocaleString();
+    }
+
+    /**
+     * 时长展示：`X天Y小时` / `X小时Y分` / `X分` / `X秒`。
+     * @param {number} ms
+     * @param {{ day:string, hour:string, minute:string, second:string }} units
+     */
+    function formatDurationMs(ms, units) {
+      if (typeof ms !== "number" || !Number.isFinite(ms) || ms < 0) return "—";
+      const u = units !== null && typeof units === "object" ? units : {};
+      const day = typeof u.day === "string" ? u.day : "d";
+      const hour = typeof u.hour === "string" ? u.hour : "h";
+      const minute = typeof u.minute === "string" ? u.minute : "m";
+      const second = typeof u.second === "string" ? u.second : "s";
+      const totalSeconds = Math.floor(ms / 1000);
+      const days = Math.floor(totalSeconds / 86400);
+      const hours = Math.floor((totalSeconds % 86400) / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      if (days > 0) return hours > 0 ? `${days}${day}${hours}${hour}` : `${days}${day}`;
+      if (hours > 0) return minutes > 0 ? `${hours}${hour}${minutes}${minute}` : `${hours}${hour}`;
+      if (minutes > 0) return `${minutes}${minute}`;
+      return `${seconds}${second}`;
     }
 
     /** 预设时间范围：{ id, from, to }。 */
@@ -1602,24 +1974,73 @@ window.__ModuleLoader__.load({
       ".dsau-cal-dot{position:absolute;right:2px;bottom:2px;width:4px;height:4px;border-radius:50%;background:var(--dsw-alias-label-primary-foreground)}"
     ].join("\n");
 
+    /** 「概览」标签页样式：统计卡、热力图、模式切换。 */
+    const OVERVIEW_STYLE_ID = "dsh-account-usage/overview.css";
+
+    const OVERVIEW_CSS = [
+      ".dsau-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:start;row-gap:6px}",
+      ".dsau-stat{display:flex;flex-direction:column;align-items:center;gap:1px;padding:0 6px;min-width:0;text-align:center;justify-content:flex-start}",
+      ".dsau-stat+.dsau-stat{border-left:1px solid var(--dsw-alias-border-l1)}",
+      ".dsau-stat-value{margin:0;font-size:16px;font-weight:600;line-height:24px;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;white-space:nowrap}",
+      ".dsau-stat-label{margin:0;font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary);max-width:100%;overflow-wrap:break-word}",
+      ".dsau-stat-hint{margin:0;font-size:11px;line-height:16px;color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;white-space:nowrap}",
+      "@media (max-width:560px){.dsau-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 0}.dsau-stat+.dsau-stat{border-left:none}}",
+      ".dsau-heat{position:relative;display:flex;flex-direction:column;gap:6px}",
+      ".dsau-heat-grid,.dsau-heat-months{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,auto);gap:3px}",
+      ".dsau-heat-months{grid-template-rows:auto}",
+      // 空格子用半透明 hover 色：浅色主题下比卡片略深、深色主题下略浅，两种主题都有对比度。
+      ".dsau-heat-cell{aspect-ratio:1;border-radius:2px;background:var(--dsw-alias-interactive-bg-hover)}",
+      ".dsau-heat-cell[data-hidden=\"1\"]{background:transparent}",
+      // 四级色阶由同一个蓝色与卡片底色混合而来，深色主题自动变成“越亮越深”。
+      // 四级色阶：相邻两档的对比度几乎等距，保证一眼能看出层次。
+      // 浅色直接取官方蓝色阶 blue-300/450/600/800，对空格子的对比度 1.6 / 2.8 / 4.7 / 7.9 : 1；
+      // 深色主题下官方蓝令牌值不变（仍是浅色值），越亮代表用量越高，
+      // 所以用 blue-300 按 35/55/75/100% 叠在底色上，对比度 1.7 / 2.5 / 3.5 / 5.2 : 1。
+      ".dsau-heat-cell[data-level=\"1\"]{background:var(--dsw-static-blue-300)}",
+      ".dsau-heat-cell[data-level=\"2\"]{background:var(--dsw-static-blue-450)}",
+      ".dsau-heat-cell[data-level=\"3\"]{background:var(--dsw-static-blue-600)}",
+      ".dsau-heat-cell[data-level=\"4\"]{background:var(--dsw-static-blue-800)}",
+      "body[data-ds-dark-theme] .dsau-heat-cell[data-level=\"1\"]{background:color-mix(in srgb, var(--dsw-static-blue-300) 35%, var(--dsw-alias-bg-layer-3))}",
+      "body[data-ds-dark-theme] .dsau-heat-cell[data-level=\"2\"]{background:color-mix(in srgb, var(--dsw-static-blue-300) 55%, var(--dsw-alias-bg-layer-3))}",
+      "body[data-ds-dark-theme] .dsau-heat-cell[data-level=\"3\"]{background:color-mix(in srgb, var(--dsw-static-blue-300) 75%, var(--dsw-alias-bg-layer-3))}",
+      "body[data-ds-dark-theme] .dsau-heat-cell[data-level=\"4\"]{background:var(--dsw-static-blue-300)}",
+      ".dsau-heat-month{grid-row:1;justify-self:start;font-size:12px;line-height:18px;color:var(--dsw-alias-label-tertiary);white-space:nowrap;pointer-events:none}",
+      // 提示框：官方平台样式为两行（描述 + 带单位的数值），沿用主题令牌适配深浅色。
+      ".dsau-heat-tip{position:fixed;z-index:20;pointer-events:none;display:flex;flex-direction:column;gap:2px;background:var(--dsw-alias-bg-layer-3);border:1px solid var(--dsw-alias-border-l2);border-radius:8px;padding:6px 10px;font-size:12px;line-height:1.5;white-space:nowrap;box-shadow:0 4px 16px rgb(0 0 0 / 0.25);color:var(--dsw-alias-label-primary)}",
+      ".dsau-heat-tip-caption{color:var(--dsw-alias-label-secondary)}",
+      ".dsau-heat-tip-value{font-weight:600}",
+      ".dsau-heat-mode{border:none;background:transparent;padding:0 2px;font:inherit;font-size:13px;line-height:20px;color:var(--dsw-alias-label-tertiary);cursor:pointer}",
+      ".dsau-heat-mode:hover{color:var(--dsw-alias-label-secondary)}",
+      ".dsau-heat-mode[data-active=\"1\"]{color:var(--dsw-alias-label-primary);font-weight:600}",
+      ".dsau-heat-mode:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px;border-radius:2px}"
+    ].join("\n");
+
     /**
-     * 注入（或校正）区间控件样式；非浏览器环境（单测/SSR）直接跳过。
+     * 注入（或校正）一张插件样式表；非浏览器环境（单测/SSR）直接跳过。
      * 注意：客户端热更新只替换 JS、不会清掉已注入的 <style>，所以发现旧样式表
-     * 内容与当前 CALENDAR_CSS 不一致时必须覆盖，否则新类名拿不到规则。
+     * 内容与当前常量不一致时必须覆盖，否则新类名拿不到规则。
      */
-    function ensureCalendarStyles() {
+    function ensureStyleElement(id, css) {
       if (typeof document === "undefined" || document.head === null || document.head === undefined) return;
-      const selector = 'style[data-plugin-css="' + CALENDAR_STYLE_ID + '"]';
+      const selector = 'style[data-plugin-css="' + id + '"]';
       const existing = document.querySelector(selector);
       if (existing !== null && existing !== undefined) {
-        if (existing.textContent !== CALENDAR_CSS) existing.textContent = CALENDAR_CSS;
+        if (existing.textContent !== css) existing.textContent = css;
         return;
       }
       const style = document.createElement("style");
       style.dataset.plugin = "dsh-account-usage";
-      style.dataset.pluginCss = CALENDAR_STYLE_ID;
-      style.textContent = CALENDAR_CSS;
+      style.dataset.pluginCss = id;
+      style.textContent = css;
       document.head.appendChild(style);
+    }
+
+    function ensureCalendarStyles() {
+      ensureStyleElement(CALENDAR_STYLE_ID, CALENDAR_CSS);
+    }
+
+    function ensureOverviewStyles() {
+      ensureStyleElement(OVERVIEW_STYLE_ID, OVERVIEW_CSS);
     }
 
     /**
@@ -2129,7 +2550,7 @@ window.__ModuleLoader__.load({
       }, [credApi]);
 
       React.useEffect(() => {
-        load();
+        load(false);
       }, [load]);
 
       const save = React.useCallback(() => {
@@ -3103,7 +3524,7 @@ window.__ModuleLoader__.load({
             React.createElement("span", null, t("opencodePanel")),
             React.createElement("div", { style: styles.buttonsRow },
               React.createElement(JumpButton, { url: OPENCODE_GO_PAGE_URL, t }),
-              React.createElement(RefreshButton, { onClick: load, t })
+              React.createElement(RefreshButton, { onClick: () => load(true), t })
             )
           ),
           React.createElement("p", { style: styles.error }, state.message)
@@ -3169,15 +3590,310 @@ window.__ModuleLoader__.load({
       );
     }
 
+    // ---- 「概览」标签页（0.5.0） -----------------------------------------------
+    // 数据来自宿主 /api/account-usage/insights：账本只增不减，已归档/已删除会话
+    // 的历史消耗仍在里面。首次进入时宿主在后台增量扫描，前端轮询到 scanning=false。
+
+    /** 统计格：数值在上、标签在下，可选第三行小字（如峰值日期）。 */
+    function OverviewStat({ label, value, hint }) {
+      return React.createElement("div", { className: "dsau-stat" },
+        React.createElement("p", { className: "dsau-stat-value" }, value),
+        React.createElement("p", { className: "dsau-stat-label" }, label),
+        hint === null || hint === undefined ? null : React.createElement("p", { className: "dsau-stat-hint" }, hint)
+      );
+    }
+
+    const OVERVIEW_MODES = ["daily", "weekly", "cumulative"];
+
+    function OverviewPanel({ t }) {
+      const [state, setState] = React.useState({ kind: "loading" });
+      const [year, setYear] = React.useState(() => new Date().getFullYear());
+      const [mode, setMode] = React.useState("daily");
+      const [tip, setTip] = React.useState(null);
+      const [tipBox, setTipBox] = React.useState(null);
+      const tipRef = React.useRef(null);
+      const pollCount = React.useRef(0);
+
+      React.useEffect(() => {
+        ensureOverviewStyles();
+        ensureCalendarStyles();
+      }, []);
+
+      // force=true（手动刷新）让宿主立刻再扫一次，自动轮询则受宿主 60 秒节流约束。
+      const load = React.useCallback(
+        (force) =>
+          fetchJson("/api/account-usage/insights" + (force === true ? "?force=1" : ""))
+            .then((body) => setState({ kind: "done", value: body }))
+            .catch(() => setState({ kind: "failure", message: null })),
+        []
+      );
+
+      React.useEffect(() => {
+        load();
+      }, [load]);
+
+      // 热力图提示框：fixed 定位 + 视口夹紧，避免贴边时被设置面板的滚动容器裁切。
+      React.useLayoutEffect(() => {
+        if (tip === null) {
+          if (tipBox !== null) setTipBox(null);
+          return;
+        }
+        const el = tipRef.current;
+        if (el === null) return;
+        const next = clampTipPosition(tip.anchorX, tip.anchorY, el.offsetWidth, el.offsetHeight, window.innerWidth, 8);
+        if (tipBox === null || tipBox.left !== next.left || tipBox.top !== next.top) setTipBox(next);
+      }, [tip, tipBox]);
+
+      const scanning = state.kind === "done" && state.value !== null && state.value.scanning === true;
+      React.useEffect(() => {
+        if (!scanning) {
+          pollCount.current = 0;
+          return undefined;
+        }
+        const id = window.setInterval(() => {
+          if (pollCount.current >= 90) return;
+          pollCount.current += 1;
+          load(false);
+        }, 2000);
+        return () => window.clearInterval(id);
+      }, [scanning, load]);
+
+      const value = state.kind === "done" ? state.value : null;
+      const supported = value === null || value.ok === true;
+      const days = supported && value !== null && value.days !== null && typeof value.days === "object" ? value.days : {};
+      const dataYears = supported && value !== null && Array.isArray(value.years) ? value.years : [];
+      const currentYear = new Date().getFullYear();
+      const yearOptions = [...new Set([...dataYears, currentYear])].filter((item) => Number.isInteger(item)).sort((a, b) => b - a);
+      const activeYear = yearOptions.includes(year) ? year : yearOptions[0];
+
+      const scale = t("numberScale");
+      const durationUnits = {
+        day: t("durationDay"),
+        hour: t("durationHour"),
+        minute: t("durationMinute"),
+        second: t("durationSecond")
+      };
+      const totalTokens = sumYearTokens(days, activeYear);
+      const peak = peakOfYear(days, activeYear);
+      const longestStreak = longestStreakOfYear(days, activeYear);
+      const streakNow = activeYear === currentYear ? currentStreakOfDays(days, todayDate()) : null;
+      const longestTaskMs =
+        value !== null && value.longestTurnMsByYear !== null && typeof value.longestTurnMsByYear === "object"
+          ? value.longestTurnMsByYear[String(activeYear)]
+          : undefined;
+
+      const grid = React.useMemo(() => buildYearWeeks(activeYear), [activeYear]);
+      const weeks = grid.weeks;
+      const weeklyTotals = React.useMemo(() => weekTotalsOf(days, weeks), [days, weeks]);
+      const cumulative = React.useMemo(() => cumulativeByDay(days, weeks), [days, weeks]);
+      const todayKey = todayDate();
+      // 每周 / 累计总量都按「一列填几格 = 那周有几天用过」着色，单元格共享列色。
+      const activeDays = React.useMemo(() => weekActiveDaysOf(days, weeks), [days, weeks]);
+      const weekCumulative = React.useMemo(
+        () => weekCumulativeOf(weeks, cumulative, todayKey),
+        [weeks, cumulative, todayKey]
+      );
+      // 每列代表日，供累计模式的提示框使用（与 weekCumulative 同一口径）。
+      const weekLastKeys = React.useMemo(() => weekLastKeyOf(weeks, todayKey), [weeks, todayKey]);
+      // 悬停提示里的数值必须与着色口径一致：每周=所在周合计，累计=该周末的累计值，
+      // 这样同一列里任何一格读到的数字都相同，不会出现「颜色一样、数字却逐格变化」。
+      const cellValueOf = React.useCallback(
+        (key, weekIndex) => {
+          if (mode === "weekly") return weeklyTotals[weekIndex] ?? 0;
+          if (mode === "cumulative") return weekCumulative[weekIndex] ?? 0;
+          const raw = days[key];
+          return typeof raw === "number" && raw > 0 ? raw : 0;
+        },
+        [mode, weeklyTotals, weekCumulative, days]
+      );
+      // 色阶阈值只由「真正会着色的值」决定：每周模式用周合计、累计模式用周末累计值、每天模式用当日值。
+      const thresholds = React.useMemo(() => {
+        const inYear = weeks.flat().filter((cell) => cell.inYear);
+        if (mode === "weekly") {
+          // 只有「本周至少有一天有用量」的列才会着色，阈值也只看这些列的周合计。
+          return quantileThresholds(activeDays.map((count, weekIndex) => (count > 0 ? weeklyTotals[weekIndex] ?? 0 : 0)));
+        }
+        if (mode === "cumulative") {
+          return quantileThresholds(activeDays.map((count, weekIndex) => (count > 0 ? weekCumulative[weekIndex] ?? 0 : 0)));
+        }
+        return quantileThresholds(inYear.map((cell) => (typeof days[cell.key] === "number" ? days[cell.key] : 0)));
+      }, [mode, weeks, weeklyTotals, weekCumulative, activeDays, days]);
+      // 行号查表：key → 该格在本列中的行号（0 = 周日 … 6 = 周六）。
+      const rowOf = React.useMemo(() => {
+        const map = new Map();
+        for (const cells of weeks) cells.forEach((cell, index) => map.set(cell.key, index));
+        return (key) => map.get(key) ?? null;
+      }, [weeks]);
+      const levelContext = { days, weeklyTotals, weekCumulative, cumulative, thresholds, todayKey, activeDays, rowOf };
+
+      const monthNames = String(t("heatmapMonths")).split(",");
+      // 月份刻度：按「该月首日所在列」定位；列很窄时按最小列距抽稀，避免相邻月份标签挤在一起。
+      const monthAnchors = [];
+      for (let month = 1; month <= 12; month += 1) {
+        const firstKey = `${activeYear}-${String(month).padStart(2, "0")}-01`;
+        const weekIndex = weeks.findIndex((cells) => cells.some((cell) => cell.key === firstKey));
+        if (weekIndex < 0) continue;
+        monthAnchors.push({ month, weekIndex });
+      }
+      // 至少间隔 4 列才放下一个标签（53 列 / 12 个月 ≈ 4.3 列，窄屏下更密时自动抽稀）。
+      const monthLabels = thinMonthAnchors(monthAnchors, 4).map((anchor) =>
+        React.createElement("span", {
+          key: anchor.month,
+          className: "dsau-heat-month",
+          style: { gridColumnStart: anchor.weekIndex + 1 }
+        }, monthNames[anchor.month - 1] ?? String(anchor.month))
+      );
+
+      const showTip = (event, cell, weekIndex) => {
+        const rect = event.currentTarget.getBoundingClientRect();
+        const unit = t("heatmapValueUnit");
+        // 数值按面板同一套量级缩写（5.4亿 / 1.5M），与官方平台提示框一致。
+        const tokens = `${formatTokenCount(cellValueOf(cell.key, weekIndex), scale)} ${unit}`;
+        // 第一行描述（日期 / 所在周 / 累计至），第二行是带单位的数值，与官方平台一致。
+        // 每周与累计都按「整列」聚合，所以提示里的日期也用该列的代表日（周末），
+        // 而不是鼠标停留的那一格，避免同一列各格给出不同数字。
+        const lastKey = weekLastKeys[weekIndex];
+        // 每年第一列会带上前一年的日期，提示里要跳过它，否则会显示成上一年的一天。
+        const firstInYear = weeks[weekIndex].find((c) => c.inYear) ?? weeks[weekIndex][0];
+        const caption =
+          mode === "weekly"
+            ? t("heatmapWeekTip").replace("{date}", fmtSlashDate(firstInYear.key))
+            : mode === "cumulative"
+              ? t("heatmapCumulativeTip").replace("{date}", fmtSlashDate(lastKey ?? cell.key))
+              : t("heatmapDayTip").replace("{date}", fmtSlashDate(cell.key));
+        setTip({ anchorX: rect.left + rect.width / 2, anchorY: rect.top, caption, value: tokens });
+      };
+
+      const modeLabels = {
+        daily: t("heatmapDaily"),
+        weekly: t("heatmapWeekly"),
+        cumulative: t("heatmapCumulative")
+      };
+
+      const yearSelect = React.createElement("span", { className: "dsau-select" },
+        React.createElement("select", {
+          className: "dsau-select-input",
+          value: String(activeYear),
+          "aria-label": t("overviewYear"),
+          onChange: (event) => setYear(Number(event.target.value))
+        },
+          yearOptions.map((item) =>
+            React.createElement("option", { key: item, value: String(item) }, `${item}`)
+          )
+        ),
+        React.createElement("span", { className: "dsau-select-icon" }, selectChevron())
+      );
+
+      const body =
+        state.kind === "loading"
+          ? React.createElement("p", { style: styles.hint }, t("loading"))
+          : state.kind === "failure"
+            ? React.createElement("p", { style: styles.error }, t("loadFailed"))
+            : !supported
+              ? React.createElement("p", { style: styles.hint }, t("overviewUnsupported"))
+              : React.createElement(React.Fragment, null,
+                // 只在后台扫描期间提示「统计中…」，平时不占用首屏空间。
+                scanning ? React.createElement("p", { style: styles.hint }, t("overviewScanning")) : null,
+                React.createElement(ModuleCard, { title: t("statsTitle") },
+                  React.createElement("div", { className: "dsau-stats" },
+                    React.createElement(OverviewStat, {
+                      label: t("statTotalTokens"),
+                      value: formatTokenCount(totalTokens, scale)
+                    }),
+                    React.createElement(OverviewStat, {
+                      label: t("statPeakTokens"),
+                      value: peak.tokens > 0 ? formatTokenCount(peak.tokens, scale) : t("noValue"),
+                      hint: peak.date === null ? null : fmtSlashDate(peak.date)
+                    }),
+                    React.createElement(OverviewStat, {
+                      label: t("statLongestTask"),
+                      value: typeof longestTaskMs === "number" ? formatDurationMs(longestTaskMs, durationUnits) : t("noValue")
+                    }),
+                    React.createElement(OverviewStat, {
+                      label: t("statLongestStreak"),
+                      value: t("daysCount").replace("{n}", String(longestStreak))
+                    }),
+                    React.createElement(OverviewStat, {
+                      label: t("statCurrentStreak"),
+                      value: streakNow === null ? t("noValue") : t("daysCount").replace("{n}", String(streakNow))
+                    })
+                  ),
+                  totalTokens === 0 ? React.createElement("p", { style: styles.hint }, t("overviewEmpty")) : null
+                ),
+                React.createElement(ModuleCard, { title: t("heatmapTitle") },
+                  React.createElement("div", { style: styles.buttonsRow },
+                    OVERVIEW_MODES.map((item) =>
+                      React.createElement("button", {
+                        key: item,
+                        type: "button",
+                        className: "dsau-heat-mode",
+                        "data-active": mode === item ? "1" : "0",
+                        onClick: () => setMode(item)
+                      }, modeLabels[item])
+                    )
+                  ),
+                  React.createElement("div", { className: "dsau-heat" },
+                    React.createElement("div", {
+                      className: "dsau-heat-grid",
+                      style: { gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))` }
+                    },
+                      weeks.map((cells, weekIndex) =>
+                        cells.map((cell) =>
+                          React.createElement("div", {
+                            key: cell.key,
+                            className: "dsau-heat-cell",
+                            "data-hidden": cell.inYear ? undefined : "1",
+                            "data-level": cell.inYear ? String(heatLevelOf(mode, cell.key, weekIndex, levelContext)) : undefined,
+                            onMouseEnter: cell.inYear ? (event) => showTip(event, cell, weekIndex) : undefined,
+                            onMouseLeave: () => setTip(null)
+                          })
+                        )
+                      )
+                    ),
+                    React.createElement("div", {
+                      className: "dsau-heat-months",
+                      style: { gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))` }
+                    }, monthLabels),
+                    tip === null
+                      ? null
+                      : React.createElement("div", {
+                        ref: tipRef,
+                        className: "dsau-heat-tip",
+                        style: {
+                          left: tipBox === null ? Math.round(tip.anchorX) : tipBox.left,
+                          top: tipBox === null ? Math.round(tip.anchorY - 6) : tipBox.top
+                        }
+                      }, React.createElement("span", { className: "dsau-heat-tip-caption" }, tip.caption),
+                        React.createElement("span", { className: "dsau-heat-tip-value" }, tip.value))
+                  )
+                )
+              );
+
+      return React.createElement("div", { style: styles.section },
+        React.createElement("div", { style: styles.panelTitle },
+          React.createElement("span", null, t("overviewTitle")),
+          React.createElement("div", { style: styles.buttonsRow },
+            yearSelect,
+            React.createElement(RefreshButton, { onClick: load, t })
+          )
+        ),
+        body
+      );
+    }
+
     function AccountPage(props) {
       const { t, credApi, embedded } = props;
-      const [tab, setTab] = React.useState("deepseek");
+      const [tab, setTab] = React.useState("overview");
       // 两个面板常驻挂载（CSS 隐藏未激活项）：切换标签零等待，
       // 数据在后台按各自 60s 周期保持新鲜。
       // 嵌入官方账户页时隐藏独立页标题，并跟随官方内容宽度。
       return React.createElement("div", { style: embedded ? { ...styles.wrap, maxWidth: "none" } : styles.wrap },
         embedded ? null : React.createElement("h2", { style: styles.panelTitle }, t("title")),
         React.createElement("div", { style: styles.tabsRow },
+          React.createElement("button", {
+            style: tab === "overview" ? styles.tabActive : styles.tab,
+            onClick: () => setTab("overview")
+          }, t("tabOverview")),
           React.createElement("button", {
             style: tab === "deepseek" ? styles.tabActive : styles.tab,
             onClick: () => setTab("deepseek")
@@ -3186,6 +3902,9 @@ window.__ModuleLoader__.load({
             style: tab === "opencode" ? styles.tabActive : styles.tab,
             onClick: () => setTab("opencode")
           }, t("tabOpencode"))
+        ),
+        React.createElement("div", { style: tab === "overview" ? { display: "block" } : { display: "none" } },
+          React.createElement(OverviewPanel, { t })
         ),
         React.createElement("div", { style: tab === "deepseek" ? { display: "block" } : { display: "none" } },
           React.createElement(DeepSeekPanel, { credApi, t, visible: tab === "deepseek" })
@@ -3904,6 +4623,28 @@ window.__ModuleLoader__.load({
     exports.combinedTotals = combinedTotals;
     exports.CALENDAR_CSS = CALENDAR_CSS;
     exports.ensureCalendarStyles = ensureCalendarStyles;
+    exports.yearOfDayKey = yearOfDayKey;
+    exports.dayKeysOfYear = dayKeysOfYear;
+    exports.sumYearTokens = sumYearTokens;
+    exports.peakOfYear = peakOfYear;
+    exports.longestStreakOfYear = longestStreakOfYear;
+    exports.currentStreakOfDays = currentStreakOfDays;
+    exports.buildYearWeeks = buildYearWeeks;
+    exports.weekTotalsOf = weekTotalsOf;
+    exports.thinMonthAnchors = thinMonthAnchors;
+    exports.cumulativeByDay = cumulativeByDay;
+    exports.weekActiveDaysOf = weekActiveDaysOf;
+    exports.weekCumulativeOf = weekCumulativeOf;
+    exports.weekLastKeyOf = weekLastKeyOf;
+    exports.quantileThresholds = quantileThresholds;
+    exports.levelOfValue = levelOfValue;
+    exports.heatLevelOf = heatLevelOf;
+    exports.clampTipPosition = clampTipPosition;
+    exports.ensureOverviewStyles = ensureOverviewStyles;
+    exports.OVERVIEW_CSS = OVERVIEW_CSS;
+    exports.formatTokenCount = formatTokenCount;
+    exports.formatDurationMs = formatDurationMs;
+    exports.OverviewPanel = OverviewPanel;
     exports.CalendarMonth = CalendarMonth;
     exports.CalendarPanel = CalendarPanel;
     exports.DeepSeekPanel = DeepSeekPanel;

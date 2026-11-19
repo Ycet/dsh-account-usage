@@ -19,6 +19,12 @@
  *     每日调用次数与费用（响应字段 tools）；工具查询失败只降级该模块，
  *     不影响模型用量。
  *
+ *   GET /api/account-usage/insights
+ *     本机使用统计（「概览」标签页）：从 DSH 会话日志折叠出按本地日的 token
+ *     合计与按年最长回合耗时，用于累计/峰值/最长任务/连续天数与年度热力图。
+ *     只读 sessionPersistence 公开契约；账本只增不减，会话被清理或删除后
+ *     其历史消耗仍保留。
+ *
  *   GET /api/account-usage/opencode
  *     调用官方端点 https://opencode.ai/zen/go/v1/usage，返回 OpenCode Go
  *     5 小时滚动 / 每周 / 每月三个用量窗口（百分比 + 下次重置时间）。
@@ -69,6 +75,12 @@ import {
   rollupCsvModels,
   percentGridMax
 } from "./lib/aggregate.js";
+import {
+  aggregateLedger,
+  emptyLedger,
+  foldSessionEvents,
+  mergeLedger
+} from "./lib/insights.js";
 
 const name = "@ycet/dsh-account-usage";
 const inject = ["credentials", "webServer"];
@@ -989,6 +1001,137 @@ async function handleOpencodeHistory(ctx, req, res) {
   });
 }
 
+// ---- 本机使用统计账本（「概览」标签页） --------------------------------------
+
+/** 账本文件名：与采样库同目录，可用 DSH_ACCOUNT_USAGE_DATA_DIR 覆盖。 */
+function insightsFilePath() {
+  return join(sampleDirectory(), "usage-ledger.v1.json");
+}
+
+/** 账本内存态；null 表示尚未加载。 */
+let insightsLedger = null;
+/** 写入串行化：同一进程内不会有两个写入交错。 */
+let insightsWriteChain = Promise.resolve();
+/** 扫描状态：running 用于前端轮询，abort 用于插件卸载时中断。 */
+const insightsScan = { running: false, abort: null, lastFinishedAt: 0 };
+
+/** 两次自动扫描之间的最小间隔：前端轮询不会把扫描拖成死循环。 */
+const INSIGHTS_SCAN_MIN_INTERVAL_MS = 60 * 1000;
+
+/** 懒加载账本；文件缺失/损坏时按空账本处理，绝不抛错。 */
+async function loadInsightsLedger() {
+  if (insightsLedger !== null) return insightsLedger;
+  let ledger = emptyLedger(0);
+  try {
+    const raw = JSON.parse(await readFile(insightsFilePath(), "utf8"));
+    if (raw !== null && typeof raw === "object" && raw.sessions !== null && typeof raw.sessions === "object") {
+      ledger = {
+        version: 1,
+        updatedAt: typeof raw.updatedAt === "number" ? raw.updatedAt : 0,
+        skipped: typeof raw.skipped === "number" ? raw.skipped : 0,
+        sessions: raw.sessions
+      };
+    }
+  } catch {
+    /* 首次运行、文件缺失或损坏：按空账本处理 */
+  }
+  insightsLedger = ledger;
+  return ledger;
+}
+
+/** 原子写账本：先写同目录临时文件再 rename，避免半截 JSON。 */
+function persistInsightsLedger(ctx, ledger) {
+  insightsWriteChain = insightsWriteChain
+    .catch(() => {})
+    .then(async () => {
+      const file = insightsFilePath();
+      await mkdir(dirname(file), { recursive: true });
+      const tmp = `${file}.${process.pid}.tmp`;
+      await writeFile(tmp, JSON.stringify(ledger), "utf8");
+      await rename(tmp, file);
+    })
+    .catch((error) => {
+      ctx.logger?.warn?.("dsh-account-usage: 使用统计账本写入失败");
+      ctx.logger?.warn?.(error);
+    });
+  return insightsWriteChain;
+}
+
+/** 读取并折叠单个会话；子代理只算 token，不参与「最长任务用时」。 */
+async function readSessionUsage(persistence, snapshot) {
+  const handle = await persistence.open(snapshot.header.id, "read");
+  try {
+    const result = await handle.read();
+    const events = result !== null && typeof result === "object" && Array.isArray(result.events) ? result.events : [];
+    return foldSessionEvents(events, { trackTurns: snapshot.header.origin !== "subagent" });
+  } finally {
+    try {
+      await handle.close();
+    } catch {
+      /* 关闭失败不影响已读到的事件 */
+    }
+  }
+}
+
+/** 启动一次后台增量扫描（同一时刻只允许一个）。 */
+function startInsightsScan(ctx, persistence) {
+  if (insightsScan.running) return;
+  insightsScan.running = true;
+  const abort = new AbortController();
+  insightsScan.abort = abort;
+  const run = async () => {
+    try {
+      const previous = await loadInsightsLedger();
+      const snapshots = await persistence.list({ signal: abort.signal });
+      const { ledger } = await mergeLedger(previous, snapshots, (snapshot) => readSessionUsage(persistence, snapshot), {
+        signal: abort.signal
+      });
+      insightsLedger = ledger;
+      await persistInsightsLedger(ctx, ledger);
+    } catch (error) {
+      ctx.logger?.warn?.("dsh-account-usage: 使用统计扫描失败");
+      ctx.logger?.warn?.(error);
+    } finally {
+      insightsScan.running = false;
+      insightsScan.abort = null;
+      insightsScan.lastFinishedAt = Date.now();
+    }
+  };
+  void run();
+}
+
+/**
+ * GET /api/account-usage/insights：返回账本聚合，并按需触发一次后台增量扫描。
+ * `?force=1`（手动刷新）绕过最小间隔；自动轮询在 60 秒内不会重复触发扫描。
+ */
+async function handleInsights(ctx, req, res) {
+  const persistence = typeof ctx.get === "function" ? ctx.get("sessionPersistence") : undefined;
+  if (persistence === undefined || persistence === null) {
+    sendJson(res, 200, {
+      ok: false,
+      code: "unsupported",
+      message: "当前 DSH 版本不支持使用统计"
+    });
+    return;
+  }
+  const url = new URL(req?.url ?? "/", "http://localhost");
+  const force = url.searchParams.get("force") === "1";
+  const ledger = await loadInsightsLedger();
+  const due = force || Date.now() - insightsScan.lastFinishedAt >= INSIGHTS_SCAN_MIN_INTERVAL_MS;
+  if (!insightsScan.running && due) startInsightsScan(ctx, persistence);
+  const aggregated = aggregateLedger(ledger);
+  sendJson(res, 200, {
+    ok: true,
+    updatedAt: aggregated.updatedAt,
+    scanning: insightsScan.running,
+    skipped: aggregated.skipped,
+    years: aggregated.years,
+    days: aggregated.days,
+    longestTurnMsByYear: aggregated.longestTurnMsByYear,
+    sessions: aggregated.sessions
+  });
+}
+
 // ---- 插件主体 ----------------------------------------------------------------
 
 function apply(ctx) {
@@ -1063,6 +1206,35 @@ function apply(ctx) {
         }
       }),
     "dsh-account-usage: opencode history route"
+  );
+
+  // 本机使用统计（「概览」标签页）：读会话日志折叠出的账本，触发后台增量扫描
+  ctx.effect(
+    () =>
+      ctx.webServer.register({
+        kind: "exact",
+        path: "/api/account-usage/insights",
+        handler: async (req, res) => {
+          try {
+            await handleInsights(ctx, req, res);
+          } catch (error) {
+            ctx.logger.warn("dsh-account-usage: insights route failed");
+            ctx.logger.warn(error);
+            sendJson(res, 500, { ok: false, code: "internal", message: "internal error" });
+          }
+        }
+      }),
+    "dsh-account-usage: insights route"
+  );
+
+  // 卸载时中断仍在跑的扫描，避免定时/IO 泄漏到下一个实例
+  ctx.effect(
+    () => () => {
+      insightsScan.abort?.abort();
+      insightsScan.abort = null;
+      insightsScan.running = false;
+    },
+    "dsh-account-usage: insights scan cleanup"
   );
 
   // 后台采样：把每月窗口百分比按 15 分钟粒度累积成历史（可 DSH_ACCOUNT_USAGE_SAMPLING=off 关闭）
