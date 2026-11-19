@@ -54,14 +54,44 @@ window.__ModuleLoader__.load({
     const zh = {
       nav: "账户",
       title: "账户",
+      tabOverview: "概览",
+      overviewTitle: "概览",
+      overviewYear: "年度",
+      overviewScanning: "统计中…",
+      overviewEmpty: "暂无使用记录",
+      overviewUnsupported: "当前 DSH 版本不支持使用统计",
+      statsTitle: "用户使用情况",
+      statTotalTokens: "累计 Token 数",
+      statPeakTokens: "Token 使用峰值",
+      statLongestTask: "最长任务用时",
+      statLongestStreak: "最长连续天数",
+      statCurrentStreak: "当前连续天数",
+      heatmapTitle: "Token 活动",
+      heatmapDaily: "每天",
+      heatmapWeekly: "每周",
+      heatmapCumulative: "累计总量",
+      heatmapMonths: "1月,2月,3月,4月,5月,6月,7月,8月,9月,10月,11月,12月",
+      heatmapDayTip: "{date}",
+      heatmapWeekTip: "{date} 起的一周",
+      heatmapCumulativeTip: "累计至 {date}",
+      heatmapValueUnit: "个 Token",
+      heatmapLess: "少",
+      heatmapMore: "多",
+      numberScale: "wan",
+      durationDay: "天",
+      durationHour: "小时",
+      durationMinute: "分",
+      durationSecond: "秒",
+      daysCount: "{n} 天",
+      noValue: "—",
       tabDeepseek: "deepseek",
       tabOpencode: "opencode go",
       deepseekPanel: "DeepSeek 平台",
       opencodePanel: "OpenCode Go",
       moduleToken: "会话令牌",
       moduleBalance: "账户余额",
-      moduleUsage: "用量与图表",
-      moduleModels: "模型明细",
+      moduleUsage: "用量",
+      moduleModels: "模型用量明细",
       moduleTools: "网页搜索与抓取",
       tokenTitle: "平台会话令牌",
       tokenConfigured: "已配置",
@@ -85,20 +115,32 @@ window.__ModuleLoader__.load({
       rangeLastMonth: "上月",
       rangeCustom: "自定义",
       rangeCustomRow: "自定义区间",
-      rangeApply: "应用",
       rangeClipped: "区间超过单次可查询的月份上限，已自动裁剪至最近月份",
+      // 区间日历（0.5.0）：月名与星期按当前界面语言取字典，不依赖浏览器 locale。
+      rangeSelectDates: "选择日期",
+      rangeMonthNames: "1月,2月,3月,4月,5月,6月,7月,8月,9月,10月,11月,12月",
+      rangeMonthTitle: "{year}年{month}",
+      rangeWeekdays: "日,一,二,三,四,五,六",
+      rangePrevMonth: "上个月",
+      rangeNextMonth: "下个月",
+      rangeSeparator: "→",
       totalsCost: "消费金额",
       totalsRequests: "API 请求次数",
       totalsTokens: "tokens",
+      // 合计口径（0.5.0）：消费金额与请求次数 = 模型 + 工具。
+      totalsCostHint: "模型 {model} + 工具 {tools}",
+      totalsRequestsHint: "模型 {model} + 工具 {tools}",
+      totalsToolsUnavailable: "工具数据不可用",
+      totalsToolsCostUnavailable: "工具费用不可用",
       chartTitle: "消费金额柱状图",
       chartEmpty: "所选区间内暂无消费数据",
       tooltipTotal: "总消耗",
       tokenChartTitle: "Token 消耗柱状图",
       tokenChartEmpty: "所选区间内暂无 token 数据",
-      legendMiss: "未命中输入",
-      legendHit: "命中输入",
+      legendMiss: "输入（未命中缓存）",
+      legendHit: "输入（命中缓存）",
       legendOut: "输出",
-      modelsTitle: "模型明细（所选区间）",
+      modelTableTitle: "模型明细表",
       modelsEmpty: "暂无模型数据",
       toolsSearch: "网页搜索",
       toolsFetch: "网页抓取",
@@ -109,6 +151,7 @@ window.__ModuleLoader__.load({
       toolsCostChart: "调用类型消费",
       toolsCostEmpty: "所选区间内暂无工具消费数据",
       toolsRequests: "API 请求次数",
+      toolsTotalCost: "工具消费总额",
       colModel: "模型",
       colRequests: "请求次数",
       colInput: "输入(未命中)",
@@ -183,14 +226,44 @@ window.__ModuleLoader__.load({
     const en = {
       nav: "Account",
       title: "Account",
+      tabOverview: "Overview",
+      overviewTitle: "Overview",
+      overviewYear: "Year",
+      overviewScanning: "Scanning…",
+      overviewEmpty: "No usage recorded yet",
+      overviewUnsupported: "This DSH version does not support usage insights",
+      statsTitle: "Usage summary",
+      statTotalTokens: "Total tokens",
+      statPeakTokens: "Peak tokens",
+      statLongestTask: "Longest task",
+      statLongestStreak: "Longest streak",
+      statCurrentStreak: "Current streak",
+      heatmapTitle: "Token activity",
+      heatmapDaily: "Daily",
+      heatmapWeekly: "Weekly",
+      heatmapCumulative: "Cumulative",
+      heatmapMonths: "Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec",
+      heatmapDayTip: "{date}",
+      heatmapWeekTip: "Week of {date}",
+      heatmapCumulativeTip: "Cumulative to {date}",
+      heatmapValueUnit: "tokens",
+      heatmapLess: "Less",
+      heatmapMore: "More",
+      numberScale: "short",
+      durationDay: "d",
+      durationHour: "h",
+      durationMinute: "m",
+      durationSecond: "s",
+      daysCount: "{n} d",
+      noValue: "—",
       tabDeepseek: "deepseek",
       tabOpencode: "opencode go",
       deepseekPanel: "DeepSeek Platform",
       opencodePanel: "OpenCode Go",
       moduleToken: "Session Token",
       moduleBalance: "Account Balance",
-      moduleUsage: "Usage & Charts",
-      moduleModels: "Model Details",
+      moduleUsage: "Usage",
+      moduleModels: "Model usage details",
       moduleTools: "Web Search & Fetch",
       tokenTitle: "Platform session token",
       tokenConfigured: "Configured",
@@ -214,20 +287,30 @@ window.__ModuleLoader__.load({
       rangeLastMonth: "Last month",
       rangeCustom: "Custom",
       rangeCustomRow: "Custom range",
-      rangeApply: "Apply",
       rangeClipped: "Range exceeds the per-query month cap; clipped to the most recent months",
+      rangeSelectDates: "Select dates",
+      rangeMonthNames: "January,February,March,April,May,June,July,August,September,October,November,December",
+      rangeMonthTitle: "{month} {year}",
+      rangeWeekdays: "Su,Mo,Tu,We,Th,Fr,Sa",
+      rangePrevMonth: "Previous month",
+      rangeNextMonth: "Next month",
+      rangeSeparator: "→",
       totalsCost: "Spend",
       totalsRequests: "API requests",
       totalsTokens: "tokens",
+      totalsCostHint: "Model {model} + tools {tools}",
+      totalsRequestsHint: "Model {model} + tools {tools}",
+      totalsToolsUnavailable: "tool data unavailable",
+      totalsToolsCostUnavailable: "tool cost unavailable",
       chartTitle: "Spend chart",
       chartEmpty: "No spend data in the selected range",
       tooltipTotal: "Total",
       tokenChartTitle: "Token usage chart",
       tokenChartEmpty: "No token data in the selected range",
-      legendMiss: "Input (miss)",
-      legendHit: "Cache hit",
+      legendMiss: "Input (cache miss)",
+      legendHit: "Input (cache hit)",
       legendOut: "Output",
-      modelsTitle: "Model details (selected range)",
+      modelTableTitle: "Per-model table",
       modelsEmpty: "No model data",
       toolsSearch: "Web search",
       toolsFetch: "Web fetch",
@@ -238,6 +321,7 @@ window.__ModuleLoader__.load({
       toolsCostChart: "Cost by call type",
       toolsCostEmpty: "No tool cost data in the selected range",
       toolsRequests: "API requests",
+      toolsTotalCost: "Total tool cost",
       colModel: "Model",
       colRequests: "Requests",
       colInput: "Input (miss)",
@@ -314,6 +398,8 @@ window.__ModuleLoader__.load({
       panelTitle: { fontSize: 16, fontWeight: 600, margin: 0, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 },
       section: { display: "flex", flexDirection: "column", gap: 12 },
       hint: { color: "var(--dsw-alias-label-tertiary)", fontSize: 13, lineHeight: 1.6, margin: 0 },
+      // 区间控件的行内标签：定宽 + 不收缩，保证两个控件左边缘对齐。
+      rangeLabel: { color: "var(--dsw-alias-label-tertiary)", fontSize: 13, lineHeight: 1.6, margin: 0, minWidth: 88, flexShrink: 0 },
       error: { color: "var(--dsw-alias-state-error-primary)", fontSize: 13, lineHeight: 1.6, margin: 0 },
       ok: { color: "var(--dsw-alias-state-success-primary)", fontSize: 12, lineHeight: 1.6, margin: 0 },
       card: { border: "1px solid var(--dsw-alias-border-l2)", background: "var(--dsw-alias-bg-layer-3)", borderRadius: 10, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 8 },
@@ -326,13 +412,12 @@ window.__ModuleLoader__.load({
       cardsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 },
       statLabel: { color: "var(--dsw-alias-label-tertiary)", fontSize: 12, margin: 0 },
       statValue: { fontSize: 18, fontWeight: 600, margin: 0 },
+      statHint: { color: "var(--dsw-alias-label-tertiary)", fontSize: 11, lineHeight: 1.5, margin: 0, fontVariantNumeric: "tabular-nums" },
       row: { display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--dsw-alias-label-secondary)", gap: 8 },
       button: { border: "1px solid var(--dsw-alias-border-l2)", color: "var(--dsw-alias-label-primary)", font: "inherit", cursor: "pointer", background: "transparent", borderRadius: 6, padding: "5px 12px" },
       buttonActive: { border: "1px solid var(--dsw-alias-state-business-primary)", color: "var(--dsw-alias-state-business-primary)", font: "inherit", cursor: "pointer", background: "transparent", borderRadius: 6, padding: "5px 12px" },
       buttonsRow: { display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" },
       input: { flex: 1, minWidth: 200, border: "1px solid var(--dsw-alias-border-l2)", background: "var(--dsw-alias-bg-layer-1)", color: "var(--dsw-alias-label-primary)", font: "inherit", borderRadius: 6, padding: "5px 10px" },
-      dateInput: { border: "1px solid var(--dsw-alias-border-l2)", background: "var(--dsw-alias-bg-layer-1)", color: "var(--dsw-alias-label-primary)", font: "inherit", borderRadius: 6, padding: "4px 8px" },
-      select: { border: "1px solid var(--dsw-alias-border-l2)", background: "var(--dsw-alias-bg-layer-1)", color: "var(--dsw-alias-label-primary)", font: "inherit", borderRadius: 6, padding: "5px 10px", cursor: "pointer", maxWidth: 200 },
       tokenRow: { display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" },
       barTrack: { height: 8, borderRadius: 4, background: "var(--dsw-alias-bg-layer-1)", overflow: "hidden" },
       barFill: { height: "100%", borderRadius: 4, background: "var(--dsw-alias-state-business-primary)", transition: "width .2s ease" },
@@ -357,6 +442,12 @@ window.__ModuleLoader__.load({
       tooltip: { position: "absolute", zIndex: 6, background: "var(--dsw-alias-bg-layer-3)", border: "1px solid var(--dsw-alias-border-l2)", borderRadius: 8, padding: "6px 10px", fontSize: 12, lineHeight: 1.6, whiteSpace: "nowrap", pointerEvents: "none", boxShadow: "0 4px 16px rgb(0 0 0 / 0.25)" },
       tooltipTitle: { margin: 0, fontWeight: 600, color: "var(--dsw-alias-label-primary)", fontSize: 12 },
       tooltipRow: { margin: 0, color: "var(--dsw-alias-label-secondary)", fontSize: 12, fontVariantNumeric: "tabular-nums" },
+      // Token 图 tooltip：表头（日期 + 总量）与「色块 + 名称 + 右对齐数值」明细行
+      tooltipHead: { display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 16, margin: 0, fontWeight: 600, fontSize: 12, lineHeight: 1.6, color: "var(--dsw-alias-label-primary)" },
+      tooltipHeadValue: { fontWeight: 600, fontVariantNumeric: "tabular-nums" },
+      tooltipSwatchRow: { display: "flex", alignItems: "center", gap: 6, margin: 0, fontSize: 12, lineHeight: 1.6, color: "var(--dsw-alias-label-secondary)" },
+      tooltipSwatch: { display: "inline-block", width: 10, height: 10, flex: "none", borderRadius: 2 },
+      tooltipValue: { marginLeft: "auto", color: "var(--dsw-alias-label-primary)", fontVariantNumeric: "tabular-nums" },
       chip: { border: "1px solid var(--dsw-alias-border-l2)", color: "var(--dsw-alias-label-primary)", font: "inherit", cursor: "pointer", background: "transparent", borderRadius: 999, padding: "4px 12px", fontSize: 12 },
       chipActive: { border: "1px solid var(--dsw-alias-state-business-primary)", color: "var(--dsw-alias-state-business-primary)", font: "inherit", cursor: "pointer", background: "transparent", borderRadius: 999, padding: "4px 12px", fontSize: 12 },
       legendRow: { display: "flex", flexWrap: "wrap", gap: 14, alignItems: "center" },
@@ -375,7 +466,9 @@ window.__ModuleLoader__.load({
       modelBarFill: { height: "100%", borderRadius: 3, background: "var(--dsw-alias-state-success-primary)", opacity: 0.75 },
       modelTotals: { display: "flex", flexWrap: "wrap", gap: 24, marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--dsw-alias-border-l2)" },
       modelTotalItem: { display: "flex", flexDirection: "column", gap: 2 },
-      tabsRow: { display: "flex", gap: 4, borderBottom: "1px solid var(--dsw-alias-border-l2)", marginBottom: 4 },
+      // 标签栏吸附：设置面板内容区（.VOzbGW_options，overflow-y:auto）滚动时
+      // 让 deepseek / opencode go 两个标签停在内容区顶部；背景取面板同色以遮挡滚动内容。
+      tabsRow: { display: "flex", gap: 4, borderBottom: "1px solid var(--dsw-alias-border-l2)", marginBottom: 4, position: "sticky", top: 0, zIndex: 5, background: "var(--dsw-alias-bg-layer-2)", paddingTop: 8 },
       tab: { border: "none", background: "transparent", color: "var(--dsw-alias-label-secondary)", font: "inherit", fontSize: 14, padding: "8px 14px", cursor: "pointer", borderBottom: "2px solid transparent", marginBottom: -1 },
       tabActive: { border: "none", background: "transparent", color: "var(--dsw-alias-label-primary)", font: "inherit", fontSize: 14, fontWeight: 600, padding: "8px 14px", cursor: "pointer", borderBottom: "2px solid var(--dsw-alias-state-business-primary)", marginBottom: -1 }
     };
@@ -490,6 +583,498 @@ window.__ModuleLoader__.load({
       const d = new Date(dateStr + "T00:00:00");
       d.setDate(d.getDate() + n);
       return fmtDate(d);
+    }
+
+    // ---- 区间日历纯函数（0.5.0） ---------------------------------------------
+    // 全部不触碰 DOM，方便单测锁定「周日起始」「跨年」「反向区间」等边界。
+
+    /** `YYYY-MM-DD` 的合法性（同时挡住 2026-02-30 这类不存在的日期）。 */
+    function isDateKey(value) {
+      if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+      const d = new Date(value + "T00:00:00");
+      return !Number.isNaN(d.getTime()) && fmtDate(d) === value;
+    }
+
+    /** 月份加减：delta 可为负；返回 { year, month }（month 为 1-12）。 */
+    function addMonths(year, month, delta) {
+      const index = (Number(year) || 0) * 12 + ((Number(month) || 1) - 1) + (Number(delta) || 0);
+      return { year: Math.floor(index / 12), month: (index % 12) + 1 };
+    }
+
+    /**
+     * 构造单月网格：周日起始，前后用 null 补齐成整周。
+     * @returns {{ year:number, month:number, weeks: Array<Array<{key:string,day:number}|null>> }}
+     */
+    function buildMonthGrid(year, month) {
+      const first = new Date(year, month - 1, 1);
+      const daysInMonth = new Date(year, month, 0).getDate();
+      const lead = first.getDay(); // 0=周日
+      const cells = [];
+      for (let i = 0; i < lead; i += 1) cells.push(null);
+      for (let day = 1; day <= daysInMonth; day += 1) {
+        cells.push({ key: `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`, day });
+      }
+      while (cells.length % 7 !== 0) cells.push(null);
+      const weeks = [];
+      for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+      return { year, month, weeks };
+    }
+
+    /** 星期表头（7 项），来自当前语言字典。 */
+    function weekdayLabels(t) {
+      const raw = typeof t === "function" ? t("rangeWeekdays") : "";
+      const list = String(raw).split(",").map((s) => s.trim());
+      if (list.length === 7) return list;
+      return ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+    }
+
+    /** 月标题：按语言模板拼装（zh → 2026年10月，en → October 2026）。 */
+    function formatMonthTitle(year, month, t) {
+      const names = String(typeof t === "function" ? t("rangeMonthNames") : "").split(",");
+      const name = (names[month - 1] || String(month)).trim();
+      const template = typeof t === "function" ? t("rangeMonthTitle") : "{month} {year}";
+      return String(template).replace("{year}", String(year)).replace("{month}", name);
+    }
+
+    /** 两端排序：反向选择也返回 from <= to。非法输入返回 null。 */
+    function normalizeRange(a, b) {
+      if (!isDateKey(a) || !isDateKey(b)) return null;
+      return a <= b ? { from: a, to: b } : { from: b, to: a };
+    }
+
+    /** 是否晚于今天（日历里置灰不可选）。 */
+    function isFutureDate(key, todayKey) {
+      if (!isDateKey(key) || !isDateKey(todayKey)) return false;
+      return key > todayKey;
+    }
+
+    /** `YYYY-MM-DD` → 所在月 { year, month }；非法输入回落到今天。 */
+    function monthOfDateKey(key, fallbackKey) {
+      const base = isDateKey(key) ? key : isDateKey(fallbackKey) ? fallbackKey : todayDate();
+      const m = /^(\d{4})-(\d{2})/.exec(base);
+      return { year: Number(m[1]), month: Number(m[2]) };
+    }
+
+    /** 同月内平移：日期溢出时夹到当月最后一天（1/31 + 1 月 → 2/28）。 */
+    function shiftMonthKey(key, delta) {
+      if (!isDateKey(key)) return key;
+      const base = monthOfDateKey(key);
+      const next = addMonths(base.year, base.month, delta);
+      const daysInMonth = new Date(next.year, next.month, 0).getDate();
+      const day = Math.min(Number(key.slice(8, 10)), daysInMonth);
+      return `${next.year}-${String(next.month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+
+    /** 所在周的周日 / 周六（周日起始，与日历表头一致）。 */
+    function startOfWeekKey(key) {
+      if (!isDateKey(key)) return key;
+      return addDays(key, -new Date(key + "T00:00:00").getDay());
+    }
+
+    function endOfWeekKey(key) {
+      if (!isDateKey(key)) return key;
+      return addDays(key, 6 - new Date(key + "T00:00:00").getDay());
+    }
+
+    /**
+     * 区间带形状：起点格只画右半、终点格只画左半、中间整格。
+     * 首尾相同（单日区间）或输入非法时返回 null（不画带）。
+     * @returns {"start"|"middle"|"end"|null}
+     */
+    function bandKind(from, to, key) {
+      if (!isDateKey(from) || !isDateKey(to) || from >= to) return null;
+      if (key === from) return "start";
+      if (key === to) return "end";
+      if (key > from && key < to) return "middle";
+      return null;
+    }
+
+    /**
+     * 日历实际展示的区间：两端齐全用已选区间；只选了起点时用「起点 ↔ 悬停日」做预览。
+     * @returns {{ from: string|null, to: string|null }}
+     */
+    function previewRange(staged, hoverKey) {
+      const from = staged !== null && typeof staged === "object" && isDateKey(staged.from) ? staged.from : null;
+      const to = staged !== null && typeof staged === "object" && isDateKey(staged.to) ? staged.to : null;
+      if (from !== null && to !== null) return { from, to };
+      if (from !== null && isDateKey(hoverKey)) {
+        return hoverKey < from ? { from: hoverKey, to: from } : { from, to: hoverKey };
+      }
+      return { from: null, to: null };
+    }
+
+    /**
+     * 用量合计口径（0.5.0）：消费金额与请求次数 = 模型 + 工具。
+     * 工具数据缺失时按 0 累加，并用 partial 标记让界面显示降级提示。
+     */
+    function combinedTotals(usage) {
+      const body = usage !== null && typeof usage === "object" ? usage : {};
+      const totals = body.totals !== null && typeof body.totals === "object" ? body.totals : {};
+      const tools = body.tools !== null && typeof body.tools === "object" ? body.tools : null;
+      const toolsOk = tools !== null && tools.ok === true;
+      const toolTotals = toolsOk && tools.totals !== null && typeof tools.totals === "object" ? tools.totals : null;
+      const toolCalls = toolTotals !== null && typeof toolTotals.calls === "number" ? toolTotals.calls : null;
+      const toolCost =
+        toolsOk && tools.costAvailable === true && toolTotals !== null && typeof toolTotals.cost === "number"
+          ? toolTotals.cost
+          : null;
+      const modelCost = typeof totals.cost === "number" ? totals.cost : null;
+      const modelRequests = typeof totals.requests === "number" ? totals.requests : null;
+      return {
+        modelCost,
+        modelRequests,
+        toolCost,
+        toolCalls,
+        toolsOk,
+        tokens: typeof totals.tokens === "number" ? totals.tokens : null,
+        cost: modelCost === null ? null : modelCost + (toolCost === null ? 0 : toolCost),
+        requests: modelRequests === null ? null : modelRequests + (toolCalls === null ? 0 : toolCalls),
+        costPartial: toolCost === null,
+        requestsPartial: toolCalls === null
+      };
+    }
+
+    // ---- 「概览」标签页：年度聚合、热力图网格与格式化（0.5.0） ----------------
+    // 全部纯函数，便于单测锁定跨年、闰年、分位阈值等边界。
+
+    /** `YYYY-MM-DD` → 年份（非法返回 null）。 */
+    function yearOfDayKey(key) {
+      if (!isDateKey(key)) return null;
+      return Number(key.slice(0, 4));
+    }
+
+    /** 某年的全部日期 key（含闰年 2 月 29 日）。 */
+    function dayKeysOfYear(year) {
+      const keys = [];
+      const cursor = new Date(year, 0, 1);
+      while (cursor.getFullYear() === year) {
+        keys.push(fmtDate(cursor));
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      return keys;
+    }
+
+    /** 年度 token 合计。 */
+    function sumYearTokens(days, year) {
+      let total = 0;
+      for (const key of dayKeysOfYear(year)) {
+        const value = days !== null && typeof days === "object" ? days[key] : undefined;
+        if (typeof value === "number" && value > 0) total += value;
+      }
+      return total;
+    }
+
+    /** 年度峰值：{ date, tokens }；无数据时 tokens 为 0。 */
+    function peakOfYear(days, year) {
+      let best = { date: null, tokens: 0 };
+      for (const key of dayKeysOfYear(year)) {
+        const value = days !== null && typeof days === "object" ? days[key] : undefined;
+        if (typeof value !== "number" || !(value > 0)) continue;
+        if (value > best.tokens) best = { date: key, tokens: value };
+      }
+      return best;
+    }
+
+    /** 年度内最长连续「有消耗」天数。 */
+    function longestStreakOfYear(days, year) {
+      let best = 0;
+      let run = 0;
+      for (const key of dayKeysOfYear(year)) {
+        const value = days !== null && typeof days === "object" ? days[key] : undefined;
+        if (typeof value === "number" && value > 0) {
+          run += 1;
+          if (run > best) best = run;
+        } else {
+          run = 0;
+        }
+      }
+      return best;
+    }
+
+    /**
+     * 当前连续天数：从今天往回数；今天还没用量时从昨天开始数（避免早上打开就显示 0）。
+     * @param {Record<string, number>} days
+     * @param {string} todayKey
+     */
+    function currentStreakOfDays(days, todayKey) {
+      if (!isDateKey(todayKey)) return 0;
+      const has = (key) => {
+        const value = days !== null && typeof days === "object" ? days[key] : undefined;
+        return typeof value === "number" && value > 0;
+      };
+      let cursor = has(todayKey) ? todayKey : addDays(todayKey, -1);
+      let streak = 0;
+      while (has(cursor)) {
+        streak += 1;
+        cursor = addDays(cursor, -1);
+      }
+      return streak;
+    }
+
+    /**
+     * 年度热力图网格：按周分列（周日起始），首尾补齐成整周。
+     * @returns {{ year:number, weeks: Array<Array<{ key:string, inYear:boolean, day:number }>> }}
+     */
+    /**
+     * 构造整年网格：**以周一为一周起点**（与「每周」统计口径一致），
+     * 前后用上一年的末尾与下一年的开头补满整周。
+     * 每列 = 一周，列内行号 0 = 周一 … 6 = 周日。
+     */
+    function buildYearWeeks(year) {
+      const first = new Date(year, 0, 1);
+      const last = new Date(year, 11, 31);
+      // getDay()：0=周日 … 6=周六；换算成「距离本周周一的天数」= (d + 6) % 7。
+      const start = new Date(first);
+      start.setDate(start.getDate() - ((first.getDay() + 6) % 7));
+      const end = new Date(last);
+      end.setDate(end.getDate() + (6 - ((last.getDay() + 6) % 7)));
+      const weeks = [];
+      const cursor = new Date(start);
+      while (cursor <= end) {
+        const cells = [];
+        for (let i = 0; i < 7; i += 1) {
+          const key = fmtDate(cursor);
+          cells.push({ key, inYear: cursor.getFullYear() === year, day: cursor.getDate() });
+          cursor.setDate(cursor.getDate() + 1);
+        }
+        weeks.push(cells);
+      }
+      return { year, weeks };
+    }
+
+    /**
+     * 月份刻度抽稀：列宽不足时跳过挤在一起的月份，返回实际要显示的月份。
+     * @param {{ month:number, weekIndex:number }[]} anchors 每个月的起始列
+     * @param {number} minGap 两个标签之间最少的列数
+     */
+    function thinMonthAnchors(anchors, minGap = 4) {
+      const list = Array.isArray(anchors) ? anchors : [];
+      const gap = typeof minGap === "number" && minGap >= 1 ? minGap : 4;
+      const out = [];
+      for (const anchor of list) {
+        if (anchor === null || typeof anchor !== "object") continue;
+        const previous = out[out.length - 1];
+        if (previous !== undefined && anchor.weekIndex - previous.weekIndex < gap) continue;
+        out.push(anchor);
+      }
+      return out;
+    }
+
+    /** 每周合计（只统计属于本年的天）。 */
+    function weekTotalsOf(days, weeks) {
+      return weeks.map((cells) => {
+        let total = 0;
+        for (const cell of cells) {
+          if (!cell.inYear) continue;
+          const value = days !== null && typeof days === "object" ? days[cell.key] : undefined;
+          if (typeof value === "number" && value > 0) total += value;
+        }
+        return total;
+      });
+    }
+
+    /** 每天 → 从年初起算的累计值（不属于本年的天为 0）。 */
+    function cumulativeByDay(days, weeks) {
+      const out = {};
+      let acc = 0;
+      for (const cells of weeks) {
+        for (const cell of cells) {
+          if (!cell.inYear) continue;
+          const value = days !== null && typeof days === "object" ? days[cell.key] : undefined;
+          if (typeof value === "number" && value > 0) acc += value;
+          out[cell.key] = acc;
+        }
+      }
+      return out;
+    }
+
+    /** 每周「有用量的天数」（只算属于本年的天）——决定该列从下往上填几格。 */
+    function weekActiveDaysOf(days, weeks) {
+      return weeks.map((cells) => {
+        let count = 0;
+        for (const cell of cells) {
+          if (!cell.inYear) continue;
+          const value = days !== null && typeof days === "object" ? days[cell.key] : undefined;
+          if (typeof value === "number" && value > 0) count += 1;
+        }
+        return count;
+      });
+    }
+
+    /**
+     * 每周「最后一个有效日期」：属于本年、且不晚于今天。
+     * 累计值的取值口径与提示框的日期都用它，两者才对得上。
+     */
+    function weekLastKeyOf(weeks, todayKey) {
+      return weeks.map((cells) => {
+        let last = null;
+        for (const cell of cells) {
+          if (!cell.inYear) continue;
+          if (typeof todayKey === "string" && cell.key > todayKey) break;
+          last = cell.key;
+        }
+        return last;
+      });
+    }
+
+    /**
+     * 每周的累计口径数值：取「该周最后一天（不晚于今天）」的累计值，
+     * 让同一列共用一种颜色，并保证从左到右单调不减。
+     * 整周都排在未来时该列没有代表日，沿用上一列的累计值（而不是回落成 0），
+     * 这样色阶阈值和列间比较都不会出现「末尾突然掉回去」。
+     */
+    function weekCumulativeOf(weeks, cumulative, todayKey) {
+      let carried = 0;
+      return weekLastKeyOf(weeks, todayKey).map((lastKey) => {
+        if (lastKey === null) return carried;
+        const value = cumulative !== null && typeof cumulative === "object" ? cumulative[lastKey] : undefined;
+        if (typeof value === "number") carried = value;
+        return carried;
+      });
+    }
+
+    /**
+     * 色阶阈值：在 log10 空间取 P25/P50/P75 三条边界，再换算回 Token 数值，严格递增。
+     * 用量跨 4 个数量级（万 → 亿），线性分位会把 1M 量级的日子全压进「无色」档，
+     * 所以必须按数量级分档；三条边界恰好切出四档，配合 levelOfValue
+     * 「正数至少一档」，只有 0 Token 无填充。
+     */
+    function quantileThresholds(values) {
+      const positive = (Array.isArray(values) ? values : []).filter((v) => typeof v === "number" && v > 0);
+      if (positive.length === 0) return [0, 0, 0];
+      // 在 log10 空间取分位：用量常跨 4 个数量级（万 → 亿），线性分位会把
+      // 「几万」和「几百万」压进同一档，导致大量日子看不出差别。
+      const logs = positive.map((v) => Math.log10(v + 1)).sort((a, b) => a - b);
+      const pick = (p) => logs[Math.min(logs.length - 1, Math.max(0, Math.ceil(p * logs.length) - 1))];
+      // 三条边界切出四档：< b0 为第 1 档、b0…b1 为第 2 档、b1…b2 为第 3 档、≥ b2 为第 4 档。
+      // 边界取 p75 而不是 p99，最高档才总是可达（否则最大值自己也进不了第 4 档）。
+      // 保持严格递增：数据全是同一个值时三条边界会相等，那样四档就退化成一档。
+      const out = [];
+      for (const x of [pick(0.25), pick(0.5), pick(0.75)]) {
+        const next = Math.max(Math.round(Math.pow(10, x) - 1), (out[out.length - 1] ?? -1) + 1);
+        out.push(next);
+      }
+      return out;
+    }
+
+    /**
+     * 把一整年的周列按顺序切成若干块。
+     * 设置面板里热力图只有约 530px 可用，53 列挤在一行每格不足 7px；
+     * 切成两行后每格约 16px，才能画出与官方参考图一致的圆角方块。
+     * 返回 [{ startIndex, weeks }]，startIndex 是该块第一列在全年里的下标，
+     * 供 heatLevelOf / tooltip 继续用「全年列号」取每周聚合值。
+     */
+    function splitWeekColumns(weeks, blockCount) {
+      const list = Array.isArray(weeks) ? weeks : [];
+      const count = Math.max(1, Math.floor(Number(blockCount) || 1));
+      if (list.length === 0) return [];
+      // 尽量均分：余数补给前面的块，避免最后一行只有一两列。
+      const perBlock = Math.ceil(list.length / count);
+      const blocks = [];
+      for (let start = 0; start < list.length; start += perBlock) {
+        blocks.push({ startIndex: start, weeks: list.slice(start, start + perBlock) });
+      }
+      return blocks;
+    }
+
+    /**
+     * 数值 → 0（无填充）…4（最深）。
+     * 只要 value > 0 就至少落在第 1 档——颜色分级只用来区分「多与少」，
+     * 「有没有」由 0 Token 这一档单独表达。
+     */
+    function levelOfValue(value, thresholds) {
+      if (typeof value !== "number" || !(value > 0)) return 0;
+      const list = Array.isArray(thresholds) ? thresholds : [];
+      let level = 1;
+      // 越过第 i+1 条边界就升一档：越过 b0 为 2 档、b1 为 3 档、b2 为 4 档。
+      for (let i = 0; i < list.length; i += 1) {
+        if (value >= list[i]) level = i + 2;
+      }
+      return Math.min(level, 4);
+    }
+
+    /**
+     * 热力图单格色阶：把三种模式统一成「取值 → 0…4」。
+     * 每周与累计总量都采用「自下而上填充」：一列从最底格往上连续着色，
+     * 填满几格 = 那一周有几天用过（Codex / 官方平台的做法），一眼看出用了几天。
+     * - daily：按当天用量着色，只有 0 Token 留白；
+     * 列内自下而上 = 周日 → 周一，「底部」是本周的最后一天（周日）。
+     * - weekly：整列同色（取该周合计），从底部起填「当周有用量的天数」格；
+     * - cumulative：整列同色（取截至该周末的累计值），同样从底部起填「当周有用量的天数」格。
+     */
+    function heatLevelOf(mode, key, weekIndex, context) {
+      const { days, weeklyTotals, weekCumulative, thresholds, activeDays } = context;
+      const raw = days !== null && typeof days === "object" ? days[key] : undefined;
+      const own = typeof raw === "number" && raw > 0 ? raw : 0;
+      if (mode === "weekly" || mode === "cumulative") {
+        // 行号 0 = 周日 … 6 = 周六；「自下而上」即只保留末尾 count 行。
+        const row = typeof context.rowOf === "function" ? context.rowOf(key) : null;
+        const count = Array.isArray(activeDays) ? activeDays[weekIndex] ?? 0 : 0;
+        if (typeof row !== "number" || count <= 0 || row < 7 - count) return 0;
+        const series = mode === "weekly" ? weeklyTotals : weekCumulative;
+        const value = Array.isArray(series) ? series[weekIndex] ?? 0 : 0;
+        return levelOfValue(typeof value === "number" ? value : 0, thresholds);
+      }
+      return levelOfValue(own, thresholds);
+    }
+
+    /** 去掉小数末尾多余的 0：19.10 → 19.1，20.00 → 20。 */
+    function trimTrailingZero(text) {
+      return String(text).includes(".") ? String(text).replace(/\.?0+$/, "") : String(text);
+    }
+
+    /**
+     * 提示框定位：以锚点为中心水平居中，并夹在视口内；上方不够时翻到锚点下方。
+     * 纯函数，便于单测锁定贴边行为。
+     * @returns {{ left:number, top:number }}
+     */
+    function clampTipPosition(anchorX, anchorY, boxW, boxH, viewportW, margin = 8) {
+      const w = typeof boxW === "number" && boxW > 0 ? boxW : 0;
+      const h = typeof boxH === "number" && boxH > 0 ? boxH : 0;
+      const vw = typeof viewportW === "number" && viewportW > 0 ? viewportW : 0;
+      const m = typeof margin === "number" && margin >= 0 ? margin : 8;
+      const maxLeft = Math.max(m, vw - w - m);
+      const left = Math.round(Math.min(Math.max((anchorX ?? 0) - w / 2, m), maxLeft));
+      let top = Math.round((anchorY ?? 0) - h - 6);
+      if (top < m) top = Math.round((anchorY ?? 0) + 24);
+      return { left, top };
+    }
+
+    /** token 数紧凑展示：中文 万/亿，英文 K/M/B。 */
+    function formatTokenCount(value, scale) {
+      if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return "—";
+      if (scale === "wan") {
+        if (value >= 1e8) return `${trimTrailingZero((value / 1e8).toFixed(2))}亿`;
+        if (value >= 1e4) return `${trimTrailingZero((value / 1e4).toFixed(1))}万`;
+        return Math.round(value).toLocaleString();
+      }
+      if (value >= 1e9) return `${trimTrailingZero((value / 1e9).toFixed(2))}B`;
+      if (value >= 1e6) return `${trimTrailingZero((value / 1e6).toFixed(1))}M`;
+      if (value >= 1e3) return `${trimTrailingZero((value / 1e3).toFixed(1))}K`;
+      return Math.round(value).toLocaleString();
+    }
+
+    /**
+     * 时长展示：`X天Y小时` / `X小时Y分` / `X分` / `X秒`。
+     * @param {number} ms
+     * @param {{ day:string, hour:string, minute:string, second:string }} units
+     */
+    function formatDurationMs(ms, units) {
+      if (typeof ms !== "number" || !Number.isFinite(ms) || ms < 0) return "—";
+      const u = units !== null && typeof units === "object" ? units : {};
+      const day = typeof u.day === "string" ? u.day : "d";
+      const hour = typeof u.hour === "string" ? u.hour : "h";
+      const minute = typeof u.minute === "string" ? u.minute : "m";
+      const second = typeof u.second === "string" ? u.second : "s";
+      const totalSeconds = Math.floor(ms / 1000);
+      const days = Math.floor(totalSeconds / 86400);
+      const hours = Math.floor((totalSeconds % 86400) / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      if (days > 0) return hours > 0 ? `${days}${day}${hours}${hour}` : `${days}${day}`;
+      if (hours > 0) return minutes > 0 ? `${hours}${hour}${minutes}${minute}` : `${hours}${hour}`;
+      if (minutes > 0) return `${minutes}${minute}`;
+      return `${seconds}${second}`;
     }
 
     /** 预设时间范围：{ id, from, to }。 */
@@ -638,10 +1223,14 @@ window.__ModuleLoader__.load({
     }
 
     /** 无边框统计项（模块卡片内使用，避免“卡中卡”）。 */
-    function StatGridItem({ label, value }) {
+    /** 统计格：主数值 + 可选副行（0.5.0 起用于标注「模型 + 工具」的构成）。 */
+    function StatGridItem({ label, value, hint }) {
       return React.createElement("div", { style: styles.statGridItem },
         React.createElement("p", { style: styles.statLabel }, label),
-        React.createElement("p", { style: styles.statValue }, value)
+        React.createElement("p", { style: styles.statValue }, value),
+        hint === null || hint === undefined || hint === ""
+          ? null
+          : React.createElement("p", { style: styles.statHint }, hint)
       );
     }
 
@@ -775,11 +1364,14 @@ window.__ModuleLoader__.load({
       );
     }
 
-    /** Token 柱状图分类色：未命中输入 / 命中输入 / 输出。 */
+    /**
+     * Token 柱状图分类色：输入（命中缓存）浅蓝 → 输入（未命中缓存）中蓝 → 输出 深蓝，
+     * 与官方开放平台的用量图一致；取 DSH 静态蓝色梯度，深浅色主题下都稳定。
+     */
     const TOKEN_COLORS = {
-      miss: "var(--dsw-alias-state-business-primary)",
-      hit: "var(--dsw-alias-state-success-primary)",
-      out: "var(--dsw-alias-state-warn-primary)"
+      hit: "var(--dsw-static-blue-300)",
+      miss: "var(--dsw-static-blue-400)",
+      out: "var(--dsw-static-blue-600)"
     };
 
     /**
@@ -810,8 +1402,8 @@ window.__ModuleLoader__.load({
       const slot = innerW / series.length;
       const bw = Math.max(1, Math.min(28, slot * 0.7));
       const segs = (s) => [
-        { key: "miss", v: s.miss, color: TOKEN_COLORS.miss },
         { key: "hit", v: s.hit, color: TOKEN_COLORS.hit },
+        { key: "miss", v: s.miss, color: TOKEN_COLORS.miss },
         { key: "out", v: s.out, color: TOKEN_COLORS.out }
       ];
       const bars = series.map((s, i) => {
@@ -856,11 +1448,14 @@ window.__ModuleLoader__.load({
       if (hovered !== null) {
         const s = series[hovered];
         tooltip = React.createElement(ChartTooltip, { anchorIndex: hovered, count: series.length, wrapRef },
-          React.createElement("p", { style: styles.tooltipTitle }, s.date),
-          React.createElement("p", { style: styles.tooltipRow }, `${t("legendMiss")}: ${fmtCount(s.miss)}`),
-          React.createElement("p", { style: styles.tooltipRow }, `${t("legendHit")}: ${fmtCount(s.hit)}`),
-          React.createElement("p", { style: styles.tooltipRow }, `${t("legendOut")}: ${fmtCount(s.out)}`),
-          React.createElement("p", { style: { ...styles.tooltipRow, fontWeight: 600 } }, `${t("tooltipTotal")}: ${fmtCount(s.miss + s.hit + s.out)}`)
+          // 表头：日期 + 当日总量
+          React.createElement("div", { style: styles.tooltipHead },
+            React.createElement("span", null, s.date),
+            React.createElement("span", { style: styles.tooltipHeadValue }, fmtCount(s.hit + s.miss + s.out))
+          ),
+          tokenTooltipRow(TOKEN_COLORS.hit, t("legendHit"), s.hit),
+          tokenTooltipRow(TOKEN_COLORS.miss, t("legendMiss"), s.miss),
+          tokenTooltipRow(TOKEN_COLORS.out, t("legendOut"), s.out)
         );
       }
       return React.createElement("div", { ref: wrapRef, style: styles.chartWrap },
@@ -873,17 +1468,28 @@ window.__ModuleLoader__.load({
       );
     }
 
-    /** Token 图图例。 */
+    /** Token 图 tooltip 的一行：色块 + 名称 + 右对齐数值（对齐官方平台用量图）。 */
+    function tokenTooltipRow(color, label, value) {
+      return React.createElement("div", { style: styles.tooltipSwatchRow },
+        React.createElement("span", { style: { ...styles.tooltipSwatch, background: color } }),
+        React.createElement("span", null, label),
+        React.createElement("span", { style: styles.tooltipValue }, value)
+      );
+    }
+
+    /** Token 图图例：顺序与堆叠一致（命中 → 未命中 → 输出）。 */
     function TokenLegend({ t }) {
+      const items = [
+        { key: "hit", color: TOKEN_COLORS.hit, label: t("legendHit") },
+        { key: "miss", color: TOKEN_COLORS.miss, label: t("legendMiss") },
+        { key: "out", color: TOKEN_COLORS.out, label: t("legendOut") }
+      ];
       return React.createElement("div", { style: styles.legendRow },
-        React.createElement("span", { style: { color: "var(--dsw-alias-label-secondary)", fontSize: 12 } },
-          React.createElement("span", { style: { ...styles.swatch, background: TOKEN_COLORS.miss } }), t("legendMiss")
-        ),
-        React.createElement("span", { style: { color: "var(--dsw-alias-label-secondary)", fontSize: 12 } },
-          React.createElement("span", { style: { ...styles.swatch, background: TOKEN_COLORS.hit } }), t("legendHit")
-        ),
-        React.createElement("span", { style: { color: "var(--dsw-alias-label-secondary)", fontSize: 12 } },
-          React.createElement("span", { style: { ...styles.swatch, background: TOKEN_COLORS.out } }), t("legendOut")
+        items.map((item) =>
+          React.createElement("span", { key: item.key, style: { color: "var(--dsw-alias-label-secondary)", fontSize: 12 } },
+            React.createElement("span", { style: { ...styles.swatch, background: item.color } }),
+            item.label
+          )
         )
       );
     }
@@ -1239,6 +1845,13 @@ window.__ModuleLoader__.load({
         ? tools.totals.cost
         : null;
       const summary = React.createElement("div", { style: styles.toolStatGrid },
+        // 0.5.0：先给出所有工具调用的消费合计，再逐个工具列出明细。
+        React.createElement("div", { key: "__total__", style: styles.toolStatItem },
+          React.createElement("p", { style: styles.toolStatLabel }, t("toolsTotalCost")),
+          React.createElement("p", { style: styles.toolStatValue },
+            costAvailable && totalCost !== null ? fmtMoney(totalCost, currencyOf) : "—"
+          )
+        ),
         functions.map((fn) =>
           React.createElement("div", { key: fn.id, style: styles.toolStatItem },
             React.createElement("p", { style: styles.toolStatLabel }, toolLabelOf(fn.id, t)),
@@ -1340,54 +1953,614 @@ window.__ModuleLoader__.load({
       lastMonth: "rangeLastMonth"
     };
 
-    function RangeSelector({ range, onApply, t }) {
-      const [customFrom, setCustomFrom] = React.useState(range.from);
-      const [customTo, setCustomTo] = React.useState(range.to);
+    // ---- 区间日历（0.5.0） ---------------------------------------------------
+    // 样式走注入式作用域样式表（沿用 MENU_CSS 的做法）：日历需要 :hover、
+    // :focus-visible 与窄屏媒体查询，纯内联样式表达不了。类名统一 .dsau- 前缀，
+    // 并用 data-plugin-css 标记保证幂等。
+
+    const CALENDAR_STYLE_ID = "dsh-account-usage/calendar.css";
+
+    const CALENDAR_CSS = [
+      ".dsau-range-row{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:6px}",
+      ".dsau-trigger{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 12px;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;font-size:14px;line-height:20px;font-variant-numeric:tabular-nums;cursor:pointer}",
+      ".dsau-trigger:hover{background:var(--dsw-alias-interactive-bg-hover)}",
+      ".dsau-trigger:focus-visible{outline:none;border-color:var(--dsw-alias-state-business-primary);box-shadow:0 0 0 2px color-mix(in srgb, var(--dsw-alias-state-business-primary) 28%, transparent)}",
+      ".dsau-trigger[data-open=\"1\"]{border-color:var(--dsw-alias-state-business-primary)}",
+      ".dsau-trigger-sep{padding:0 2px;color:var(--dsw-alias-label-tertiary)}",
+      ".dsau-trigger-empty{color:var(--dsw-alias-label-tertiary)}",
+      ".dsau-trigger-icon{display:inline-flex;flex:none;align-items:center;justify-content:center;width:14px;height:14px;color:var(--dsw-alias-label-tertiary)}",
+      // 预设下拉：原生 <select> 的边框在切换选项后偶尔不重绘（只剩圆角），
+      // 因此把外观（边框/圆角/底色/箭头）画在外层 span 上，select 只负责交互。
+      ".dsau-select{position:relative;display:inline-flex;align-items:center;height:34px;padding:0 30px 0 12px;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary)}",
+      ".dsau-select:hover{background:var(--dsw-alias-interactive-bg-hover)}",
+      ".dsau-select:focus-within{border-color:var(--dsw-alias-state-business-primary);box-shadow:0 0 0 2px color-mix(in srgb, var(--dsw-alias-state-business-primary) 28%, transparent)}",
+      ".dsau-select-input{appearance:none;-webkit-appearance:none;margin:0;padding:0;border:0;outline:none;background:transparent;color:inherit;font:inherit;font-size:14px;line-height:20px;height:32px;cursor:pointer}",
+      ".dsau-select-input option{background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary)}",
+      ".dsau-select-icon{position:absolute;right:9px;top:50%;display:inline-flex;align-items:center;justify-content:center;width:12px;height:12px;transform:translateY(-50%);color:var(--dsw-alias-label-tertiary);pointer-events:none}",
+      ".dsau-cal{position:fixed;z-index:1200;box-sizing:border-box;padding:16px;border-radius:12px;background:var(--dsw-alias-bg-layer-2);box-shadow:var(--dsw-elevation-panel);color:var(--dsw-alias-label-primary);font-size:14px;line-height:20px;outline:none}",
+      ".dsau-cal-head{display:flex;align-items:center;gap:4px;height:36px}",
+      ".dsau-cal-nav{display:inline-flex;flex:none;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:none;border-radius:var(--dsw-radius-sm);background:transparent;color:var(--dsw-alias-label-tertiary);cursor:pointer}",
+      ".dsau-cal-nav:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}",
+      ".dsau-cal-nav:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:1px}",
+      ".dsau-cal-nav:disabled{color:var(--dsw-alias-label-caption);color:color-mix(in srgb, var(--dsw-alias-label-primary) 15%, transparent);cursor:default}",
+      ".dsau-cal-titles{display:flex;flex:1;min-width:0;gap:24px}",
+      ".dsau-cal-title{flex:1;min-width:0;margin:0;text-align:center;font-size:15px;font-weight:600;line-height:22px;color:var(--dsw-alias-label-primary)}",
+      ".dsau-cal-months{display:flex;gap:24px}",
+      ".dsau-cal-month{width:266px;flex:none}",
+      ".dsau-cal-weekdays,.dsau-cal-week{display:grid;grid-template-columns:repeat(7,38px)}",
+      ".dsau-cal-wd{display:flex;align-items:center;justify-content:center;height:28px;font-size:14px;line-height:20px;color:var(--dsw-alias-label-primary)}",
+      ".dsau-cal-cell{position:relative;display:flex;align-items:center;justify-content:center;height:38px;padding:0}",
+      ".dsau-cal-cell::before{content:\"\";position:absolute;top:50%;height:32px;transform:translateY(-50%);background:var(--dsw-alias-interactive-bg-hover-solid);opacity:0;pointer-events:none}",
+      ".dsau-cal-cell[data-band=\"start\"]::before{left:50%;right:0;opacity:1}",
+      ".dsau-cal-cell[data-band=\"middle\"]::before{left:0;right:0;opacity:1}",
+      ".dsau-cal-cell[data-band=\"end\"]::before{left:0;right:50%;opacity:1}",
+      ".dsau-cal-day{position:relative;z-index:1;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0;border:none;border-radius:50%;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:15px;line-height:20px;font-variant-numeric:tabular-nums;cursor:pointer}",
+      ".dsau-cal-day[data-in-range=\"1\"]{background:transparent}",
+      ".dsau-cal-day[data-hover=\"1\"]{background:color-mix(in srgb, var(--dsw-alias-label-primary) 7%, transparent)}",
+      ".dsau-cal-day[data-today=\"1\"]{background:color-mix(in srgb, var(--dsw-alias-label-primary) 10%, transparent)}",
+      ".dsau-cal-day[data-today=\"1\"][data-hover=\"1\"]{background:color-mix(in srgb, var(--dsw-alias-label-primary) 14%, transparent)}",
+      ".dsau-cal-day[data-disabled=\"1\"]{color:var(--dsw-alias-label-caption);color:color-mix(in srgb, var(--dsw-alias-label-primary) 22%, transparent);cursor:default}",
+      ".dsau-cal-day[data-edge=\"1\"]{background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-label-primary-foreground)}",
+      ".dsau-cal-day:focus-visible{outline:none;box-shadow:0 0 0 2px var(--dsw-alias-state-business-primary)}",
+      ".dsau-cal-dot{position:absolute;right:2px;bottom:2px;width:4px;height:4px;border-radius:50%;background:var(--dsw-alias-label-primary-foreground)}"
+    ].join("\n");
+
+    /** 「概览」标签页样式：统计卡、热力图、模式切换。 */
+    const OVERVIEW_STYLE_ID = "dsh-account-usage/overview.css";
+
+    const OVERVIEW_CSS = [
+      ".dsau-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:start;row-gap:6px}",
+      ".dsau-stat{display:flex;flex-direction:column;align-items:center;gap:1px;padding:0 6px;min-width:0;text-align:center;justify-content:flex-start}",
+      ".dsau-stat+.dsau-stat{border-left:1px solid var(--dsw-alias-border-l1)}",
+      ".dsau-stat-value{margin:0;font-size:16px;font-weight:600;line-height:24px;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;white-space:nowrap}",
+      ".dsau-stat-label{margin:0;font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary);max-width:100%;overflow-wrap:break-word}",
+      ".dsau-stat-hint{margin:0;font-size:11px;line-height:16px;color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;white-space:nowrap}",
+      "@media (max-width:560px){.dsau-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 0}.dsau-stat+.dsau-stat{border-left:none}}",
+      ".dsau-heat{position:relative;display:flex;flex-direction:column;gap:10px}",
+      // 单元格为圆角小方块，行列间距一致（参考官方样式的 16px 方块 + 4px 间隔比例）。
+      ".dsau-heat-block{display:flex;flex-direction:column;gap:4px}",
+      ".dsau-heat-grid,.dsau-heat-months{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,auto);gap:4px}",
+      ".dsau-heat-months{grid-template-rows:auto}",
+      // 0 Token = 中性浅灰（与参考图最左侧一致）；未来/非本年格子完全透明。
+      // 色阶同时作用于热力格与图例色块，避免两处各写一套。
+      ".dsau-heat-cell,.dsau-heat-legend-swatch{background:#e5e5e5}",
+      ".dsau-heat-cell{aspect-ratio:1;border-radius:3px}",
+      ".dsau-heat-cell[data-hidden=\"1\"]{background:transparent}",
+      // 四级色阶取自参考图实测：浅蓝 → 亮青蓝，逐档加深。
+      // 浅色：level1 #bee2f4 / level2 #8bd0f0 / level3 #58beef / level4 #06aeec。
+      ".dsau-heat-cell[data-level=\"1\"],.dsau-heat-legend-swatch[data-level=\"1\"]{background:#bee2f4}",
+      ".dsau-heat-cell[data-level=\"2\"],.dsau-heat-legend-swatch[data-level=\"2\"]{background:#8bd0f0}",
+      ".dsau-heat-cell[data-level=\"3\"],.dsau-heat-legend-swatch[data-level=\"3\"]{background:#58beef}",
+      ".dsau-heat-cell[data-level=\"4\"],.dsau-heat-legend-swatch[data-level=\"4\"]{background:#06aeec}",
+      // 深色主题：空格子用中性深灰，四级色阶保持同一色相但由暗到亮，
+      // 让「越亮 = 用量越高」的方向感与浅色主题一致。
+      "body[data-ds-dark-theme] .dsau-heat-cell,body[data-ds-dark-theme] .dsau-heat-legend-swatch{background:#3a3b3d}",
+      "body[data-ds-dark-theme] .dsau-heat-cell[data-hidden=\"1\"]{background:transparent}",
+      "body[data-ds-dark-theme] .dsau-heat-cell[data-level=\"1\"],body[data-ds-dark-theme] .dsau-heat-legend-swatch[data-level=\"1\"]{background:#16414f}",
+      "body[data-ds-dark-theme] .dsau-heat-cell[data-level=\"2\"],body[data-ds-dark-theme] .dsau-heat-legend-swatch[data-level=\"2\"]{background:#1c6076}",
+      "body[data-ds-dark-theme] .dsau-heat-cell[data-level=\"3\"],body[data-ds-dark-theme] .dsau-heat-legend-swatch[data-level=\"3\"]{background:#0787b4}",
+      "body[data-ds-dark-theme] .dsau-heat-cell[data-level=\"4\"],body[data-ds-dark-theme] .dsau-heat-legend-swatch[data-level=\"4\"]{background:#06aeec}",
+      // 图例：少 [灰][四档蓝] 多，右对齐在网格下方。
+      ".dsau-heat-legend{display:flex;align-items:center;justify-content:flex-end;gap:4px;margin-top:2px;font-size:12px;line-height:18px;color:var(--dsw-alias-label-tertiary)}",
+      ".dsau-heat-legend-swatch{width:14px;height:14px;border-radius:3px;flex:none}",
+      ".dsau-heat-legend-label{padding:0 2px}",
+      ".dsau-heat-month{grid-row:1;justify-self:start;font-size:12px;line-height:18px;color:var(--dsw-alias-label-tertiary);white-space:nowrap;pointer-events:none}",
+      // 提示框：官方平台样式为两行（描述 + 带单位的数值），沿用主题令牌适配深浅色。
+      ".dsau-heat-tip{position:fixed;z-index:20;pointer-events:none;display:flex;flex-direction:column;gap:2px;background:var(--dsw-alias-bg-layer-3);border:1px solid var(--dsw-alias-border-l2);border-radius:8px;padding:6px 10px;font-size:12px;line-height:1.5;white-space:nowrap;box-shadow:0 4px 16px rgb(0 0 0 / 0.25);color:var(--dsw-alias-label-primary)}",
+      ".dsau-heat-tip-caption{color:var(--dsw-alias-label-secondary)}",
+      ".dsau-heat-tip-value{font-weight:600}",
+      ".dsau-heat-mode{border:none;background:transparent;padding:0 2px;font:inherit;font-size:13px;line-height:20px;color:var(--dsw-alias-label-tertiary);cursor:pointer}",
+      ".dsau-heat-mode:hover{color:var(--dsw-alias-label-secondary)}",
+      ".dsau-heat-mode[data-active=\"1\"]{color:var(--dsw-alias-label-primary);font-weight:600}",
+      ".dsau-heat-mode:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px;border-radius:2px}"
+    ].join("\n");
+
+    /**
+     * 注入（或校正）一张插件样式表；非浏览器环境（单测/SSR）直接跳过。
+     * 注意：客户端热更新只替换 JS、不会清掉已注入的 <style>，所以发现旧样式表
+     * 内容与当前常量不一致时必须覆盖，否则新类名拿不到规则。
+     */
+    function ensureStyleElement(id, css) {
+      if (typeof document === "undefined" || document.head === null || document.head === undefined) return;
+      const selector = 'style[data-plugin-css="' + id + '"]';
+      const existing = document.querySelector(selector);
+      if (existing !== null && existing !== undefined) {
+        if (existing.textContent !== css) existing.textContent = css;
+        return;
+      }
+      const style = document.createElement("style");
+      style.dataset.plugin = "dsh-account-usage";
+      style.dataset.pluginCss = id;
+      style.textContent = css;
+      document.head.appendChild(style);
+    }
+
+    function ensureCalendarStyles() {
+      ensureStyleElement(CALENDAR_STYLE_ID, CALENDAR_CSS);
+    }
+
+    function ensureOverviewStyles() {
+      ensureStyleElement(OVERVIEW_STYLE_ID, OVERVIEW_CSS);
+    }
+
+    /**
+     * 日历几何：必须与 CALENDAR_CSS 里的尺寸一致，仅用于浮层定位与翻转判断。
+     * 单月 7×38=266，双月 +24 间距，左右各 16 内边距；纵向 = 上下 16 + 标题 36 + 表头 28 + 周数×38。
+     */
+    const CAL_GEOMETRY = {
+      cellH: 38,
+      widthDouble: 266 * 2 + 24 + 16 * 2,
+      widthSingle: 266 + 16 * 2,
+      chromeHeight: 16 * 2 + 36 + 28
+    };
+
+    function calendarWidth(layout) {
+      return layout === "single" ? CAL_GEOMETRY.widthSingle : CAL_GEOMETRY.widthDouble;
+    }
+
+    function calendarHeight(weekRows) {
+      return CAL_GEOMETRY.chromeHeight + Math.max(1, weekRows) * CAL_GEOMETRY.cellH;
+    }
+
+    /** 窄屏（<640px）只显示一个月。 */
+    function currentCalendarLayout() {
+      if (typeof window === "undefined" || typeof window.innerWidth !== "number") return "double";
+      return window.innerWidth < 640 ? "single" : "double";
+    }
+
+    /** `YYYY-MM-DD` → `YYYY/MM/DD`（与官方平台的显示格式一致）。 */
+    function fmtSlashDate(key) {
+      return isDateKey(key) ? key.replace(/-/g, "/") : "";
+    }
+
+    function calendarChevron(direction) {
+      return React.createElement("svg", {
+        width: 14, height: 14, viewBox: "0 0 16 16", fill: "none", "aria-hidden": true, focusable: "false", style: { display: "block" }
+      },
+        React.createElement("path", {
+          d: direction === "prev" ? "M10 3.5 5.5 8l4.5 4.5" : "M6 3.5 10.5 8 6 12.5",
+          stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round"
+        })
+      );
+    }
+
+    /** 预设下拉的下拉箭头。 */
+    function selectChevron() {
+      return React.createElement("svg", {
+        width: 12, height: 12, viewBox: "0 0 16 16", fill: "none", "aria-hidden": true, focusable: "false", style: { display: "block" }
+      },
+        React.createElement("path", {
+          d: "M3.5 6 8 10.5 12.5 6",
+          stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round"
+        })
+      );
+    }
+
+    function calendarGlyph() {
+      return React.createElement("svg", {
+        width: 14, height: 14, viewBox: "0 0 16 16", fill: "none", "aria-hidden": true, focusable: "false", style: { display: "block" }
+      },
+        React.createElement("rect", { x: 2, y: 3.5, width: 12, height: 10.5, rx: 1.5, stroke: "currentColor", strokeWidth: 1.2 }),
+        React.createElement("path", { d: "M2 6.5h12M5.5 2v3M10.5 2v3", stroke: "currentColor", strokeWidth: 1.2, strokeLinecap: "round" })
+      );
+    }
+
+    /** 单月网格：表头 + 若干周行；空格渲染成占位单元格。 */
+    function CalendarMonth({ grid, staged, hoverKey, focusedKey, todayKey, onPick, onHover, t }) {
+      const preview = previewRange(staged, hoverKey);
+      const weekdays = weekdayLabels(t);
+      const from = staged !== null && typeof staged === "object" && isDateKey(staged.from) ? staged.from : null;
+      const to = staged !== null && typeof staged === "object" && isDateKey(staged.to) ? staged.to : null;
+      const rows = grid.weeks.map((week, weekIndex) =>
+        React.createElement("div", { key: weekIndex, className: "dsau-cal-week" },
+          week.map((cell, cellIndex) => {
+            if (cell === null) return React.createElement("div", { key: cellIndex, className: "dsau-cal-cell" });
+            const key = cell.key;
+            const disabled = isFutureDate(key, todayKey);
+            const isEdge = key === from || key === to;
+            const band = bandKind(preview.from, preview.to, key);
+            const isToday = key === todayKey;
+            const hovered = hoverKey === key && !disabled && !isEdge;
+            // 区间底色画在单元格上（跨格连续、行间留缝），端点圆压在它上面。
+            return React.createElement("div", {
+              key,
+              className: "dsau-cal-cell",
+              "data-band": band === null ? undefined : band
+            },
+              React.createElement("button", {
+                type: "button",
+                className: "dsau-cal-day",
+                "data-edge": isEdge ? "1" : "0",
+                "data-in-range": band === "middle" ? "1" : "0",
+                "data-hover": hovered ? "1" : "0",
+                "data-today": isToday ? "1" : "0",
+                "data-disabled": disabled ? "1" : "0",
+                "data-focus-key": key,
+                tabIndex: focusedKey === key ? 0 : -1,
+                "aria-label": key,
+                "aria-current": isToday ? "date" : undefined,
+                "aria-selected": isEdge ? "true" : undefined,
+                "aria-disabled": disabled ? "true" : undefined,
+                onClick: disabled ? undefined : () => onPick(key),
+                onMouseEnter: () => onHover(disabled ? null : key),
+                onFocus: () => onHover(disabled ? null : key)
+              },
+                cell.day,
+                // 今日恰好是区间端点时，用右下角小圆点标记（对应参考图 19 号）。
+                isToday && isEdge ? React.createElement("span", { className: "dsau-cal-dot" }) : null
+              )
+            );
+          })
+        )
+      );
+      return React.createElement("div", { className: "dsau-cal-month" },
+        React.createElement("div", { className: "dsau-cal-weekdays" },
+          weekdays.map((label, index) => React.createElement("div", { key: index, className: "dsau-cal-wd" }, label))
+        ),
+        rows
+      );
+    }
+
+    /** 浮层面板：标题行 + 双月（或窄屏单月）。 */
+    function CalendarPanel({ panelRef, panelStyle, grids, staged, hoverKey, focusedKey, todayKey, canNext, onPrev, onNext, onPick, onHover, onKeyDown, label, t }) {
+      return React.createElement("div", {
+        ref: panelRef,
+        className: "dsau-cal",
+        role: "dialog",
+        "aria-modal": "false",
+        "aria-label": label,
+        tabIndex: -1,
+        style: panelStyle,
+        onKeyDown,
+        onMouseLeave: () => onHover(null)
+      },
+        React.createElement("div", { className: "dsau-cal-head" },
+          React.createElement("button", { type: "button", className: "dsau-cal-nav", onClick: onPrev, "aria-label": t("rangePrevMonth") }, calendarChevron("prev")),
+          React.createElement("div", { className: "dsau-cal-titles" },
+            grids.map((grid) =>
+              React.createElement("p", { key: grid.year + "-" + grid.month, className: "dsau-cal-title" },
+                formatMonthTitle(grid.year, grid.month, t)
+              )
+            )
+          ),
+          React.createElement("button", { type: "button", className: "dsau-cal-nav", onClick: onNext, disabled: canNext !== true, "aria-label": t("rangeNextMonth") }, calendarChevron("next"))
+        ),
+        React.createElement("div", { className: "dsau-cal-months" },
+          grids.map((grid) =>
+            React.createElement(CalendarMonth, {
+              key: grid.year + "-" + grid.month,
+              grid,
+              staged,
+              hoverKey,
+              focusedKey,
+              todayKey,
+              onPick,
+              onHover,
+              t
+            })
+          )
+        )
+      );
+    }
+
+    function RangeSelector({ range, onApply, t, visible }) {
+      const todayKey = todayDate();
+      const todayMonth = monthOfDateKey(todayKey);
+      const todayIndex = todayMonth.year * 12 + (todayMonth.month - 1);
+      const [staged, setStaged] = React.useState({ from: range.from, to: range.to });
       const [activePreset, setActivePreset] = React.useState("thisMonth");
-      const applyPreset = (p) => {
-        setActivePreset(p.id);
-        setCustomFrom(p.from);
-        setCustomTo(p.to);
-        onApply({ from: p.from, to: p.to });
+      const [open, setOpen] = React.useState(false);
+      const [hoverKey, setHoverKey] = React.useState(null);
+      const [focusedKey, setFocusedKey] = React.useState(null);
+      const [anchorMonth, setAnchorMonth] = React.useState(() => monthOfDateKey(range.to, todayKey));
+      const [layout, setLayout] = React.useState(currentCalendarLayout);
+      const [position, setPosition] = React.useState({ left: 0, top: 0 });
+      const triggerRef = React.useRef(null);
+      const panelRef = React.useRef(null);
+      // 关闭逻辑挂在 document 监听上，读 ref 才能拿到最新暂存区间（避免闭包过期）。
+      const stagedRef = React.useRef({ from: range.from, to: range.to });
+      // 浮层挂到 body 上避免被设置页滚动容器裁切；运行时缺少 createPortal 时就地渲染。
+      const usePortal =
+        typeof document !== "undefined" &&
+        document !== null &&
+        document.body !== null &&
+        document.body !== undefined &&
+        ReactDOM !== null &&
+        typeof ReactDOM.createPortal === "function";
+
+      React.useEffect(() => {
+        ensureCalendarStyles();
+      }, []);
+      // 标签页切走时内容被 display:none 隐藏，但浮层挂在 body 上不会跟着隐藏，必须主动关闭。
+      React.useEffect(() => {
+        if (visible === false && open) {
+          setOpen(false);
+          setHoverKey(null);
+          setStaged({ from: range.from, to: range.to });
+        }
+      }, [visible, open, range.from, range.to]);
+
+
+      // 预设切换后把暂存区间同步回已应用区间。
+      React.useEffect(() => {
+        setStaged({ from: range.from, to: range.to });
+      }, [range.from, range.to]);
+
+      React.useEffect(() => {
+        stagedRef.current = staged;
+      }, [staged]);
+
+      // 窄屏只显示一个月，窗口尺寸变化时重算。
+      React.useEffect(() => {
+        if (typeof window === "undefined") return undefined;
+        const sync = () => setLayout(currentCalendarLayout());
+        sync();
+        window.addEventListener("resize", sync);
+        return () => window.removeEventListener("resize", sync);
+      }, []);
+
+      const visibleMonths =
+        layout === "single"
+          ? [anchorMonth]
+          : [addMonths(anchorMonth.year, anchorMonth.month, -1), anchorMonth];
+      const grids = visibleMonths.map((month) => buildMonthGrid(month.year, month.month));
+      const weekRows = grids.reduce((max, grid) => Math.max(max, grid.weeks.length), 0);
+      const panelWidth = calendarWidth(layout);
+      const panelHeight = calendarHeight(weekRows);
+      const anchorIndex = anchorMonth.year * 12 + (anchorMonth.month - 1);
+      const canNext = anchorIndex < todayIndex;
+
+      // 浮层定位：默认贴触发框下方，下方不够且上方够时翻转，横向夹在视口内。
+      React.useLayoutEffect(() => {
+        if (!open || !usePortal || typeof window === "undefined") return undefined;
+        const update = () => {
+          const trigger = triggerRef.current;
+          if (trigger === null || typeof trigger.getBoundingClientRect !== "function") return;
+          const rect = trigger.getBoundingClientRect();
+          const margin = 8;
+          let left = rect.left;
+          const maxLeft = window.innerWidth - panelWidth - margin;
+          if (left > maxLeft) left = maxLeft;
+          if (left < margin) left = margin;
+          let top = rect.bottom + margin;
+          if (top + panelHeight > window.innerHeight - margin) {
+            const above = rect.top - panelHeight - margin;
+            top = above >= margin ? above : Math.max(margin, window.innerHeight - panelHeight - margin);
+          }
+          const nextLeft = Math.round(left);
+          const nextTop = Math.round(top);
+          setPosition((prev) => (prev.left === nextLeft && prev.top === nextTop ? prev : { left: nextLeft, top: nextTop }));
+        };
+        update();
+        window.addEventListener("scroll", update, true);
+        window.addEventListener("resize", update);
+        return () => {
+          window.removeEventListener("scroll", update, true);
+          window.removeEventListener("resize", update);
+        };
+      }, [open, usePortal, panelWidth, panelHeight]);
+
+      /** 焦点交还触发框（关闭浮层后保持键盘可达）。 */
+      const focusTrigger = () => {
+        const trigger = triggerRef.current;
+        if (trigger !== null && typeof trigger.focus === "function") trigger.focus();
       };
-      const applyCustom = () => {
-        setActivePreset("custom");
-        if (customFrom === "" || customTo === "") return;
-        const from = customFrom <= customTo ? customFrom : customTo;
-        const to = customFrom <= customTo ? customTo : customFrom;
-        onApply({ from, to });
+
+      /**
+       * 关闭并应用（0.5.0：没有「应用」按钮，关闭即按所选区间筛选）。
+       * 只选了起点就关闭时视为放弃，回滚到已应用区间。
+       */
+      const closeAndApply = React.useCallback(() => {
+        const current = stagedRef.current;
+        const normalized = normalizeRange(current.from, current.to);
+        setOpen(false);
+        setHoverKey(null);
+        if (normalized === null) {
+          setStaged({ from: range.from, to: range.to });
+        } else if (normalized.from !== range.from || normalized.to !== range.to) {
+          onApply(normalized);
+        }
+        focusTrigger();
+      }, [range.from, range.to, onApply]);
+
+      // 关闭：Esc / 点浮层与触发框之外 → 都按当前所选区间筛选（见 closeAndApply）。
+      React.useEffect(() => {
+        if (!open || typeof document === "undefined") return undefined;
+        const onPointerDown = (event) => {
+          const target = event.target;
+          if (panelRef.current !== null && panelRef.current.contains(target)) return;
+          if (triggerRef.current !== null && triggerRef.current.contains(target)) return;
+          closeAndApply();
+        };
+        const onKeyDown = (event) => {
+          if (event.key !== "Escape") return;
+          event.preventDefault();
+          event.stopPropagation();
+          closeAndApply();
+        };
+        document.addEventListener("pointerdown", onPointerDown, true);
+        document.addEventListener("keydown", onKeyDown, true);
+        return () => {
+          document.removeEventListener("pointerdown", onPointerDown, true);
+          document.removeEventListener("keydown", onKeyDown, true);
+        };
+      }, [open, closeAndApply]);
+
+      // 焦点落到当前焦点格（打开时定位到区间终点）。
+      React.useEffect(() => {
+        if (!open || focusedKey === null) return;
+        const panel = panelRef.current;
+        if (panel === null || typeof panel.querySelector !== "function") return;
+        const target = panel.querySelector('[data-focus-key="' + focusedKey + '"]');
+        if (target !== null && typeof target.focus === "function") target.focus();
+      }, [open, focusedKey, anchorMonth, layout]);
+
+      const openPanel = (fromKey, toKey) => {
+        setStaged({ from: fromKey, to: toKey });
+        setAnchorMonth(monthOfDateKey(toKey, todayKey));
+        setHoverKey(null);
+        setFocusedKey(isDateKey(toKey) ? toKey : todayKey);
+        setOpen(true);
       };
-      const onSelect = (e) => {
-        const id = e.target.value;
-        if (id === "custom") {
-          // 仅切到自定义模式，区间在点击「应用」后生效
-          setActivePreset("custom");
+
+      const toggleOpen = () => {
+        if (open) {
+          closeAndApply();
           return;
         }
-        const p = presets().find((x) => x.id === id);
-        if (p) applyPreset(p);
+        openPanel(range.from, range.to);
       };
+
+      /**
+       * 点击某一天：无起点或两端齐全 → 重开区间；只有起点 → 补齐终点。
+       * 两端选满即视为完成，立刻关闭浮层并按该区间筛选。
+       */
+      const pick = (key) => {
+        setActivePreset("custom");
+        setFocusedKey(key);
+        const from = isDateKey(staged.from) ? staged.from : null;
+        const to = isDateKey(staged.to) ? staged.to : null;
+        if (from === null || to !== null) {
+          setStaged({ from: key, to: null });
+          return;
+        }
+        const normalized = normalizeRange(from, key);
+        if (normalized === null) return;
+        setStaged(normalized);
+        setOpen(false);
+        setHoverKey(null);
+        if (normalized.from !== range.from || normalized.to !== range.to) onApply(normalized);
+        focusTrigger();
+      };
+
+      const moveMonth = (delta) => {
+        setAnchorMonth((prev) => {
+          const next = addMonths(prev.year, prev.month, delta);
+          const nextIndex = next.year * 12 + (next.month - 1);
+          return nextIndex > todayIndex ? prev : next;
+        });
+      };
+
+      const onPanelKeyDown = (event) => {
+        const current = isDateKey(focusedKey) ? focusedKey : todayKey;
+        let next = null;
+        if (event.key === "ArrowLeft") next = addDays(current, -1);
+        else if (event.key === "ArrowRight") next = addDays(current, 1);
+        else if (event.key === "ArrowUp") next = addDays(current, -7);
+        else if (event.key === "ArrowDown") next = addDays(current, 7);
+        else if (event.key === "PageUp") next = shiftMonthKey(current, -1);
+        else if (event.key === "PageDown") next = shiftMonthKey(current, 1);
+        else if (event.key === "Home") next = startOfWeekKey(current);
+        else if (event.key === "End") next = endOfWeekKey(current);
+        else if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          if (!isFutureDate(current, todayKey)) pick(current);
+          return;
+        } else return;
+        event.preventDefault();
+        // 未来日期不可选，焦点也不越过今天。
+        if (next > todayKey) next = todayKey;
+        setFocusedKey(next);
+        const targetMonth = monthOfDateKey(next);
+        const targetIndex = targetMonth.year * 12 + (targetMonth.month - 1);
+        if (layout === "single") {
+          if (targetIndex !== anchorIndex) setAnchorMonth(targetMonth);
+        } else if (targetIndex > anchorIndex) {
+          setAnchorMonth(targetMonth);
+        } else if (targetIndex < anchorIndex - 1) {
+          setAnchorMonth(addMonths(targetMonth.year, targetMonth.month, 1));
+        }
+      };
+
+      const onSelect = (event) => {
+        const id = event.target.value;
+        if (id === "custom") {
+          // 切到自定义：直接打开日历，区间在点击「应用」后生效。
+          setActivePreset("custom");
+          if (!open) openPanel(range.from, range.to);
+          return;
+        }
+        const preset = presets().find((item) => item.id === id);
+        if (preset === undefined) return;
+        setActivePreset(preset.id);
+        setStaged({ from: preset.from, to: preset.to });
+        setOpen(false);
+        setHoverKey(null);
+        onApply({ from: preset.from, to: preset.to });
+      };
+
+      const stagedFrom = isDateKey(staged.from) ? staged.from : null;
+      const stagedTo = isDateKey(staged.to) ? staged.to : null;
+      const triggerLabel =
+        stagedFrom === null
+          ? React.createElement("span", { className: "dsau-trigger-empty" }, t("rangeSelectDates"))
+          : React.createElement(React.Fragment, null,
+            React.createElement("span", null, fmtSlashDate(stagedFrom)),
+            React.createElement("span", { className: "dsau-trigger-sep" }, t("rangeSeparator")),
+            React.createElement("span", { className: stagedTo === null ? "dsau-trigger-empty" : undefined },
+              stagedTo === null ? "…" : fmtSlashDate(stagedTo)
+            )
+          );
+
+      const panelStyle = usePortal
+        ? { position: "fixed", left: position.left, top: position.top, width: panelWidth }
+        : { position: "absolute", left: 0, top: "calc(100% + 8px)", width: panelWidth };
+      const panel = open
+        ? React.createElement(CalendarPanel, {
+          panelRef,
+          panelStyle,
+          grids,
+          staged,
+          hoverKey,
+          focusedKey,
+          todayKey,
+          canNext,
+          onPrev: () => moveMonth(-1),
+          onNext: () => moveMonth(1),
+          onPick: pick,
+          onHover: setHoverKey,
+          onKeyDown: onPanelKeyDown,
+          label: t("rangeCustomRow"),
+          t
+        })
+        : null;
+      const panelNode = panel !== null && usePortal ? ReactDOM.createPortal(panel, document.body) : panel;
+
       return React.createElement("div", { style: styles.section },
         React.createElement("div", { style: styles.buttonsRow },
-          React.createElement("p", { style: styles.hint }, t("rangeTitle")),
-          React.createElement("select", {
-            value: activePreset,
-            onChange: onSelect,
-            style: styles.select,
-            "aria-label": t("rangeTitle")
-          },
-            presets().map((p) =>
-              React.createElement("option", { key: p.id, value: p.id }, t(PRESET_LABEL_KEYS[p.id]))
+          React.createElement("p", { style: styles.rangeLabel }, t("rangeTitle")),
+          React.createElement("span", { className: "dsau-select" },
+            React.createElement("select", {
+              value: activePreset,
+              onChange: onSelect,
+              className: "dsau-select-input",
+              "aria-label": t("rangeTitle")
+            },
+              presets().map((preset) =>
+                React.createElement("option", { key: preset.id, value: preset.id }, t(PRESET_LABEL_KEYS[preset.id]))
+              ),
+              React.createElement("option", { value: "custom" }, t("rangeCustom"))
             ),
-            React.createElement("option", { value: "custom" }, t("rangeCustom"))
+            React.createElement("span", { className: "dsau-select-icon" }, selectChevron())
           )
         ),
-        React.createElement("div", { style: styles.buttonsRow },
-          React.createElement("span", { style: styles.hint }, t("rangeCustomRow")),
-          React.createElement("input", { type: "date", value: customFrom, onChange: (e) => setCustomFrom(e.target.value), style: styles.dateInput }),
-          React.createElement("input", { type: "date", value: customTo, onChange: (e) => setCustomTo(e.target.value), style: styles.dateInput }),
-          React.createElement("button", { style: styles.button, onClick: applyCustom }, t("rangeApply"))
-        )
+        React.createElement("div", { className: "dsau-range-row" },
+          React.createElement("span", { style: styles.rangeLabel }, t("rangeCustomRow")),
+          React.createElement("button", {
+            ref: triggerRef,
+            type: "button",
+            className: "dsau-trigger",
+            "data-open": open ? "1" : "0",
+            "aria-haspopup": "dialog",
+            "aria-expanded": open ? "true" : "false",
+            onClick: toggleOpen
+          },
+            triggerLabel,
+            React.createElement("span", { className: "dsau-trigger-icon" }, calendarGlyph())
+          ),
+          usePortal ? null : panel
+        ),
+        usePortal ? panelNode : null
       );
     }
 
@@ -1417,7 +2590,7 @@ window.__ModuleLoader__.load({
       }, [credApi]);
 
       React.useEffect(() => {
-        load();
+        load(false);
       }, [load]);
 
       const save = React.useCallback(() => {
@@ -1496,7 +2669,7 @@ window.__ModuleLoader__.load({
       );
     }
 
-    function DeepSeekPanel({ credApi, t }) {
+    function DeepSeekPanel({ credApi, t, visible }) {
       const [summary, setSummary] = React.useState({ kind: "loading" });
       const [usage, setUsage] = React.useState({ kind: "loading" });
       const [range, setRange] = React.useState(() => {
@@ -1584,6 +2757,27 @@ window.__ModuleLoader__.load({
             ? usageModels[0].model
             : null;
 
+      // 合计口径（0.5.0）：消费金额与请求次数把工具（网页搜索/抓取）消耗一并计入。
+      const totals =
+        usage.kind === "done" && usage.value.ok === true ? combinedTotals(usage.value) : null;
+      const toolsTotalsOk = totals !== null && totals.toolsOk === true;
+      const splitHint = (key, modelText, toolText) =>
+        t(key).replace("{model}", modelText).replace("{tools}", toolText);
+      const costHint =
+        totals === null
+          ? null
+          : !toolsTotalsOk
+            ? t("totalsToolsUnavailable")
+            : totals.costPartial
+              ? t("totalsToolsCostUnavailable")
+              : splitHint("totalsCostHint", fmtMoney(totals.modelCost, currency), fmtMoney(totals.toolCost, currency));
+      const requestsHint =
+        totals === null
+          ? null
+          : toolsTotalsOk && !totals.requestsPartial
+            ? splitHint("totalsRequestsHint", fmtCount(totals.modelRequests), fmtCount(totals.toolCalls))
+            : t("totalsToolsUnavailable");
+
       return React.createElement("div", { style: styles.section },
         React.createElement("div", { style: styles.panelTitle },
           React.createElement("span", null, t("deepseekPanel")),
@@ -1615,9 +2809,9 @@ window.__ModuleLoader__.load({
                   React.createElement(StatGridItem, { label: t("summaryCumulative"), value: fmtMoney(summary.value.cumulativeCost, currency) })
                 )
         ),
-        // 模块三：用量与图表
+        // 模块三：用量（筛选 + 合计口径 = 模型 + 工具）
         React.createElement(ModuleCard, { title: t("moduleUsage") },
-          React.createElement(RangeSelector, { range, onApply: applyRange, t }),
+          React.createElement(RangeSelector, { range, onApply: applyRange, t, visible }),
           usage.kind === "loading"
             ? React.createElement("p", { style: styles.hint }, t("loading"))
             : usage.kind === "failure"
@@ -1629,10 +2823,29 @@ window.__ModuleLoader__.load({
                     ? React.createElement("p", { style: styles.hint }, t("rangeClipped"))
                     : null,
                   React.createElement("div", { style: styles.cardsGrid },
-                    React.createElement(StatGridItem, { label: t("totalsCost"), value: fmtMoney(usage.value.totals?.cost, currency) }),
-                    React.createElement(StatGridItem, { label: t("totalsRequests"), value: fmtCount(usage.value.totals?.requests) }),
-                    React.createElement(StatGridItem, { label: t("totalsTokens"), value: fmtCount(usage.value.totals?.tokens) })
-                  ),
+                    React.createElement(StatGridItem, {
+                      label: t("totalsCost"),
+                      value: fmtMoney(totals.cost, currency),
+                      hint: costHint
+                    }),
+                    React.createElement(StatGridItem, {
+                      label: t("totalsRequests"),
+                      value: fmtCount(totals.requests),
+                      hint: requestsHint
+                    }),
+                    React.createElement(StatGridItem, { label: t("totalsTokens"), value: fmtCount(totals.tokens) })
+                  )
+                )
+        ),
+        // 模块四：模型用量明细（消费/Token 图表 + 模型明细表，均为模型口径）
+        React.createElement(ModuleCard, { title: t("moduleModels") },
+          usage.kind === "loading"
+            ? React.createElement("p", { style: styles.hint }, t("loading"))
+            : usage.kind === "failure"
+              ? React.createElement("p", { style: styles.error }, usage.message)
+              : usage.value.ok !== true
+                ? React.createElement("p", { style: styles.error }, errorText(usage.value, t))
+                : React.createElement(React.Fragment, null,
                   React.createElement("div", { style: styles.card },
                     React.createElement("p", { style: styles.statLabel }, t("chartTitle")),
                     React.createElement(BarChart, { days: usage.value.days, currency, t })
@@ -1654,10 +2867,14 @@ window.__ModuleLoader__.load({
                         React.createElement(TokenLegend, { t })
                       )
                       : React.createElement("p", { style: styles.hint }, t("tokenChartEmpty"))
+                  ),
+                  React.createElement("div", { style: styles.card },
+                    React.createElement("p", { style: styles.statLabel }, t("modelTableTitle")),
+                    React.createElement(ModelTable, { models: usage.value.models, currency, t })
                   )
                 )
         ),
-        // 模块四：网页搜索与抓取（调用类型用量）
+        // 模块五：网页搜索与抓取（调用类型用量）
         React.createElement(ModuleCard, { title: t("moduleTools") },
           usage.kind === "loading"
             ? React.createElement("p", { style: styles.hint }, t("loading"))
@@ -1666,16 +2883,6 @@ window.__ModuleLoader__.load({
               : usage.value.ok !== true
                 ? React.createElement("p", { style: styles.error }, errorText(usage.value, t))
                 : React.createElement(ToolUsageSection, { tools: usage.value.tools, currency, t })
-        ),
-        // 模块五：模型明细
-        React.createElement(ModuleCard, { title: t("moduleModels") },
-          usage.kind === "loading"
-            ? React.createElement("p", { style: styles.hint }, t("loading"))
-            : usage.kind === "failure"
-              ? React.createElement("p", { style: styles.error }, usage.message)
-              : usage.value.ok !== true
-                ? React.createElement("p", { style: styles.error }, errorText(usage.value, t))
-                : React.createElement(ModelTable, { models: usage.value.models, currency, t })
         )
       );
     }
@@ -2357,7 +3564,7 @@ window.__ModuleLoader__.load({
             React.createElement("span", null, t("opencodePanel")),
             React.createElement("div", { style: styles.buttonsRow },
               React.createElement(JumpButton, { url: OPENCODE_GO_PAGE_URL, t }),
-              React.createElement(RefreshButton, { onClick: load, t })
+              React.createElement(RefreshButton, { onClick: () => load(true), t })
             )
           ),
           React.createElement("p", { style: styles.error }, state.message)
@@ -2423,15 +3630,339 @@ window.__ModuleLoader__.load({
       );
     }
 
+    // ---- 「概览」标签页（0.5.0） -----------------------------------------------
+    // 数据来自宿主 /api/account-usage/insights：账本只增不减，已归档/已删除会话
+    // 的历史消耗仍在里面。首次进入时宿主在后台增量扫描，前端轮询到 scanning=false。
+
+    /** 统计格：数值在上、标签在下，可选第三行小字（如峰值日期）。 */
+    function OverviewStat({ label, value, hint }) {
+      return React.createElement("div", { className: "dsau-stat" },
+        React.createElement("p", { className: "dsau-stat-value" }, value),
+        React.createElement("p", { className: "dsau-stat-label" }, label),
+        hint === null || hint === undefined ? null : React.createElement("p", { className: "dsau-stat-hint" }, hint)
+      );
+    }
+
+    const OVERVIEW_MODES = ["daily", "weekly", "cumulative"];
+
+    function OverviewPanel({ t }) {
+      const [state, setState] = React.useState({ kind: "loading" });
+      const [year, setYear] = React.useState(() => new Date().getFullYear());
+      const [mode, setMode] = React.useState("daily");
+      const [tip, setTip] = React.useState(null);
+      const [tipBox, setTipBox] = React.useState(null);
+      const tipRef = React.useRef(null);
+      const pollCount = React.useRef(0);
+
+      React.useEffect(() => {
+        ensureOverviewStyles();
+        ensureCalendarStyles();
+      }, []);
+
+      // force=true（手动刷新）让宿主立刻再扫一次，自动轮询则受宿主 60 秒节流约束。
+      const load = React.useCallback(
+        (force) =>
+          fetchJson("/api/account-usage/insights" + (force === true ? "?force=1" : ""))
+            .then((body) => setState({ kind: "done", value: body }))
+            .catch(() => setState({ kind: "failure", message: null })),
+        []
+      );
+
+      React.useEffect(() => {
+        load();
+      }, [load]);
+
+      // 热力图提示框：fixed 定位 + 视口夹紧，避免贴边时被设置面板的滚动容器裁切。
+      React.useLayoutEffect(() => {
+        if (tip === null) {
+          if (tipBox !== null) setTipBox(null);
+          return;
+        }
+        const el = tipRef.current;
+        if (el === null) return;
+        const next = clampTipPosition(tip.anchorX, tip.anchorY, el.offsetWidth, el.offsetHeight, window.innerWidth, 8);
+        if (tipBox === null || tipBox.left !== next.left || tipBox.top !== next.top) setTipBox(next);
+      }, [tip, tipBox]);
+
+      const scanning = state.kind === "done" && state.value !== null && state.value.scanning === true;
+      React.useEffect(() => {
+        if (!scanning) {
+          pollCount.current = 0;
+          return undefined;
+        }
+        const id = window.setInterval(() => {
+          if (pollCount.current >= 90) return;
+          pollCount.current += 1;
+          load(false);
+        }, 2000);
+        return () => window.clearInterval(id);
+      }, [scanning, load]);
+
+      const value = state.kind === "done" ? state.value : null;
+      const supported = value === null || value.ok === true;
+      const days = supported && value !== null && value.days !== null && typeof value.days === "object" ? value.days : {};
+      const dataYears = supported && value !== null && Array.isArray(value.years) ? value.years : [];
+      const currentYear = new Date().getFullYear();
+      const yearOptions = [...new Set([...dataYears, currentYear])].filter((item) => Number.isInteger(item)).sort((a, b) => b - a);
+      const activeYear = yearOptions.includes(year) ? year : yearOptions[0];
+
+      const scale = t("numberScale");
+      const durationUnits = {
+        day: t("durationDay"),
+        hour: t("durationHour"),
+        minute: t("durationMinute"),
+        second: t("durationSecond")
+      };
+      const totalTokens = sumYearTokens(days, activeYear);
+      const peak = peakOfYear(days, activeYear);
+      const longestStreak = longestStreakOfYear(days, activeYear);
+      const streakNow = activeYear === currentYear ? currentStreakOfDays(days, todayDate()) : null;
+      const longestTaskMs =
+        value !== null && value.longestTurnMsByYear !== null && typeof value.longestTurnMsByYear === "object"
+          ? value.longestTurnMsByYear[String(activeYear)]
+          : undefined;
+
+      const grid = React.useMemo(() => buildYearWeeks(activeYear), [activeYear]);
+      const weeks = grid.weeks;
+      const weeklyTotals = React.useMemo(() => weekTotalsOf(days, weeks), [days, weeks]);
+      const cumulative = React.useMemo(() => cumulativeByDay(days, weeks), [days, weeks]);
+      const todayKey = todayDate();
+      // 每周 / 累计总量都按「一列填几格 = 那周有几天用过」着色，单元格共享列色。
+      const activeDays = React.useMemo(() => weekActiveDaysOf(days, weeks), [days, weeks]);
+      const weekCumulative = React.useMemo(
+        () => weekCumulativeOf(weeks, cumulative, todayKey),
+        [weeks, cumulative, todayKey]
+      );
+      // 每列代表日，供累计模式的提示框使用（与 weekCumulative 同一口径）。
+      const weekLastKeys = React.useMemo(() => weekLastKeyOf(weeks, todayKey), [weeks, todayKey]);
+      // 悬停提示里的数值必须与着色口径一致：每周=所在周合计，累计=该周末的累计值，
+      // 这样同一列里任何一格读到的数字都相同，不会出现「颜色一样、数字却逐格变化」。
+      const cellValueOf = React.useCallback(
+        (key, weekIndex) => {
+          if (mode === "weekly") return weeklyTotals[weekIndex] ?? 0;
+          if (mode === "cumulative") return weekCumulative[weekIndex] ?? 0;
+          const raw = days[key];
+          return typeof raw === "number" && raw > 0 ? raw : 0;
+        },
+        [mode, weeklyTotals, weekCumulative, days]
+      );
+      // 色阶阈值只由「真正会着色的值」决定：每周模式用周合计、累计模式用周末累计值、每天模式用当日值。
+      const thresholds = React.useMemo(() => {
+        const inYear = weeks.flat().filter((cell) => cell.inYear);
+        if (mode === "weekly") {
+          // 只有「本周至少有一天有用量」的列才会着色，阈值也只看这些列的周合计。
+          return quantileThresholds(activeDays.map((count, weekIndex) => (count > 0 ? weeklyTotals[weekIndex] ?? 0 : 0)));
+        }
+        if (mode === "cumulative") {
+          return quantileThresholds(activeDays.map((count, weekIndex) => (count > 0 ? weekCumulative[weekIndex] ?? 0 : 0)));
+        }
+        return quantileThresholds(inYear.map((cell) => (typeof days[cell.key] === "number" ? days[cell.key] : 0)));
+      }, [mode, weeks, weeklyTotals, weekCumulative, activeDays, days]);
+      // 行号查表：key → 该格在本列中的行号（0 = 周一 … 6 = 周日）。
+      const rowOf = React.useMemo(() => {
+        const map = new Map();
+        for (const cells of weeks) cells.forEach((cell, index) => map.set(cell.key, index));
+        return (key) => map.get(key) ?? null;
+      }, [weeks]);
+      const levelContext = { days, weeklyTotals, weekCumulative, cumulative, thresholds, todayKey, activeDays, rowOf };
+
+      const monthNames = String(t("heatmapMonths")).split(",");
+      // 月份刻度：按「该月首日所在列」定位；列很窄时按最小列距抽稀，避免相邻月份标签挤在一起。
+      const monthAnchors = [];
+      for (let month = 1; month <= 12; month += 1) {
+        const firstKey = `${activeYear}-${String(month).padStart(2, "0")}-01`;
+        const weekIndex = weeks.findIndex((cells) => cells.some((cell) => cell.key === firstKey));
+        if (weekIndex < 0) continue;
+        monthAnchors.push({ month, weekIndex });
+      }
+      // 一年拆成两行：设置面板内只有约 530px，53 列挤一行每格不足 7px，
+      // 拆成两块后每格约 16px，与官方参考图的圆角方块比例一致。
+      const weekBlocks = splitWeekColumns(weeks, 2);
+
+      const showTip = (event, cell, weekIndex) => {
+        const rect = event.currentTarget.getBoundingClientRect();
+        const unit = t("heatmapValueUnit");
+        // 数值按面板同一套量级缩写（5.4亿 / 1.5M），与官方平台提示框一致。
+        const tokens = `${formatTokenCount(cellValueOf(cell.key, weekIndex), scale)} ${unit}`;
+        // 第一行描述（日期 / 所在周 / 累计至），第二行是带单位的数值，与官方平台一致。
+        // 每周与累计都按「整列」聚合，所以提示里的日期也用该列的代表日（周末），
+        // 而不是鼠标停留的那一格，避免同一列各格给出不同数字。
+        const lastKey = weekLastKeys[weekIndex];
+        // 每年第一列会带上前一年的日期，提示里要跳过它，否则会显示成上一年的一天。
+        const firstInYear = weeks[weekIndex].find((c) => c.inYear) ?? weeks[weekIndex][0];
+        const caption =
+          mode === "weekly"
+            ? t("heatmapWeekTip").replace("{date}", fmtSlashDate(firstInYear.key))
+            : mode === "cumulative"
+              ? t("heatmapCumulativeTip").replace("{date}", fmtSlashDate(lastKey ?? cell.key))
+              : t("heatmapDayTip").replace("{date}", fmtSlashDate(cell.key));
+        setTip({ anchorX: rect.left + rect.width / 2, anchorY: rect.top, caption, value: tokens });
+      };
+
+      const modeLabels = {
+        daily: t("heatmapDaily"),
+        weekly: t("heatmapWeekly"),
+        cumulative: t("heatmapCumulative")
+      };
+
+      const yearSelect = React.createElement("span", { className: "dsau-select" },
+        React.createElement("select", {
+          className: "dsau-select-input",
+          value: String(activeYear),
+          "aria-label": t("overviewYear"),
+          onChange: (event) => setYear(Number(event.target.value))
+        },
+          yearOptions.map((item) =>
+            React.createElement("option", { key: item, value: String(item) }, `${item}`)
+          )
+        ),
+        React.createElement("span", { className: "dsau-select-icon" }, selectChevron())
+      );
+
+      const body =
+        state.kind === "loading"
+          ? React.createElement("p", { style: styles.hint }, t("loading"))
+          : state.kind === "failure"
+            ? React.createElement("p", { style: styles.error }, t("loadFailed"))
+            : !supported
+              ? React.createElement("p", { style: styles.hint }, t("overviewUnsupported"))
+              : React.createElement(React.Fragment, null,
+                // 只在后台扫描期间提示「统计中…」，平时不占用首屏空间。
+                scanning ? React.createElement("p", { style: styles.hint }, t("overviewScanning")) : null,
+                React.createElement(ModuleCard, { title: t("statsTitle") },
+                  React.createElement("div", { className: "dsau-stats" },
+                    React.createElement(OverviewStat, {
+                      label: t("statTotalTokens"),
+                      value: formatTokenCount(totalTokens, scale)
+                    }),
+                    React.createElement(OverviewStat, {
+                      label: t("statPeakTokens"),
+                      value: peak.tokens > 0 ? formatTokenCount(peak.tokens, scale) : t("noValue"),
+                      hint: peak.date === null ? null : fmtSlashDate(peak.date)
+                    }),
+                    React.createElement(OverviewStat, {
+                      label: t("statLongestTask"),
+                      value: typeof longestTaskMs === "number" ? formatDurationMs(longestTaskMs, durationUnits) : t("noValue")
+                    }),
+                    React.createElement(OverviewStat, {
+                      label: t("statLongestStreak"),
+                      value: t("daysCount").replace("{n}", String(longestStreak))
+                    }),
+                    React.createElement(OverviewStat, {
+                      label: t("statCurrentStreak"),
+                      value: streakNow === null ? t("noValue") : t("daysCount").replace("{n}", String(streakNow))
+                    })
+                  ),
+                  totalTokens === 0 ? React.createElement("p", { style: styles.hint }, t("overviewEmpty")) : null
+                ),
+                React.createElement(ModuleCard, { title: t("heatmapTitle") },
+                  React.createElement("div", { style: styles.buttonsRow },
+                    OVERVIEW_MODES.map((item) =>
+                      React.createElement("button", {
+                        key: item,
+                        type: "button",
+                        className: "dsau-heat-mode",
+                        "data-active": mode === item ? "1" : "0",
+                        onClick: () => setMode(item)
+                      }, modeLabels[item])
+                    )
+                  ),
+                  React.createElement("div", { className: "dsau-heat" },
+                    // 每一块是「上半年 / 下半年」：各自带月份刻度与 7 行格子。
+                    // weekIndex 一律用全年列号（block.startIndex + 块内下标），
+                    // 这样每周聚合值、tooltip 日期都不受分块影响。
+                    weekBlocks.map((block) =>
+                      React.createElement("div", { key: `block-${block.startIndex}`, className: "dsau-heat-block" },
+                        React.createElement("div", {
+                          className: "dsau-heat-months",
+                          style: { gridTemplateColumns: `repeat(${block.weeks.length}, minmax(0, 1fr))` }
+                        },
+                          thinMonthAnchors(
+                            monthAnchors
+                              .filter((anchor) => anchor.weekIndex >= block.startIndex
+                                && anchor.weekIndex < block.startIndex + block.weeks.length)
+                              .map((anchor) => ({ month: anchor.month, weekIndex: anchor.weekIndex - block.startIndex })),
+                            4
+                          ).map((anchor) =>
+                            React.createElement("span", {
+                              key: anchor.month,
+                              className: "dsau-heat-month",
+                              style: { gridColumnStart: anchor.weekIndex + 1 }
+                            }, monthNames[anchor.month - 1] ?? String(anchor.month))
+                          )
+                        ),
+                        React.createElement("div", {
+                          className: "dsau-heat-grid",
+                          style: { gridTemplateColumns: `repeat(${block.weeks.length}, minmax(0, 1fr))` }
+                        },
+                          block.weeks.map((cells, localIndex) => {
+                            const weekIndex = block.startIndex + localIndex;
+                            return cells.map((cell) =>
+                              React.createElement("div", {
+                                key: cell.key,
+                                className: "dsau-heat-cell",
+                                "data-hidden": cell.inYear ? undefined : "1",
+                                "data-level": cell.inYear ? String(heatLevelOf(mode, cell.key, weekIndex, levelContext)) : undefined,
+                                onMouseEnter: cell.inYear ? (event) => showTip(event, cell, weekIndex) : undefined,
+                                onMouseLeave: () => setTip(null)
+                              })
+                            );
+                          })
+                        )
+                      )
+                    ),
+                    // 图例：最左的灰色代表 0 Token，随后四档蓝依次代表用量由少到多。
+                    React.createElement("div", { className: "dsau-heat-legend" },
+                      React.createElement("span", { className: "dsau-heat-legend-label" }, t("heatmapLess")),
+                      ["0", "1", "2", "3", "4"].map((level) =>
+                        React.createElement("span", {
+                          key: level,
+                          className: "dsau-heat-legend-swatch",
+                          "data-level": level
+                        })
+                      ),
+                      React.createElement("span", { className: "dsau-heat-legend-label" }, t("heatmapMore"))
+                    ),
+                    tip === null
+                      ? null
+                      : React.createElement("div", {
+                        ref: tipRef,
+                        className: "dsau-heat-tip",
+                        style: {
+                          left: tipBox === null ? Math.round(tip.anchorX) : tipBox.left,
+                          top: tipBox === null ? Math.round(tip.anchorY - 6) : tipBox.top
+                        }
+                      }, React.createElement("span", { className: "dsau-heat-tip-caption" }, tip.caption),
+                        React.createElement("span", { className: "dsau-heat-tip-value" }, tip.value))
+                  )
+                )
+              );
+
+      return React.createElement("div", { style: styles.section },
+        React.createElement("div", { style: styles.panelTitle },
+          React.createElement("span", null, t("overviewTitle")),
+          React.createElement("div", { style: styles.buttonsRow },
+            yearSelect,
+            React.createElement(RefreshButton, { onClick: load, t })
+          )
+        ),
+        body
+      );
+    }
+
     function AccountPage(props) {
       const { t, credApi, embedded } = props;
-      const [tab, setTab] = React.useState("deepseek");
+      const [tab, setTab] = React.useState("overview");
       // 两个面板常驻挂载（CSS 隐藏未激活项）：切换标签零等待，
       // 数据在后台按各自 60s 周期保持新鲜。
       // 嵌入官方账户页时隐藏独立页标题，并跟随官方内容宽度。
       return React.createElement("div", { style: embedded ? { ...styles.wrap, maxWidth: "none" } : styles.wrap },
         embedded ? null : React.createElement("h2", { style: styles.panelTitle }, t("title")),
         React.createElement("div", { style: styles.tabsRow },
+          React.createElement("button", {
+            style: tab === "overview" ? styles.tabActive : styles.tab,
+            onClick: () => setTab("overview")
+          }, t("tabOverview")),
           React.createElement("button", {
             style: tab === "deepseek" ? styles.tabActive : styles.tab,
             onClick: () => setTab("deepseek")
@@ -2441,8 +3972,11 @@ window.__ModuleLoader__.load({
             onClick: () => setTab("opencode")
           }, t("tabOpencode"))
         ),
+        React.createElement("div", { style: tab === "overview" ? { display: "block" } : { display: "none" } },
+          React.createElement(OverviewPanel, { t })
+        ),
         React.createElement("div", { style: tab === "deepseek" ? { display: "block" } : { display: "none" } },
-          React.createElement(DeepSeekPanel, { credApi, t })
+          React.createElement(DeepSeekPanel, { credApi, t, visible: tab === "deepseek" })
         ),
         React.createElement("div", { style: tab === "opencode" ? { display: "block" } : { display: "none" } },
           React.createElement(OpencodePanel, { credApi, t })
@@ -2840,7 +4374,12 @@ window.__ModuleLoader__.load({
       };
 
       const injectMenuStyles = () => {
-        if (document.querySelector('style[data-plugin-css="' + MENU_STYLE_ID + '"]') !== null) return;
+        // 与 ensureCalendarStyles 同理：热更新后旧样式表还在，内容不一致就覆盖。
+        const existing = document.querySelector('style[data-plugin-css="' + MENU_STYLE_ID + '"]');
+        if (existing !== null) {
+          if (existing.textContent !== MENU_CSS) existing.textContent = MENU_CSS;
+          return;
+        }
         const style = document.createElement("style");
         style.dataset.plugin = "dsh-account-usage";
         style.dataset.pluginCss = MENU_STYLE_ID;
@@ -3130,9 +4669,57 @@ window.__ModuleLoader__.load({
     exports.unwrapRpc = unwrapRpc;
     exports.BarChart = BarChart;
     exports.TokenChart = TokenChart;
+    exports.TokenLegend = TokenLegend;
+    exports.TOKEN_COLORS = TOKEN_COLORS;
+    exports.tokenTooltipRow = tokenTooltipRow;
     exports.fmtCountdown = fmtCountdown;
     exports.balanceTextOf = balanceTextOf;
     exports.toolLabelOf = toolLabelOf;
+    // 区间日历与合计口径的纯函数（0.5.0，供单测锁定边界）
+    exports.isDateKey = isDateKey;
+    exports.addMonths = addMonths;
+    exports.buildMonthGrid = buildMonthGrid;
+    exports.weekdayLabels = weekdayLabels;
+    exports.formatMonthTitle = formatMonthTitle;
+    exports.normalizeRange = normalizeRange;
+    exports.isFutureDate = isFutureDate;
+    exports.monthOfDateKey = monthOfDateKey;
+    exports.shiftMonthKey = shiftMonthKey;
+    exports.startOfWeekKey = startOfWeekKey;
+    exports.endOfWeekKey = endOfWeekKey;
+    exports.previewRange = previewRange;
+    exports.bandKind = bandKind;
+    exports.combinedTotals = combinedTotals;
+    exports.CALENDAR_CSS = CALENDAR_CSS;
+    exports.ensureCalendarStyles = ensureCalendarStyles;
+    exports.yearOfDayKey = yearOfDayKey;
+    exports.dayKeysOfYear = dayKeysOfYear;
+    exports.sumYearTokens = sumYearTokens;
+    exports.peakOfYear = peakOfYear;
+    exports.longestStreakOfYear = longestStreakOfYear;
+    exports.currentStreakOfDays = currentStreakOfDays;
+    exports.buildYearWeeks = buildYearWeeks;
+    exports.weekTotalsOf = weekTotalsOf;
+    exports.thinMonthAnchors = thinMonthAnchors;
+    exports.splitWeekColumns = splitWeekColumns;
+    exports.cumulativeByDay = cumulativeByDay;
+    exports.weekActiveDaysOf = weekActiveDaysOf;
+    exports.weekCumulativeOf = weekCumulativeOf;
+    exports.weekLastKeyOf = weekLastKeyOf;
+    exports.quantileThresholds = quantileThresholds;
+    exports.levelOfValue = levelOfValue;
+    exports.heatLevelOf = heatLevelOf;
+    exports.clampTipPosition = clampTipPosition;
+    exports.ensureOverviewStyles = ensureOverviewStyles;
+    exports.OVERVIEW_CSS = OVERVIEW_CSS;
+    exports.formatTokenCount = formatTokenCount;
+    exports.formatDurationMs = formatDurationMs;
+    exports.OverviewPanel = OverviewPanel;
+    exports.CalendarMonth = CalendarMonth;
+    exports.CalendarPanel = CalendarPanel;
+    exports.DeepSeekPanel = DeepSeekPanel;
+    exports.AccountPage = AccountPage;
+    exports.RangeSelector = RangeSelector;
     // 用量趋势相关纯函数（供单测锁定格式与坐标系换算）
     exports.fmtCompactCount = fmtCompactCount;
     exports.fmtPercent = fmtPercent;
@@ -3145,4 +4732,4 @@ window.__ModuleLoader__.load({
   }
 });
 
-// client reload probe 1794632730
+// client reload probe 1795057302

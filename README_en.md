@@ -10,7 +10,7 @@ A DeepSeek Harness (DSH) web-GUI plugin: adds an "Account" page to the settings 
 > npm package: `@ycet/dsh-account-usage`. The unscoped [`dsh-account-usage`](https://www.npmjs.com/package/dsh-account-usage) on npm is an unrelated project by another author — do not mix the two.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.4.1-blue.svg?style=for-the-badge)](package.json)
+[![Version](https://img.shields.io/badge/version-0.5.0-blue.svg?style=for-the-badge)](package.json)
 [![npm](https://img.shields.io/npm/v/%40ycet%2Fdsh-account-usage?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@ycet/dsh-account-usage)
 [![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.6%2B-purple.svg?style=for-the-badge)](https://github.com/deepseek-ai/deepseek-harness)
 
@@ -21,7 +21,9 @@ A DeepSeek Harness (DSH) web-GUI plugin: adds an "Account" page to the settings 
 ## 📑 Table of Contents
 
 - [📸 Preview](#-preview)
+  - [Overview](#overview) · [DeepSeek platform](#deepseek-platform) · [OpenCode Go](#opencode-go) · [What each tab shows](#what-each-tab-shows)
 - [✨ Features](#-features)
+  - [Overview capabilities](#overview-capabilities) · [DeepSeek platform capabilities](#deepseek-platform-capabilities) · [OpenCode Go capabilities](#opencode-go-capabilities) · [General capabilities](#general-capabilities)
 - [🚀 Quick Start](#-quick-start)
 - [⚙️ Configuration](#️-configuration)
 - [📖 Usage](#-usage)
@@ -36,33 +38,91 @@ A DeepSeek Harness (DSH) web-GUI plugin: adds an "Account" page to the settings 
 
 ## 📸 Preview
 
-**DeepSeek platform content** (embedded below the native cards of the official Account & balance page by default; the old screenshots show the standalone fallback layout): balance overview, time-range selector with custom range, daily cost/token bar charts, web search/fetch usage charts, per-model detail table.
+The plugin embeds into the official "Account & balance" page and is split into three tabs: **Overview / deepseek / opencode go**. All screenshots below are taken from the real running UI.
 
-![Screenshot of the DeepSeek platform "Account" page](assets/images/account-usage-U--01.png)
+### Overview
 
-**OpenCode Go tab**: usage progress bars, reset times and reference limits for the 5-hour rolling / weekly / monthly windows, plus a "Usage trend (current period)" card below them: a per-day cumulative-used line, a linear end-of-period forecast, and a hover tooltip with that day's cumulative usage, that day's increment and that day's request count.
+The default tab: five per-year usage stats (total tokens, peak day, longest task, longest/current streak) plus the yearly token activity heatmap.
 
-![Screenshot of the OpenCode Go quota "Account" page](assets/images/account-usage-UI--02.png)
+<img src="assets/images/overview.png" alt="Overview tab: five per-year stats and the token activity heatmap" width="860">
+
+### DeepSeek platform
+
+Session token, account balance, usage totals (model + tools), model usage details, and web search/fetch usage.
+
+<img src="assets/images/deepseek-01-overview.png" alt="DeepSeek tab: session token, account balance and the usage card" width="860">
+
+<img src="assets/images/deepseek-02-model-usage.png" alt="DeepSeek tab: model usage details with cost/token bar charts and the per-model table" width="860">
+
+<img src="assets/images/deepseek-03-tools.png" alt="DeepSeek tab: web search and fetch usage summary" width="860">
+
+<img src="assets/images/deepseek-04-tool-trends.png" alt="DeepSeek tab: per-tool area charts for web search and fetch" width="860">
+
+### OpenCode Go
+
+Quota progress bars, reset times and reference limits for the three windows, plus the current period's usage trend and extrapolated forecast.
+
+<img src="assets/images/opencode-go-01-quota.png" alt="OpenCode Go tab: 5-hour rolling / weekly / monthly quotas and the usage trend summary" width="860">
+
+<img src="assets/images/opencode-go-02-trend.png" alt="OpenCode Go tab: quota usage trend line, forecast and models used this period" width="860">
+
+### What each tab shows
+
+| Tab | Main content | Data source |
+|-----|--------------|-------------|
+| **Overview** | Five per-year stats and the yearly token activity heatmap (daily / weekly / cumulative, Monday-first) | Local session logs (scanned and cached by the host) |
+| **deepseek** | Session token, account balance, usage totals, model usage details, web search & fetch | Private endpoints of the DeepSeek platform |
+| **opencode go** | Quota window progress, usage trend and forecast, models used this period | Official OpenCode usage endpoint + optional Console cookie |
 
 ---
 
 ## ✨ Features
 
+### Overview capabilities
+
 | Feature | Description |
 |---------|-------------|
-| **DeepSeek platform overview** | Recharge balance, bonus balance, cumulative spending, current-month spending and tokens |
-| **Daily bar charts** | Cost and token consumption charts, SVG-rendered, with hover tooltips per day |
-| **Web search / fetch usage** | Daily call counts and cost by call type (`tool-search` / `tool-fetch`) with per-tool area charts, following the selected range; ranges over 31 days are queried in windows and merged |
-| **Merge into the official Account & balance page** | When the official page exists, plugin content is embedded below its native cards and no separate nav entry is added; switching sections hides it and switching back restores it |
-| **Account-menu balance entry** | Shows "Balance: ¥x.xx" (top-up + granted) above "Settings" in the account menu; click to open the official Account & balance page, falling back to the plugin's own page when the official one is unavailable |
+| **Yearly usage stats** | Total tokens, peak day (with date), longest task, longest streak and current streak, switched by a year dropdown |
+| **Append-only ledger** | Stats come from local session logs; archived or deleted sessions still keep and contribute their historical usage |
+| **Token activity heatmap** | Year grid laid out in two rows (Jan–Jul / Aug–Dec) of ~16px rounded cells, with `Daily` / `Weekly` / `Cumulative` modes |
+| **Monday-first weeks + bottom-up fill** | One column is one week, with **Monday as the first day** (top = Monday, bottom = Sunday); weekly and cumulative both fill each column from the bottom, so the number of colored cells equals the days used that week, one shade per column |
+| **Four log-scale levels** | Bucketed on a log scale (P25/P50/P75 boundaries); only 0-token days stay empty and any day with usage gets at least the first level |
+| **Colour ramp and legend** | 0-token days are neutral grey and active days deepen across four blue levels; a five-swatch “Less → More” legend sits under the grid, switching to a dark base with a dim-to-bright ramp in dark theme |
+| **Hover detail** | Shows the date / week / cumulative caption plus the token count with unit (万/亿 in Chinese, K/M/B in English) |
+
+### DeepSeek platform capabilities
+
+| Feature | Description |
+|---------|-------------|
+| **Account overview** | Recharge balance, bonus balance, cumulative spending, current-month spending and tokens |
 | **Time-range switching** | Today / last 7 days / last 30 days / last 90 days / this month / last month / custom range |
-| **Per-model table** | deepseek-v4-flash / deepseek-v4-pro / others: request count, input/cached/output tokens, cost |
-| **OpenCode Go quotas** | Usage percentage and next reset time for the 5-hour rolling / weekly / monthly windows |
+| **Range calendar** | Open-platform-style two-month calendar: Sunday-first, dark circular endpoints, per-day light range fill, today marker, future dates disabled, single month on narrow screens, full keyboard support; applies as soon as both ends are picked or the calendar closes |
+| **Usage card (model + tools)** | "Spend" and "API requests" combine model usage with web search/fetch usage, with a small breakdown line ("model ¥x + tools ¥x"); degraded honestly when the tool endpoint is unavailable |
+| **Model usage details card** | Cost and token bar charts (SVG, hover for per-day detail) plus the per-model table, all on the model-only basis |
+| **Three-shade token chart** | The token chart stacks input (cache hit) / input (cache miss) / output in three shades of blue, and the tooltip lists the daily total plus the three rows |
+| **Web search / fetch usage** | The stats area starts with the total tool cost, then daily call counts and cost by call type (`tool-search` / `tool-fetch`) with per-tool area charts; ranges over 31 days are queried in windows and merged |
+
+### OpenCode Go capabilities
+
+| Feature | Description |
+|---------|-------------|
+| **Quota windows** | Usage percentage, next reset time and reference limit for the 5-hour rolling / weekly / monthly windows |
 | **Quota trend & forecast** | Per-day cumulative quota line for the current subscription period plus a linear forecast to the reset date; hover shows date, cumulative used, that day's increment and that day's requests; gaps are labelled, never interpolated |
 | **Models this period (cookie only)** | With an OpenCode Console cookie: the period's most-used models with shares, total requests and total tokens (from the official daily report) |
+
+### General capabilities
+
+| Feature | Description |
+|---------|-------------|
+| **Merge into the official Account & balance page** | When the official page exists, plugin content is embedded below its native cards and no separate nav entry is added; switching sections hides it and switching back restores it |
+| **Fallback standalone page** | When DSH is signed out or the official account page does not exist, the plugin registers its own "Account" section so the token and usage stay reachable |
+| **Account-menu balance entry** | Shows "Balance: ¥x.xx" (top-up + granted) above "Settings" in the account menu; click to open the official Account & balance page, falling back to the plugin's own page when the official one is unavailable |
+| **Sticky tabs** | The tab bar sticks to the top of the settings content area while scrolling |
 | **Auto refresh** | Polls for fresh data every 60 seconds while the page is mounted |
 | **Bilingual UI** | Full Chinese/English switching |
-| **Fallback standalone page** | When DSH is signed out or the official account page does not exist, the plugin registers its own "Account" section so the token and usage stay reachable |
+
+> [!NOTE]
+> `0.5.0` replaces the native date inputs with an **open-platform-style two-month range calendar** (Sunday-first, dark circular endpoints, per-day light range fill, light circle for today / white dot when today is an endpoint, future dates disabled, single month on narrow screens, arrow-key + Enter/Esc support) and splits the DeepSeek page into three cards — Usage, Model usage details, and Web search & fetch. The Usage card now reports spend and API requests as **model + tools totals** with a breakdown line, the model table moved into Model usage details, the tool card gained a total tool cost stat, the tab bar sticks to the top while scrolling, a new leftmost default **Overview** tab adds five per-year usage stats plus a yearly token heatmap (from local session logs; the ledger only grows, so archived or deleted sessions still count), the token chart uses a three-step blue ramp for input (cache hit) / input (cache miss) / output with a "date + daily total" tooltip header plus three detail rows, and the preset dropdown is now custom-skinned (the native `<select>` border occasionally failed to repaint after switching options). Client-side only: host routes and credentials are unchanged, so reinstall with the command above and refresh the page (a local `link` install only needs a refresh).
 
 > [!NOTE]
 > `0.4.1` publishes to npm under the scoped name **`@ycet/dsh-account-usage`** (the unscoped `dsh-account-usage` is taken by another project). The `cordis.patch.yml` loader entry name and the client module id follow the package name, and the manifest now carries `repository` / `homepage` / `bugs` / `publishConfig`. If you installed an older copy under the previous name, run `dsh plugin --profile web remove dsh-account-usage` first, then install with the command above and fully quit and reopen DSH.
@@ -87,16 +147,16 @@ A DeepSeek Harness (DSH) web-GUI plugin: adds an "Account" page to the settings 
 
 ```sh
 # Option 1: install from npm (recommended; can be updated from the plugin page)
-dsh plugin --profile web add @ycet/dsh-account-usage@0.4.1
+dsh plugin --profile web add @ycet/dsh-account-usage@0.5.0
 
 # Option 2: install from a local source directory (development)
 dsh plugin --profile web add <absolute-path-to-plugin>
 
 # Option 3: install from GitHub (pinned to a release tag; requires git, no npm account)
-dsh plugin --profile web add "github:Ycet/dsh-account-usage#v0.4.1"
+dsh plugin --profile web add "github:Ycet/dsh-account-usage#v0.5.0"
 
 # Option 4: install from a Release asset (tarball; no git, no npm account)
-dsh plugin --profile web add "https://github.com/Ycet/dsh-account-usage/releases/download/v0.4.1/dsh-account-usage-0.4.1.tgz"
+dsh plugin --profile web add "https://github.com/Ycet/dsh-account-usage/releases/download/v0.5.0/dsh-account-usage-0.5.0.tgz"
 ```
 
 The package declares a `dsh.bundle` patch layer; `dsh plugin` merges the loader entry into the profile's bundle layer automatically — no manual editing of `cordis.patch.yml` required. Options 2–4 need no npm account; for the desktop app replace `--profile web` with `--profile desktop` (using the desktop-bundled CLI).
@@ -172,17 +232,36 @@ It is optional: without it the trend falls back to local sampling (labelled "loc
 
 ## 📖 Usage
 
+### Opening it
+
 - Open the official "Account & balance" page in settings; the plugin content appears below the native identity/balance cards. When signed out, the plugin's standalone "Account" page is shown instead;
-- Switch between the **deepseek / opencode go** tabs at the top of the embedded plugin content;
-- On the DeepSeek tab, pick a time range (Today / last 7 days / last 30 days / last 90 days / this month / last month) or choose a custom range and click "Apply";
-- Hover over the bar charts for daily details; the per-model table shows requests, tokens and cost for the selected range;
-- The "Web Search & Fetch" module shows daily `tool-search` / `tool-fetch` call counts, call-type cost and per-tool area charts for the selected range; ranges over 31 days are split and merged automatically;
+- Switch between the **Overview / deepseek / opencode go** tabs at the top of the embedded plugin content (Overview is the default);
 - The account menu (sidebar account avatar) gets a "Balance: ¥x.xx" entry above "Settings" (top-up + granted balance); clicking it opens Settings on the official "Account & balance" page (or the fallback page when the official one is unavailable);
-- On the OpenCode Go tab, view usage percentage, next reset time and reference limit for each quota window, with one-click "Go to opencode.ai" and "Refresh" buttons;
+- Data auto-refreshes every 60 seconds while the page is mounted; "Open config file" locates your local DSH credentials file.
+
+### On the Overview tab
+
+- The year dropdown drives both the five stats and the heatmap;
+- The heatmap is laid out by calendar year with **Monday as the first day of each week** (top = Monday, bottom = Sunday); to keep the cells large enough, the year is split into **two rows (Jan–Jul / Aug–Dec)**; three modes are available:
+  - `Daily` — shades by that day's usage;
+  - `Weekly` — one shade per column, filled bottom-up with as many cells as days used that week;
+  - `Cumulative` — shaded by the running total at that week's last day, with the same bottom-up fill and future dates left empty;
+- Four levels are bucketed on a log scale (P25/P50/P75 boundaries) so only 0-token days remain empty;
+- The host scans local session logs in the background on first visit (shows "Scanning…") and the numbers refresh automatically when it finishes; the refresh button forces a rescan.
+
+### On the DeepSeek tab
+
+- Pick a time range (Today / last 7 days / last 30 days / last 90 days / this month / last month), or open the read-only range box and pick start/end in the open-platform-style two-month calendar — **picking both ends closes the calendar and applies the range**, and closing it by Esc or an outside click also applies whatever range is staged (an unfinished single-end pick is discarded); hovering previews the range after the first click;
+- The Usage card's spend and API requests are the model + tools (web search/fetch) total, with a small breakdown line;
+- Hover over the bar charts for daily details; the token chart stacks input (cache hit) / input (cache miss) / output; the per-model table shows requests, tokens and cost for the selected range;
+- The "Web Search & Fetch" module starts with the total tool cost, then shows daily `tool-search` / `tool-fetch` call counts, call-type cost and per-tool area charts for the selected range; ranges over 31 days are split and merged automatically.
+
+### On the OpenCode Go tab
+
+- View usage percentage, next reset time and reference limit for each quota window, with one-click "Go to opencode.ai" and "Refresh" buttons;
 - Below the three quota cards, "Usage trend (current period)" uses the current subscription period as its x-axis (derived by stepping one calendar month back from the monthly reset time): the green line is cumulative quota used, the dashed amber line is the forecast to the reset date, and the dashed grey line is the 100% limit; hover any day for date / used / that day / requests;
 - The summary row shows current used, daily pace and the projected end value; when the period just started (under one day) it says "Period just started" and makes no forecast;
-- With a Console cookie configured, a "Models this period" card (model shares, requests, tokens) appears below the trend card;
-- Data auto-refreshes every 60 seconds while the page is mounted; "Open config file" locates your local DSH credentials file.
+- With a Console cookie configured, a "Models this period" card (model shares, requests, tokens) appears below the trend card.
 
 ---
 
@@ -192,8 +271,9 @@ A dual-half plugin (host + browser) with data flowing through same-origin HTTP r
 
 | Part | File | Role |
 |------|------|------|
-| Host | `index.js` | Registers four precise `GET /api/account-usage/*` routes (`deepseek-summary` / `deepseek-usage` / `opencode` / `opencode-history`); resolves keys via `ctx.credentials`, uses fixed allow-listed upstream URLs, 15s timeout + 30s cache; `deepseek-usage` merges model usage with web search/fetch usage; a 15-minute background sampler writes the local sample store |
+| Host | `index.js` | Registers five precise `GET /api/account-usage/*` routes (`deepseek-summary` / `deepseek-usage` / `opencode` / `opencode-history` / `insights`); resolves keys via `ctx.credentials`, uses fixed allow-listed upstream URLs, 15s timeout + 30s cache; `deepseek-usage` merges model usage with web search/fetch usage; a 15-minute background sampler writes the local sample store |
 | Parsing/aggregation | `lib/aggregate.js` | Pure functions: daily/per-model token, cost and request-count aggregation; time-window splitting and function-usage merge for web search/fetch; subscription-period derivation, sample compaction, Console CSV/JSON parsing, daily-series building and linear forecasting |
+| Usage ledger | `lib/insights.js` | Pure functions: folds `assistant/message.usage` and turn durations out of session logs and merges them into the ledger incrementally by revision; sessions missing from the list are marked `retained` and keep counting, so the ledger only grows |
 | Browser | `client.js` | Hand-written lazy CJS client bundle: when the official account page exists, mounts its content root below the native cards of its `settings.section` `<section>` using `react-dom/client` (detaches DOM but keeps the root on section switches; unmounts when settings closes); otherwise registers the fallback `settings.section` (id `account-usage`). Also renders the SVG charts, 60s refresh, settings nav icon and account-menu balance entry |
 | Composition | `cordis.patch.yml` | `dsh.bundle` patch layer, merged automatically on install |
 
@@ -211,13 +291,19 @@ A dual-half plugin (host + browser) with data flowing through same-origin HTTP r
 | Console daily activity (optional) | `opencode.ai/console/api/activity/go?range=30d` | browser session cookie |
 | Console usage export CSV (optional) | `opencode.ai/console/api/v2/usage/export?range=30d` | browser session cookie |
 
+The Overview tab touches no external endpoint: the host reads local session logs (`ctx.sessionPersistence`), folds them and persists the result to `~/.dsh/storages/dsh-account-usage/usage-ledger.v1.json`.
+
 ### How the trend numbers are derived
 
-```
-sample every 15 min ──► sample store (percent + resetsAt) ──┐
-                                                            ├─► buildDailySeries ──► daily series ──► forecastSeries ──► line + forecast
-Console daily report (optional) ──► daily cost/requests/tokens ┘        ▲
-                                                                       └── official live percentage (anchors today's point)
+```mermaid
+flowchart LR
+  A["Sample every 15 min"] --> B["Sample store<br/>percent + resetsAt"]
+  C["Console daily report (optional)<br/>daily cost / requests / tokens"] --> D["buildDailySeries"]
+  B --> D
+  D --> E["Daily series"]
+  E --> F["forecastSeries"]
+  F --> G["Cumulative line + end-of-period forecast"]
+  H["Official live percentage"] --> D
 ```
 
 - **Period**: one calendar month stepped back from the monthly `resetsAt` (reset on 11/20 → period starts 10/20);
@@ -247,12 +333,14 @@ Console daily report (optional) ──► daily cost/requests/tokens ┘        
 
 ## ⚠️ Known Limitations
 
+- The Overview tab relies on DSH's `sessionPersistence` service to read local session logs: on first use (or on a new machine) the ledger is empty until the background scan finishes, and the page shows "Scanning…" meanwhile. The ledger lives at `~/.dsh/storages/dsh-account-usage/usage-ledger.v1.json`; deleting it **loses the historical totals of already-deleted sessions** (their logs are no longer on disk), so clean it up carefully. On older DSH versions without that service the tab reports that session-log statistics are unsupported.
+- Sessions started from a worktree and sessions from subagents both count; the longest-task stat only measures main-session turns, not subagent time.
 - The DeepSeek usage APIs are **undocumented private endpoints**; fields may change as the platform evolves. The plugin parses responses defensively and degrades missing fields to "—" instead of failing. If "—" persists, re-capture the API and report back.
 - "Cumulative spending" and "API request count" are not in public docs: cumulative spending is located by a naming heuristic in the summary response (shows "—" if not found), and request count reads `count/requests/request_count/req_count/calls` fields on model entries. Both were calibrated against a real token.
 - The web search/fetch usage API accepts at most 31 days per request; the plugin splits longer ranges into 31-day windows, so very long ranges make more requests. Tool names come from the platform's `functions` array (`tool-search` / `tool-fetch` today); unknown tools are shown as-is.
 - The account-menu balance entry relies on the native DSH 0.2.x account menu DOM. If upstream redesigns that menu, the entry may be temporarily hidden, without affecting the account page or other features. It only reads the platform token already configured for this plugin and stores no balance data.
 - The merged content relies on the official "Account & balance" page DOM (the `<section>` inside `[data-slot="settings.section"]`). If upstream rewrites that page, the embedded content may stop appearing; the fallback page is not shown while the official page exists.
-- Within one settings session, switching sections preserves the embedded tab/time range; closing and reopening settings resets them to deepseek / this month. The official page only exists when signed in to a DSH official account; signed-out users get the fallback page.
+- Within one settings session, switching sections preserves the embedded tab/time range; closing and reopening settings resets them to Overview / this month. The official page only exists when signed in to a DSH official account; signed-out users get the fallback page.
 - OpenCode Go limits ($12/$30/$60) are reference values for the plans; the endpoint does not return limits. Check opencode.ai when plans change.
 - Without a Console cookie the trend relies on local sampling: history only accumulates from the day the plugin starts recording (right after install, the current period only holds post-install data), and the percentage precision is limited to the official endpoint's whole percents (1%). Configure the cookie for the full period and daily request counts.
 - The Console API (`/console/api/*`) is an **undocumented internal API** that only accepts a browser session cookie and may break when upstream changes it. The plugin parses fields by alias, falls back to sampled data on failure, and exposes only status codes and the CSV header row in diagnostics (never the cookie or business data). Expired cookies must be re-pasted.
