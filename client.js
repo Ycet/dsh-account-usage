@@ -75,6 +75,8 @@ window.__ModuleLoader__.load({
       heatmapWeekTip: "{date} 起的一周",
       heatmapCumulativeTip: "累计至 {date}",
       heatmapValueUnit: "个 Token",
+      heatmapLess: "少",
+      heatmapMore: "多",
       numberScale: "wan",
       durationDay: "天",
       durationHour: "小时",
@@ -245,6 +247,8 @@ window.__ModuleLoader__.load({
       heatmapWeekTip: "Week of {date}",
       heatmapCumulativeTip: "Cumulative to {date}",
       heatmapValueUnit: "tokens",
+      heatmapLess: "Less",
+      heatmapMore: "More",
       numberScale: "short",
       durationDay: "d",
       durationHour: "h",
@@ -951,6 +955,26 @@ window.__ModuleLoader__.load({
         out.push(next);
       }
       return out;
+    }
+
+    /**
+     * 把一整年的周列按顺序切成若干块。
+     * 设置面板里热力图只有约 530px 可用，53 列挤在一行每格不足 7px；
+     * 切成两行后每格约 16px，才能画出与官方参考图一致的圆角方块。
+     * 返回 [{ startIndex, weeks }]，startIndex 是该块第一列在全年里的下标，
+     * 供 heatLevelOf / tooltip 继续用「全年列号」取每周聚合值。
+     */
+    function splitWeekColumns(weeks, blockCount) {
+      const list = Array.isArray(weeks) ? weeks : [];
+      const count = Math.max(1, Math.floor(Number(blockCount) || 1));
+      if (list.length === 0) return [];
+      // 尽量均分：余数补给前面的块，避免最后一行只有一两列。
+      const perBlock = Math.ceil(list.length / count);
+      const blocks = [];
+      for (let start = 0; start < list.length; start += perBlock) {
+        blocks.push({ startIndex: start, weeks: list.slice(start, start + perBlock) });
+      }
+      return blocks;
     }
 
     /**
@@ -1992,25 +2016,34 @@ window.__ModuleLoader__.load({
       ".dsau-stat-label{margin:0;font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary);max-width:100%;overflow-wrap:break-word}",
       ".dsau-stat-hint{margin:0;font-size:11px;line-height:16px;color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;white-space:nowrap}",
       "@media (max-width:560px){.dsau-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 0}.dsau-stat+.dsau-stat{border-left:none}}",
-      ".dsau-heat{position:relative;display:flex;flex-direction:column;gap:6px}",
-      ".dsau-heat-grid,.dsau-heat-months{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,auto);gap:3px}",
+      ".dsau-heat{position:relative;display:flex;flex-direction:column;gap:10px}",
+      // 单元格为圆角小方块，行列间距一致（参考官方样式的 16px 方块 + 4px 间隔比例）。
+      ".dsau-heat-block{display:flex;flex-direction:column;gap:4px}",
+      ".dsau-heat-grid,.dsau-heat-months{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,auto);gap:4px}",
       ".dsau-heat-months{grid-template-rows:auto}",
-      // 空格子用半透明 hover 色：浅色主题下比卡片略深、深色主题下略浅，两种主题都有对比度。
-      ".dsau-heat-cell{aspect-ratio:1;border-radius:2px;background:var(--dsw-alias-interactive-bg-hover)}",
+      // 0 Token = 中性浅灰（与参考图最左侧一致）；未来/非本年格子完全透明。
+      // 色阶同时作用于热力格与图例色块，避免两处各写一套。
+      ".dsau-heat-cell,.dsau-heat-legend-swatch{background:#e5e5e5}",
+      ".dsau-heat-cell{aspect-ratio:1;border-radius:3px}",
       ".dsau-heat-cell[data-hidden=\"1\"]{background:transparent}",
-      // 四级色阶由同一个蓝色与卡片底色混合而来，深色主题自动变成“越亮越深”。
-      // 四级色阶：相邻两档的对比度几乎等距，保证一眼能看出层次。
-      // 浅色直接取官方蓝色阶 blue-300/450/600/800，对空格子的对比度 1.6 / 2.8 / 4.7 / 7.9 : 1；
-      // 深色主题下官方蓝令牌值不变（仍是浅色值），越亮代表用量越高，
-      // 所以用 blue-300 按 35/55/75/100% 叠在底色上，对比度 1.7 / 2.5 / 3.5 / 5.2 : 1。
-      ".dsau-heat-cell[data-level=\"1\"]{background:var(--dsw-static-blue-300)}",
-      ".dsau-heat-cell[data-level=\"2\"]{background:var(--dsw-static-blue-450)}",
-      ".dsau-heat-cell[data-level=\"3\"]{background:var(--dsw-static-blue-600)}",
-      ".dsau-heat-cell[data-level=\"4\"]{background:var(--dsw-static-blue-800)}",
-      "body[data-ds-dark-theme] .dsau-heat-cell[data-level=\"1\"]{background:color-mix(in srgb, var(--dsw-static-blue-300) 35%, var(--dsw-alias-bg-layer-3))}",
-      "body[data-ds-dark-theme] .dsau-heat-cell[data-level=\"2\"]{background:color-mix(in srgb, var(--dsw-static-blue-300) 55%, var(--dsw-alias-bg-layer-3))}",
-      "body[data-ds-dark-theme] .dsau-heat-cell[data-level=\"3\"]{background:color-mix(in srgb, var(--dsw-static-blue-300) 75%, var(--dsw-alias-bg-layer-3))}",
-      "body[data-ds-dark-theme] .dsau-heat-cell[data-level=\"4\"]{background:var(--dsw-static-blue-300)}",
+      // 四级色阶取自参考图实测：浅蓝 → 亮青蓝，逐档加深。
+      // 浅色：level1 #bee2f4 / level2 #8bd0f0 / level3 #58beef / level4 #06aeec。
+      ".dsau-heat-cell[data-level=\"1\"],.dsau-heat-legend-swatch[data-level=\"1\"]{background:#bee2f4}",
+      ".dsau-heat-cell[data-level=\"2\"],.dsau-heat-legend-swatch[data-level=\"2\"]{background:#8bd0f0}",
+      ".dsau-heat-cell[data-level=\"3\"],.dsau-heat-legend-swatch[data-level=\"3\"]{background:#58beef}",
+      ".dsau-heat-cell[data-level=\"4\"],.dsau-heat-legend-swatch[data-level=\"4\"]{background:#06aeec}",
+      // 深色主题：空格子用中性深灰，四级色阶保持同一色相但由暗到亮，
+      // 让「越亮 = 用量越高」的方向感与浅色主题一致。
+      "body[data-ds-dark-theme] .dsau-heat-cell,body[data-ds-dark-theme] .dsau-heat-legend-swatch{background:#3a3b3d}",
+      "body[data-ds-dark-theme] .dsau-heat-cell[data-hidden=\"1\"]{background:transparent}",
+      "body[data-ds-dark-theme] .dsau-heat-cell[data-level=\"1\"],body[data-ds-dark-theme] .dsau-heat-legend-swatch[data-level=\"1\"]{background:#16414f}",
+      "body[data-ds-dark-theme] .dsau-heat-cell[data-level=\"2\"],body[data-ds-dark-theme] .dsau-heat-legend-swatch[data-level=\"2\"]{background:#1c6076}",
+      "body[data-ds-dark-theme] .dsau-heat-cell[data-level=\"3\"],body[data-ds-dark-theme] .dsau-heat-legend-swatch[data-level=\"3\"]{background:#0787b4}",
+      "body[data-ds-dark-theme] .dsau-heat-cell[data-level=\"4\"],body[data-ds-dark-theme] .dsau-heat-legend-swatch[data-level=\"4\"]{background:#06aeec}",
+      // 图例：少 [灰][四档蓝] 多，右对齐在网格下方。
+      ".dsau-heat-legend{display:flex;align-items:center;justify-content:flex-end;gap:4px;margin-top:2px;font-size:12px;line-height:18px;color:var(--dsw-alias-label-tertiary)}",
+      ".dsau-heat-legend-swatch{width:14px;height:14px;border-radius:3px;flex:none}",
+      ".dsau-heat-legend-label{padding:0 2px}",
       ".dsau-heat-month{grid-row:1;justify-self:start;font-size:12px;line-height:18px;color:var(--dsw-alias-label-tertiary);white-space:nowrap;pointer-events:none}",
       // 提示框：官方平台样式为两行（描述 + 带单位的数值），沿用主题令牌适配深浅色。
       ".dsau-heat-tip{position:fixed;z-index:20;pointer-events:none;display:flex;flex-direction:column;gap:2px;background:var(--dsw-alias-bg-layer-3);border:1px solid var(--dsw-alias-border-l2);border-radius:8px;padding:6px 10px;font-size:12px;line-height:1.5;white-space:nowrap;box-shadow:0 4px 16px rgb(0 0 0 / 0.25);color:var(--dsw-alias-label-primary)}",
@@ -3742,14 +3775,9 @@ window.__ModuleLoader__.load({
         if (weekIndex < 0) continue;
         monthAnchors.push({ month, weekIndex });
       }
-      // 至少间隔 4 列才放下一个标签（53 列 / 12 个月 ≈ 4.3 列，窄屏下更密时自动抽稀）。
-      const monthLabels = thinMonthAnchors(monthAnchors, 4).map((anchor) =>
-        React.createElement("span", {
-          key: anchor.month,
-          className: "dsau-heat-month",
-          style: { gridColumnStart: anchor.weekIndex + 1 }
-        }, monthNames[anchor.month - 1] ?? String(anchor.month))
-      );
+      // 一年拆成两行：设置面板内只有约 530px，53 列挤一行每格不足 7px，
+      // 拆成两块后每格约 16px，与官方参考图的圆角方块比例一致。
+      const weekBlocks = splitWeekColumns(weeks, 2);
 
       const showTip = (event, cell, weekIndex) => {
         const rect = event.currentTarget.getBoundingClientRect();
@@ -3840,27 +3868,61 @@ window.__ModuleLoader__.load({
                     )
                   ),
                   React.createElement("div", { className: "dsau-heat" },
-                    React.createElement("div", {
-                      className: "dsau-heat-grid",
-                      style: { gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))` }
-                    },
-                      weeks.map((cells, weekIndex) =>
-                        cells.map((cell) =>
-                          React.createElement("div", {
-                            key: cell.key,
-                            className: "dsau-heat-cell",
-                            "data-hidden": cell.inYear ? undefined : "1",
-                            "data-level": cell.inYear ? String(heatLevelOf(mode, cell.key, weekIndex, levelContext)) : undefined,
-                            onMouseEnter: cell.inYear ? (event) => showTip(event, cell, weekIndex) : undefined,
-                            onMouseLeave: () => setTip(null)
+                    // 每一块是「上半年 / 下半年」：各自带月份刻度与 7 行格子。
+                    // weekIndex 一律用全年列号（block.startIndex + 块内下标），
+                    // 这样每周聚合值、tooltip 日期都不受分块影响。
+                    weekBlocks.map((block) =>
+                      React.createElement("div", { key: `block-${block.startIndex}`, className: "dsau-heat-block" },
+                        React.createElement("div", {
+                          className: "dsau-heat-months",
+                          style: { gridTemplateColumns: `repeat(${block.weeks.length}, minmax(0, 1fr))` }
+                        },
+                          thinMonthAnchors(
+                            monthAnchors
+                              .filter((anchor) => anchor.weekIndex >= block.startIndex
+                                && anchor.weekIndex < block.startIndex + block.weeks.length)
+                              .map((anchor) => ({ month: anchor.month, weekIndex: anchor.weekIndex - block.startIndex })),
+                            4
+                          ).map((anchor) =>
+                            React.createElement("span", {
+                              key: anchor.month,
+                              className: "dsau-heat-month",
+                              style: { gridColumnStart: anchor.weekIndex + 1 }
+                            }, monthNames[anchor.month - 1] ?? String(anchor.month))
+                          )
+                        ),
+                        React.createElement("div", {
+                          className: "dsau-heat-grid",
+                          style: { gridTemplateColumns: `repeat(${block.weeks.length}, minmax(0, 1fr))` }
+                        },
+                          block.weeks.map((cells, localIndex) => {
+                            const weekIndex = block.startIndex + localIndex;
+                            return cells.map((cell) =>
+                              React.createElement("div", {
+                                key: cell.key,
+                                className: "dsau-heat-cell",
+                                "data-hidden": cell.inYear ? undefined : "1",
+                                "data-level": cell.inYear ? String(heatLevelOf(mode, cell.key, weekIndex, levelContext)) : undefined,
+                                onMouseEnter: cell.inYear ? (event) => showTip(event, cell, weekIndex) : undefined,
+                                onMouseLeave: () => setTip(null)
+                              })
+                            );
                           })
                         )
                       )
                     ),
-                    React.createElement("div", {
-                      className: "dsau-heat-months",
-                      style: { gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))` }
-                    }, monthLabels),
+                    // 图例：最左的灰色代表 0 Token，随后四档蓝依次代表用量由少到多。
+                    React.createElement("div", { className: "dsau-heat-legend" },
+                      React.createElement("span", { className: "dsau-heat-legend-label" }, t("heatmapLess")),
+                      ["0", "1", "2", "3", "4"].map((level) =>
+                        React.createElement("span", {
+                          key: level,
+                          className: "dsau-heat-legend-swatch",
+                          "data-level": level
+                        })
+                      ),
+                      React.createElement("span", { className: "dsau-heat-legend-label" }, t("heatmapMore"))
+                    ),
                     tip === null
                       ? null
                       : React.createElement("div", {
@@ -4639,6 +4701,7 @@ window.__ModuleLoader__.load({
     exports.buildYearWeeks = buildYearWeeks;
     exports.weekTotalsOf = weekTotalsOf;
     exports.thinMonthAnchors = thinMonthAnchors;
+    exports.splitWeekColumns = splitWeekColumns;
     exports.cumulativeByDay = cumulativeByDay;
     exports.weekActiveDaysOf = weekActiveDaysOf;
     exports.weekCumulativeOf = weekCumulativeOf;

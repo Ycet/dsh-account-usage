@@ -368,6 +368,23 @@ test("thinMonthAnchors 在列宽不足时抽稀月份标签", () => {
   assert.deepEqual(client.thinMonthAnchors([null, { month: 1, weekIndex: 0 }]).length, 1);
 });
 
+test("splitWeekColumns 把 53 周均分成两行，且块内下标能换算回全年列号", () => {
+  const weeks = Array.from({ length: 53 }, (_, index) => [`w${index}`]);
+  const blocks = client.splitWeekColumns(weeks, 2);
+  assert.equal(blocks.length, 2, "53 周应拆成两块");
+  // 每块不超过 ceil(53/2)=27 列，且两块的列数之和等于全年
+  assert.deepEqual(blocks.map((block) => block.weeks.length), [27, 26]);
+  assert.deepEqual(blocks.map((block) => block.startIndex), [0, 27], "第二块的起始下标应为 27");
+  // 块内第 i 列的全年列号 = startIndex + i，供 heatLevelOf 取每周聚合值
+  assert.equal(blocks[1].startIndex + 0, 27);
+  assert.equal(blocks[1].weeks[0][0], "w27");
+  // 边界：空数组 / 单块 / 块数超过列数
+  assert.deepEqual(client.splitWeekColumns([], 2), []);
+  assert.equal(client.splitWeekColumns(weeks, 1).length, 1);
+  assert.equal(client.splitWeekColumns([["a"]], 2).length, 1, "列数少于块数时只保留一块");
+  assert.deepEqual(client.splitWeekColumns(null, 2), []);
+});
+
 test("中英文词典都提供月份与统计文案（不出现裸键名）", () => {
   const css = client.OVERVIEW_CSS;
   assert.ok(css.includes(".dsau-heat-month"), "月份标签样式应存在");

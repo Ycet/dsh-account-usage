@@ -84,9 +84,10 @@ Quota progress bars, reset times and reference limits for the three windows, plu
 |---------|-------------|
 | **Yearly usage stats** | Total tokens, peak day (with date), longest task, longest streak and current streak, switched by a year dropdown |
 | **Append-only ledger** | Stats come from local session logs; archived or deleted sessions still keep and contribute their historical usage |
-| **Token activity heatmap** | Year grid with `Daily` / `Weekly` / `Cumulative` modes |
+| **Token activity heatmap** | Year grid laid out in two rows (Jan–Jul / Aug–Dec) of ~16px rounded cells, with `Daily` / `Weekly` / `Cumulative` modes |
 | **Monday-first weeks + bottom-up fill** | One column is one week, with **Monday as the first day** (top = Monday, bottom = Sunday); weekly and cumulative both fill each column from the bottom, so the number of colored cells equals the days used that week, one shade per column |
 | **Four log-scale levels** | Bucketed on a log scale (P25/P50/P75 boundaries); only 0-token days stay empty and any day with usage gets at least the first level |
+| **Colour ramp and legend** | 0-token days are neutral grey and active days deepen across four blue levels; a five-swatch “Less → More” legend sits under the grid, switching to a dark base with a dim-to-bright ramp in dark theme |
 | **Hover detail** | Shows the date / week / cumulative caption plus the token count with unit (万/亿 in Chinese, K/M/B in English) |
 
 ### DeepSeek platform capabilities
@@ -241,7 +242,7 @@ It is optional: without it the trend falls back to local sampling (labelled "loc
 ### On the Overview tab
 
 - The year dropdown drives both the five stats and the heatmap;
-- The heatmap is laid out by calendar year with **Monday as the first day of each week** (top = Monday, bottom = Sunday); three modes are available:
+- The heatmap is laid out by calendar year with **Monday as the first day of each week** (top = Monday, bottom = Sunday); to keep the cells large enough, the year is split into **two rows (Jan–Jul / Aug–Dec)**; three modes are available:
   - `Daily` — shades by that day's usage;
   - `Weekly` — one shade per column, filled bottom-up with as many cells as days used that week;
   - `Cumulative` — shaded by the running total at that week's last day, with the same bottom-up fill and future dates left empty;
