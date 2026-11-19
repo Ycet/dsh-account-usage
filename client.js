@@ -811,13 +811,19 @@ window.__ModuleLoader__.load({
      * 年度热力图网格：按周分列（周日起始），首尾补齐成整周。
      * @returns {{ year:number, weeks: Array<Array<{ key:string, inYear:boolean, day:number }>> }}
      */
+    /**
+     * 构造整年网格：**以周一为一周起点**（与「每周」统计口径一致），
+     * 前后用上一年的末尾与下一年的开头补满整周。
+     * 每列 = 一周，列内行号 0 = 周一 … 6 = 周日。
+     */
     function buildYearWeeks(year) {
       const first = new Date(year, 0, 1);
       const last = new Date(year, 11, 31);
+      // getDay()：0=周日 … 6=周六；换算成「距离本周周一的天数」= (d + 6) % 7。
       const start = new Date(first);
-      start.setDate(start.getDate() - first.getDay());
+      start.setDate(start.getDate() - ((first.getDay() + 6) % 7));
       const end = new Date(last);
-      end.setDate(end.getDate() + (6 - last.getDay()));
+      end.setDate(end.getDate() + (6 - ((last.getDay() + 6) % 7)));
       const weeks = [];
       const cursor = new Date(start);
       while (cursor <= end) {
@@ -968,6 +974,7 @@ window.__ModuleLoader__.load({
      * 每周与累计总量都采用「自下而上填充」：一列从最底格往上连续着色，
      * 填满几格 = 那一周有几天用过（Codex / 官方平台的做法），一眼看出用了几天。
      * - daily：按当天用量着色，只有 0 Token 留白；
+     * 列内自下而上 = 周日 → 周一，「底部」是本周的最后一天（周日）。
      * - weekly：整列同色（取该周合计），从底部起填「当周有用量的天数」格；
      * - cumulative：整列同色（取截至该周末的累计值），同样从底部起填「当周有用量的天数」格。
      */
@@ -3718,7 +3725,7 @@ window.__ModuleLoader__.load({
         }
         return quantileThresholds(inYear.map((cell) => (typeof days[cell.key] === "number" ? days[cell.key] : 0)));
       }, [mode, weeks, weeklyTotals, weekCumulative, activeDays, days]);
-      // 行号查表：key → 该格在本列中的行号（0 = 周日 … 6 = 周六）。
+      // 行号查表：key → 该格在本列中的行号（0 = 周一 … 6 = 周日）。
       const rowOf = React.useMemo(() => {
         const map = new Map();
         for (const cells of weeks) cells.forEach((cell, index) => map.set(cell.key, index));

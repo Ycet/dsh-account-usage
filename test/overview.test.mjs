@@ -117,14 +117,19 @@ test("buildYearWeeks 按周分列，首尾补齐且标出跨年格", () => {
   assert.equal(grid.year, 2026);
   assert.equal(grid.weeks.length, 53);
   for (const week of grid.weeks) assert.equal(week.length, 7);
-  // 2026-01-01 是周四 → 首周从 2025-12-28（周日）开始
-  assert.equal(grid.weeks[0][0].key, "2025-12-28");
+  // 2026-01-01 是周四，一周从周一起 → 首周从 2025-12-29（周一）开始
+  assert.equal(grid.weeks[0][0].key, "2025-12-29");
   assert.equal(grid.weeks[0][0].inYear, false);
-  assert.equal(grid.weeks[0][4].key, "2026-01-01");
-  assert.equal(grid.weeks[0][4].inYear, true);
-  // 末格补到 2027-01-02（周六）
+  assert.equal(grid.weeks[0][3].key, "2026-01-01");
+  assert.equal(grid.weeks[0][3].inYear, true);
+  // 每一列都以周一开头、以周日结尾
+  for (const week of grid.weeks) {
+    assert.equal(new Date(week[0].key + "T00:00:00").getDay(), 1, `${week[0].key} 应为周一`);
+    assert.equal(new Date(week[6].key + "T00:00:00").getDay(), 0, `${week[6].key} 应为周日`);
+  }
+  // 末格补到该列末尾的周日 2027-01-03
   const last = grid.weeks[grid.weeks.length - 1];
-  assert.equal(last[6].key, "2027-01-02");
+  assert.equal(last[6].key, "2027-01-03");
   assert.equal(last[6].inYear, false);
   const inYearCount = grid.weeks.flat().filter((cell) => cell.inYear).length;
   assert.equal(inYearCount, 365);
@@ -189,7 +194,8 @@ test("levelOfValue 只有 0 Token 无填充，任何正数至少 1 档", () => {
 
 test("heatLevelOf：每天按当日值；每周与累计总量都自下而上按「有用量的天数」填充", () => {
   const weeks = client.buildYearWeeks(2026).weeks;
-  // 2026-01-05 是周一(行1)、01-07 周三(行3)、01-09 周五(行5)：该周共 3 天有用量
+  // 以周一为一周起点：2026-01-05 是周一(行0)、01-07 周三(行2)、01-09 周五(行4)，
+  // 这一周为 01-05(周一) … 01-11(周日)，共 3 天有用量
   const days = {
     "2026-01-05": 100,
     "2026-01-07": 300,
@@ -210,21 +216,21 @@ test("heatLevelOf：每天按当日值；每周与累计总量都自下而上按
   assert.equal(activeDays[weekIndex], 3, "该周应统计到 3 个有用量的天");
 
   // 每周：整列同色，且只填末尾 3 格（自下而上），其余留白
-  const level = client.heatLevelOf("weekly", "2026-01-08", weekIndex, context);
-  assert.ok(level > 0, "最底一格应着色");
-  // 行 4/5/6（周四/周五/周六）= 最底 3 格，应着色
-  for (const key of ["2026-01-08", "2026-01-09", "2026-01-10"]) {
+  const level = client.heatLevelOf("weekly", "2026-01-11", weekIndex, context);
+  assert.ok(level > 0, "最底一格（周日）应着色");
+  // 行 4/5/6（周五/周六/周日）= 最底 3 格，应着色
+  for (const key of ["2026-01-09", "2026-01-10", "2026-01-11"]) {
     assert.equal(client.heatLevelOf("weekly", key, weekIndex, context), level, `${key} 应同色`);
   }
-  // 行 0–3（周日至周三）在上方，应留白
-  for (const key of ["2026-01-04", "2026-01-05", "2026-01-06", "2026-01-07"]) {
+  // 行 0–3（周一至周四）在上方，应留白
+  for (const key of ["2026-01-05", "2026-01-06", "2026-01-07", "2026-01-08"]) {
     assert.equal(client.heatLevelOf("weekly", key, weekIndex, context), 0, `${key} 应留白`);
   }
 
-  // 累计总量：同样自下而上填 3 格，颜色取该周末的累计值
-  const cumLevel = client.heatLevelOf("cumulative", "2026-01-10", weekIndex, context);
+  // 累计总量：同样自下而上填 3 格，颜色取该周末（周日）的累计值
+  const cumLevel = client.heatLevelOf("cumulative", "2026-01-11", weekIndex, context);
   assert.ok(cumLevel > 0);
-  assert.equal(client.heatLevelOf("cumulative", "2026-01-08", weekIndex, context), cumLevel);
+  assert.equal(client.heatLevelOf("cumulative", "2026-01-09", weekIndex, context), cumLevel);
   assert.equal(client.heatLevelOf("cumulative", "2026-01-05", weekIndex, context), 0, "顶部应留白");
 
   // 每天：按当日用量分档，周三 > 周一
@@ -384,9 +390,9 @@ test("weekLastKeyOf / weekCumulativeOf：取该列最后一个不晚于今天的
   const cumulative = client.cumulativeByDay(days, weeks);
   const weekIndex = weeks.findIndex((cells) => cells.some((cell) => cell.key === "2026-01-05"));
 
-  // 今天在这一周之后：代表日应是该周最后一个属于本年的日期（周六）
+  // 今天在这一周之后：代表日应是该周最后一个属于本年的日期（周日 01-11）
   const lastKeys = client.weekLastKeyOf(weeks, "2026-11-19");
-  assert.equal(lastKeys[weekIndex], "2026-01-10");
+  assert.equal(lastKeys[weekIndex], "2026-01-11");
 
   // 今天正好卡在该周中间：代表日不能超过今天，累计值也只算到那天
   const clipped = client.weekLastKeyOf(weeks, "2026-01-07");
