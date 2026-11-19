@@ -60,8 +60,8 @@ window.__ModuleLoader__.load({
       opencodePanel: "OpenCode Go",
       moduleToken: "会话令牌",
       moduleBalance: "账户余额",
-      moduleUsage: "用量与图表",
-      moduleModels: "模型明细",
+      moduleUsage: "用量",
+      moduleModels: "模型用量明细",
       moduleTools: "网页搜索与抓取",
       tokenTitle: "平台会话令牌",
       tokenConfigured: "已配置",
@@ -85,11 +85,23 @@ window.__ModuleLoader__.load({
       rangeLastMonth: "上月",
       rangeCustom: "自定义",
       rangeCustomRow: "自定义区间",
-      rangeApply: "应用",
       rangeClipped: "区间超过单次可查询的月份上限，已自动裁剪至最近月份",
+      // 区间日历（0.5.0）：月名与星期按当前界面语言取字典，不依赖浏览器 locale。
+      rangeSelectDates: "选择日期",
+      rangeMonthNames: "1月,2月,3月,4月,5月,6月,7月,8月,9月,10月,11月,12月",
+      rangeMonthTitle: "{year}年{month}",
+      rangeWeekdays: "日,一,二,三,四,五,六",
+      rangePrevMonth: "上个月",
+      rangeNextMonth: "下个月",
+      rangeSeparator: "→",
       totalsCost: "消费金额",
       totalsRequests: "API 请求次数",
       totalsTokens: "tokens",
+      // 合计口径（0.5.0）：消费金额与请求次数 = 模型 + 工具。
+      totalsCostHint: "模型 {model} + 工具 {tools}",
+      totalsRequestsHint: "模型 {model} + 工具 {tools}",
+      totalsToolsUnavailable: "工具数据不可用",
+      totalsToolsCostUnavailable: "工具费用不可用",
       chartTitle: "消费金额柱状图",
       chartEmpty: "所选区间内暂无消费数据",
       tooltipTotal: "总消耗",
@@ -98,7 +110,7 @@ window.__ModuleLoader__.load({
       legendMiss: "未命中输入",
       legendHit: "命中输入",
       legendOut: "输出",
-      modelsTitle: "模型明细（所选区间）",
+      modelTableTitle: "模型明细表",
       modelsEmpty: "暂无模型数据",
       toolsSearch: "网页搜索",
       toolsFetch: "网页抓取",
@@ -109,6 +121,7 @@ window.__ModuleLoader__.load({
       toolsCostChart: "调用类型消费",
       toolsCostEmpty: "所选区间内暂无工具消费数据",
       toolsRequests: "API 请求次数",
+      toolsTotalCost: "工具消费总额",
       colModel: "模型",
       colRequests: "请求次数",
       colInput: "输入(未命中)",
@@ -189,8 +202,8 @@ window.__ModuleLoader__.load({
       opencodePanel: "OpenCode Go",
       moduleToken: "Session Token",
       moduleBalance: "Account Balance",
-      moduleUsage: "Usage & Charts",
-      moduleModels: "Model Details",
+      moduleUsage: "Usage",
+      moduleModels: "Model usage details",
       moduleTools: "Web Search & Fetch",
       tokenTitle: "Platform session token",
       tokenConfigured: "Configured",
@@ -214,11 +227,21 @@ window.__ModuleLoader__.load({
       rangeLastMonth: "Last month",
       rangeCustom: "Custom",
       rangeCustomRow: "Custom range",
-      rangeApply: "Apply",
       rangeClipped: "Range exceeds the per-query month cap; clipped to the most recent months",
+      rangeSelectDates: "Select dates",
+      rangeMonthNames: "January,February,March,April,May,June,July,August,September,October,November,December",
+      rangeMonthTitle: "{month} {year}",
+      rangeWeekdays: "Su,Mo,Tu,We,Th,Fr,Sa",
+      rangePrevMonth: "Previous month",
+      rangeNextMonth: "Next month",
+      rangeSeparator: "→",
       totalsCost: "Spend",
       totalsRequests: "API requests",
       totalsTokens: "tokens",
+      totalsCostHint: "Model {model} + tools {tools}",
+      totalsRequestsHint: "Model {model} + tools {tools}",
+      totalsToolsUnavailable: "tool data unavailable",
+      totalsToolsCostUnavailable: "tool cost unavailable",
       chartTitle: "Spend chart",
       chartEmpty: "No spend data in the selected range",
       tooltipTotal: "Total",
@@ -227,7 +250,7 @@ window.__ModuleLoader__.load({
       legendMiss: "Input (miss)",
       legendHit: "Cache hit",
       legendOut: "Output",
-      modelsTitle: "Model details (selected range)",
+      modelTableTitle: "Per-model table",
       modelsEmpty: "No model data",
       toolsSearch: "Web search",
       toolsFetch: "Web fetch",
@@ -238,6 +261,7 @@ window.__ModuleLoader__.load({
       toolsCostChart: "Cost by call type",
       toolsCostEmpty: "No tool cost data in the selected range",
       toolsRequests: "API requests",
+      toolsTotalCost: "Total tool cost",
       colModel: "Model",
       colRequests: "Requests",
       colInput: "Input (miss)",
@@ -326,12 +350,12 @@ window.__ModuleLoader__.load({
       cardsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8 },
       statLabel: { color: "var(--dsw-alias-label-tertiary)", fontSize: 12, margin: 0 },
       statValue: { fontSize: 18, fontWeight: 600, margin: 0 },
+      statHint: { color: "var(--dsw-alias-label-tertiary)", fontSize: 11, lineHeight: 1.5, margin: 0, fontVariantNumeric: "tabular-nums" },
       row: { display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--dsw-alias-label-secondary)", gap: 8 },
       button: { border: "1px solid var(--dsw-alias-border-l2)", color: "var(--dsw-alias-label-primary)", font: "inherit", cursor: "pointer", background: "transparent", borderRadius: 6, padding: "5px 12px" },
       buttonActive: { border: "1px solid var(--dsw-alias-state-business-primary)", color: "var(--dsw-alias-state-business-primary)", font: "inherit", cursor: "pointer", background: "transparent", borderRadius: 6, padding: "5px 12px" },
       buttonsRow: { display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" },
       input: { flex: 1, minWidth: 200, border: "1px solid var(--dsw-alias-border-l2)", background: "var(--dsw-alias-bg-layer-1)", color: "var(--dsw-alias-label-primary)", font: "inherit", borderRadius: 6, padding: "5px 10px" },
-      dateInput: { border: "1px solid var(--dsw-alias-border-l2)", background: "var(--dsw-alias-bg-layer-1)", color: "var(--dsw-alias-label-primary)", font: "inherit", borderRadius: 6, padding: "4px 8px" },
       select: { border: "1px solid var(--dsw-alias-border-l2)", background: "var(--dsw-alias-bg-layer-1)", color: "var(--dsw-alias-label-primary)", font: "inherit", borderRadius: 6, padding: "5px 10px", cursor: "pointer", maxWidth: 200 },
       tokenRow: { display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" },
       barTrack: { height: 8, borderRadius: 4, background: "var(--dsw-alias-bg-layer-1)", overflow: "hidden" },
@@ -375,7 +399,9 @@ window.__ModuleLoader__.load({
       modelBarFill: { height: "100%", borderRadius: 3, background: "var(--dsw-alias-state-success-primary)", opacity: 0.75 },
       modelTotals: { display: "flex", flexWrap: "wrap", gap: 24, marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--dsw-alias-border-l2)" },
       modelTotalItem: { display: "flex", flexDirection: "column", gap: 2 },
-      tabsRow: { display: "flex", gap: 4, borderBottom: "1px solid var(--dsw-alias-border-l2)", marginBottom: 4 },
+      // 标签栏吸附：设置面板内容区（.VOzbGW_options，overflow-y:auto）滚动时
+      // 让 deepseek / opencode go 两个标签停在内容区顶部；背景取面板同色以遮挡滚动内容。
+      tabsRow: { display: "flex", gap: 4, borderBottom: "1px solid var(--dsw-alias-border-l2)", marginBottom: 4, position: "sticky", top: 0, zIndex: 5, background: "var(--dsw-alias-bg-layer-2)", paddingTop: 8 },
       tab: { border: "none", background: "transparent", color: "var(--dsw-alias-label-secondary)", font: "inherit", fontSize: 14, padding: "8px 14px", cursor: "pointer", borderBottom: "2px solid transparent", marginBottom: -1 },
       tabActive: { border: "none", background: "transparent", color: "var(--dsw-alias-label-primary)", font: "inherit", fontSize: 14, fontWeight: 600, padding: "8px 14px", cursor: "pointer", borderBottom: "2px solid var(--dsw-alias-state-business-primary)", marginBottom: -1 }
     };
@@ -490,6 +516,155 @@ window.__ModuleLoader__.load({
       const d = new Date(dateStr + "T00:00:00");
       d.setDate(d.getDate() + n);
       return fmtDate(d);
+    }
+
+    // ---- 区间日历纯函数（0.5.0） ---------------------------------------------
+    // 全部不触碰 DOM，方便单测锁定「周日起始」「跨年」「反向区间」等边界。
+
+    /** `YYYY-MM-DD` 的合法性（同时挡住 2026-02-30 这类不存在的日期）。 */
+    function isDateKey(value) {
+      if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+      const d = new Date(value + "T00:00:00");
+      return !Number.isNaN(d.getTime()) && fmtDate(d) === value;
+    }
+
+    /** 月份加减：delta 可为负；返回 { year, month }（month 为 1-12）。 */
+    function addMonths(year, month, delta) {
+      const index = (Number(year) || 0) * 12 + ((Number(month) || 1) - 1) + (Number(delta) || 0);
+      return { year: Math.floor(index / 12), month: (index % 12) + 1 };
+    }
+
+    /**
+     * 构造单月网格：周日起始，前后用 null 补齐成整周。
+     * @returns {{ year:number, month:number, weeks: Array<Array<{key:string,day:number}|null>> }}
+     */
+    function buildMonthGrid(year, month) {
+      const first = new Date(year, month - 1, 1);
+      const daysInMonth = new Date(year, month, 0).getDate();
+      const lead = first.getDay(); // 0=周日
+      const cells = [];
+      for (let i = 0; i < lead; i += 1) cells.push(null);
+      for (let day = 1; day <= daysInMonth; day += 1) {
+        cells.push({ key: `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`, day });
+      }
+      while (cells.length % 7 !== 0) cells.push(null);
+      const weeks = [];
+      for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+      return { year, month, weeks };
+    }
+
+    /** 星期表头（7 项），来自当前语言字典。 */
+    function weekdayLabels(t) {
+      const raw = typeof t === "function" ? t("rangeWeekdays") : "";
+      const list = String(raw).split(",").map((s) => s.trim());
+      if (list.length === 7) return list;
+      return ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+    }
+
+    /** 月标题：按语言模板拼装（zh → 2026年10月，en → October 2026）。 */
+    function formatMonthTitle(year, month, t) {
+      const names = String(typeof t === "function" ? t("rangeMonthNames") : "").split(",");
+      const name = (names[month - 1] || String(month)).trim();
+      const template = typeof t === "function" ? t("rangeMonthTitle") : "{month} {year}";
+      return String(template).replace("{year}", String(year)).replace("{month}", name);
+    }
+
+    /** 两端排序：反向选择也返回 from <= to。非法输入返回 null。 */
+    function normalizeRange(a, b) {
+      if (!isDateKey(a) || !isDateKey(b)) return null;
+      return a <= b ? { from: a, to: b } : { from: b, to: a };
+    }
+
+    /** 是否晚于今天（日历里置灰不可选）。 */
+    function isFutureDate(key, todayKey) {
+      if (!isDateKey(key) || !isDateKey(todayKey)) return false;
+      return key > todayKey;
+    }
+
+    /** `YYYY-MM-DD` → 所在月 { year, month }；非法输入回落到今天。 */
+    function monthOfDateKey(key, fallbackKey) {
+      const base = isDateKey(key) ? key : isDateKey(fallbackKey) ? fallbackKey : todayDate();
+      const m = /^(\d{4})-(\d{2})/.exec(base);
+      return { year: Number(m[1]), month: Number(m[2]) };
+    }
+
+    /** 同月内平移：日期溢出时夹到当月最后一天（1/31 + 1 月 → 2/28）。 */
+    function shiftMonthKey(key, delta) {
+      if (!isDateKey(key)) return key;
+      const base = monthOfDateKey(key);
+      const next = addMonths(base.year, base.month, delta);
+      const daysInMonth = new Date(next.year, next.month, 0).getDate();
+      const day = Math.min(Number(key.slice(8, 10)), daysInMonth);
+      return `${next.year}-${String(next.month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+
+    /** 所在周的周日 / 周六（周日起始，与日历表头一致）。 */
+    function startOfWeekKey(key) {
+      if (!isDateKey(key)) return key;
+      return addDays(key, -new Date(key + "T00:00:00").getDay());
+    }
+
+    function endOfWeekKey(key) {
+      if (!isDateKey(key)) return key;
+      return addDays(key, 6 - new Date(key + "T00:00:00").getDay());
+    }
+
+    /**
+     * 区间带形状：起点格只画右半、终点格只画左半、中间整格。
+     * 首尾相同（单日区间）或输入非法时返回 null（不画带）。
+     * @returns {"start"|"middle"|"end"|null}
+     */
+    function bandKind(from, to, key) {
+      if (!isDateKey(from) || !isDateKey(to) || from >= to) return null;
+      if (key === from) return "start";
+      if (key === to) return "end";
+      if (key > from && key < to) return "middle";
+      return null;
+    }
+
+    /**
+     * 日历实际展示的区间：两端齐全用已选区间；只选了起点时用「起点 ↔ 悬停日」做预览。
+     * @returns {{ from: string|null, to: string|null }}
+     */
+    function previewRange(staged, hoverKey) {
+      const from = staged !== null && typeof staged === "object" && isDateKey(staged.from) ? staged.from : null;
+      const to = staged !== null && typeof staged === "object" && isDateKey(staged.to) ? staged.to : null;
+      if (from !== null && to !== null) return { from, to };
+      if (from !== null && isDateKey(hoverKey)) {
+        return hoverKey < from ? { from: hoverKey, to: from } : { from, to: hoverKey };
+      }
+      return { from: null, to: null };
+    }
+
+    /**
+     * 用量合计口径（0.5.0）：消费金额与请求次数 = 模型 + 工具。
+     * 工具数据缺失时按 0 累加，并用 partial 标记让界面显示降级提示。
+     */
+    function combinedTotals(usage) {
+      const body = usage !== null && typeof usage === "object" ? usage : {};
+      const totals = body.totals !== null && typeof body.totals === "object" ? body.totals : {};
+      const tools = body.tools !== null && typeof body.tools === "object" ? body.tools : null;
+      const toolsOk = tools !== null && tools.ok === true;
+      const toolTotals = toolsOk && tools.totals !== null && typeof tools.totals === "object" ? tools.totals : null;
+      const toolCalls = toolTotals !== null && typeof toolTotals.calls === "number" ? toolTotals.calls : null;
+      const toolCost =
+        toolsOk && tools.costAvailable === true && toolTotals !== null && typeof toolTotals.cost === "number"
+          ? toolTotals.cost
+          : null;
+      const modelCost = typeof totals.cost === "number" ? totals.cost : null;
+      const modelRequests = typeof totals.requests === "number" ? totals.requests : null;
+      return {
+        modelCost,
+        modelRequests,
+        toolCost,
+        toolCalls,
+        toolsOk,
+        tokens: typeof totals.tokens === "number" ? totals.tokens : null,
+        cost: modelCost === null ? null : modelCost + (toolCost === null ? 0 : toolCost),
+        requests: modelRequests === null ? null : modelRequests + (toolCalls === null ? 0 : toolCalls),
+        costPartial: toolCost === null,
+        requestsPartial: toolCalls === null
+      };
     }
 
     /** 预设时间范围：{ id, from, to }。 */
@@ -638,10 +813,14 @@ window.__ModuleLoader__.load({
     }
 
     /** 无边框统计项（模块卡片内使用，避免“卡中卡”）。 */
-    function StatGridItem({ label, value }) {
+    /** 统计格：主数值 + 可选副行（0.5.0 起用于标注「模型 + 工具」的构成）。 */
+    function StatGridItem({ label, value, hint }) {
       return React.createElement("div", { style: styles.statGridItem },
         React.createElement("p", { style: styles.statLabel }, label),
-        React.createElement("p", { style: styles.statValue }, value)
+        React.createElement("p", { style: styles.statValue }, value),
+        hint === null || hint === undefined || hint === ""
+          ? null
+          : React.createElement("p", { style: styles.statHint }, hint)
       );
     }
 
@@ -1239,6 +1418,13 @@ window.__ModuleLoader__.load({
         ? tools.totals.cost
         : null;
       const summary = React.createElement("div", { style: styles.toolStatGrid },
+        // 0.5.0：先给出所有工具调用的消费合计，再逐个工具列出明细。
+        React.createElement("div", { key: "__total__", style: styles.toolStatItem },
+          React.createElement("p", { style: styles.toolStatLabel }, t("toolsTotalCost")),
+          React.createElement("p", { style: styles.toolStatValue },
+            costAvailable && totalCost !== null ? fmtMoney(totalCost, currencyOf) : "—"
+          )
+        ),
         functions.map((fn) =>
           React.createElement("div", { key: fn.id, style: styles.toolStatItem },
             React.createElement("p", { style: styles.toolStatLabel }, toolLabelOf(fn.id, t)),
@@ -1340,33 +1526,496 @@ window.__ModuleLoader__.load({
       lastMonth: "rangeLastMonth"
     };
 
-    function RangeSelector({ range, onApply, t }) {
-      const [customFrom, setCustomFrom] = React.useState(range.from);
-      const [customTo, setCustomTo] = React.useState(range.to);
+    // ---- 区间日历（0.5.0） ---------------------------------------------------
+    // 样式走注入式作用域样式表（沿用 MENU_CSS 的做法）：日历需要 :hover、
+    // :focus-visible 与窄屏媒体查询，纯内联样式表达不了。类名统一 .dsau- 前缀，
+    // 并用 data-plugin-css 标记保证幂等。
+
+    const CALENDAR_STYLE_ID = "dsh-account-usage/calendar.css";
+
+    const CALENDAR_CSS = [
+      ".dsau-range-row{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:6px}",
+      ".dsau-trigger{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 12px;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit;font-size:14px;line-height:20px;font-variant-numeric:tabular-nums;cursor:pointer}",
+      ".dsau-trigger:hover{background:var(--dsw-alias-interactive-bg-hover)}",
+      ".dsau-trigger:focus-visible{outline:none;border-color:var(--dsw-alias-state-business-primary);box-shadow:0 0 0 2px color-mix(in srgb, var(--dsw-alias-state-business-primary) 28%, transparent)}",
+      ".dsau-trigger[data-open=\"1\"]{border-color:var(--dsw-alias-state-business-primary)}",
+      ".dsau-trigger-sep{padding:0 2px;color:var(--dsw-alias-label-tertiary)}",
+      ".dsau-trigger-empty{color:var(--dsw-alias-label-tertiary)}",
+      ".dsau-trigger-icon{display:inline-flex;flex:none;align-items:center;justify-content:center;width:14px;height:14px;color:var(--dsw-alias-label-tertiary)}",
+      ".dsau-cal{position:fixed;z-index:1200;box-sizing:border-box;padding:16px;border-radius:12px;background:var(--dsw-alias-bg-layer-2);box-shadow:var(--dsw-elevation-panel);color:var(--dsw-alias-label-primary);font-size:14px;line-height:20px;outline:none}",
+      ".dsau-cal-head{display:flex;align-items:center;gap:4px;height:36px}",
+      ".dsau-cal-nav{display:inline-flex;flex:none;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:none;border-radius:var(--dsw-radius-sm);background:transparent;color:var(--dsw-alias-label-tertiary);cursor:pointer}",
+      ".dsau-cal-nav:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}",
+      ".dsau-cal-nav:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:1px}",
+      ".dsau-cal-nav:disabled{color:var(--dsw-alias-label-caption);color:color-mix(in srgb, var(--dsw-alias-label-primary) 15%, transparent);cursor:default}",
+      ".dsau-cal-titles{display:flex;flex:1;min-width:0;gap:24px}",
+      ".dsau-cal-title{flex:1;min-width:0;margin:0;text-align:center;font-size:15px;font-weight:600;line-height:22px;color:var(--dsw-alias-label-primary)}",
+      ".dsau-cal-months{display:flex;gap:24px}",
+      ".dsau-cal-month{width:266px;flex:none}",
+      ".dsau-cal-weekdays,.dsau-cal-week{display:grid;grid-template-columns:repeat(7,38px)}",
+      ".dsau-cal-wd{display:flex;align-items:center;justify-content:center;height:28px;font-size:14px;line-height:20px;color:var(--dsw-alias-label-primary)}",
+      ".dsau-cal-cell{position:relative;display:flex;align-items:center;justify-content:center;height:38px;padding:0}",
+      ".dsau-cal-cell::before{content:\"\";position:absolute;top:50%;height:32px;transform:translateY(-50%);background:var(--dsw-alias-interactive-bg-hover-solid);opacity:0;pointer-events:none}",
+      ".dsau-cal-cell[data-band=\"start\"]::before{left:50%;right:0;opacity:1}",
+      ".dsau-cal-cell[data-band=\"middle\"]::before{left:0;right:0;opacity:1}",
+      ".dsau-cal-cell[data-band=\"end\"]::before{left:0;right:50%;opacity:1}",
+      ".dsau-cal-day{position:relative;z-index:1;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0;border:none;border-radius:50%;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:15px;line-height:20px;font-variant-numeric:tabular-nums;cursor:pointer}",
+      ".dsau-cal-day[data-in-range=\"1\"]{background:transparent}",
+      ".dsau-cal-day[data-hover=\"1\"]{background:color-mix(in srgb, var(--dsw-alias-label-primary) 7%, transparent)}",
+      ".dsau-cal-day[data-today=\"1\"]{background:color-mix(in srgb, var(--dsw-alias-label-primary) 10%, transparent)}",
+      ".dsau-cal-day[data-today=\"1\"][data-hover=\"1\"]{background:color-mix(in srgb, var(--dsw-alias-label-primary) 14%, transparent)}",
+      ".dsau-cal-day[data-disabled=\"1\"]{color:var(--dsw-alias-label-caption);color:color-mix(in srgb, var(--dsw-alias-label-primary) 22%, transparent);cursor:default}",
+      ".dsau-cal-day[data-edge=\"1\"]{background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-label-primary-foreground)}",
+      ".dsau-cal-day:focus-visible{outline:none;box-shadow:0 0 0 2px var(--dsw-alias-state-business-primary)}",
+      ".dsau-cal-dot{position:absolute;right:2px;bottom:2px;width:4px;height:4px;border-radius:50%;background:var(--dsw-alias-label-primary-foreground)}"
+    ].join("\n");
+
+    let calendarStylesReady = false;
+
+    /** 幂等注入日历样式；非浏览器环境（单测/SSR）直接跳过。 */
+    function ensureCalendarStyles() {
+      if (calendarStylesReady) return;
+      if (typeof document === "undefined" || document.head === null || document.head === undefined) return;
+      calendarStylesReady = true;
+      if (document.querySelector('style[data-plugin-css="' + CALENDAR_STYLE_ID + '"]') !== null) return;
+      const style = document.createElement("style");
+      style.dataset.plugin = "dsh-account-usage";
+      style.dataset.pluginCss = CALENDAR_STYLE_ID;
+      style.textContent = CALENDAR_CSS;
+      document.head.appendChild(style);
+    }
+
+    /**
+     * 日历几何：必须与 CALENDAR_CSS 里的尺寸一致，仅用于浮层定位与翻转判断。
+     * 单月 7×38=266，双月 +24 间距，左右各 16 内边距；纵向 = 上下 16 + 标题 36 + 表头 28 + 周数×38。
+     */
+    const CAL_GEOMETRY = {
+      cellH: 38,
+      widthDouble: 266 * 2 + 24 + 16 * 2,
+      widthSingle: 266 + 16 * 2,
+      chromeHeight: 16 * 2 + 36 + 28
+    };
+
+    function calendarWidth(layout) {
+      return layout === "single" ? CAL_GEOMETRY.widthSingle : CAL_GEOMETRY.widthDouble;
+    }
+
+    function calendarHeight(weekRows) {
+      return CAL_GEOMETRY.chromeHeight + Math.max(1, weekRows) * CAL_GEOMETRY.cellH;
+    }
+
+    /** 窄屏（<640px）只显示一个月。 */
+    function currentCalendarLayout() {
+      if (typeof window === "undefined" || typeof window.innerWidth !== "number") return "double";
+      return window.innerWidth < 640 ? "single" : "double";
+    }
+
+    /** `YYYY-MM-DD` → `YYYY/MM/DD`（与官方平台的显示格式一致）。 */
+    function fmtSlashDate(key) {
+      return isDateKey(key) ? key.replace(/-/g, "/") : "";
+    }
+
+    function calendarChevron(direction) {
+      return React.createElement("svg", {
+        width: 14, height: 14, viewBox: "0 0 16 16", fill: "none", "aria-hidden": true, focusable: "false", style: { display: "block" }
+      },
+        React.createElement("path", {
+          d: direction === "prev" ? "M10 3.5 5.5 8l4.5 4.5" : "M6 3.5 10.5 8 6 12.5",
+          stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round"
+        })
+      );
+    }
+
+    function calendarGlyph() {
+      return React.createElement("svg", {
+        width: 14, height: 14, viewBox: "0 0 16 16", fill: "none", "aria-hidden": true, focusable: "false", style: { display: "block" }
+      },
+        React.createElement("rect", { x: 2, y: 3.5, width: 12, height: 10.5, rx: 1.5, stroke: "currentColor", strokeWidth: 1.2 }),
+        React.createElement("path", { d: "M2 6.5h12M5.5 2v3M10.5 2v3", stroke: "currentColor", strokeWidth: 1.2, strokeLinecap: "round" })
+      );
+    }
+
+    /** 单月网格：表头 + 若干周行；空格渲染成占位单元格。 */
+    function CalendarMonth({ grid, staged, hoverKey, focusedKey, todayKey, onPick, onHover, t }) {
+      const preview = previewRange(staged, hoverKey);
+      const weekdays = weekdayLabels(t);
+      const from = staged !== null && typeof staged === "object" && isDateKey(staged.from) ? staged.from : null;
+      const to = staged !== null && typeof staged === "object" && isDateKey(staged.to) ? staged.to : null;
+      const rows = grid.weeks.map((week, weekIndex) =>
+        React.createElement("div", { key: weekIndex, className: "dsau-cal-week" },
+          week.map((cell, cellIndex) => {
+            if (cell === null) return React.createElement("div", { key: cellIndex, className: "dsau-cal-cell" });
+            const key = cell.key;
+            const disabled = isFutureDate(key, todayKey);
+            const isEdge = key === from || key === to;
+            const band = bandKind(preview.from, preview.to, key);
+            const isToday = key === todayKey;
+            const hovered = hoverKey === key && !disabled && !isEdge;
+            // 区间底色画在单元格上（跨格连续、行间留缝），端点圆压在它上面。
+            return React.createElement("div", {
+              key,
+              className: "dsau-cal-cell",
+              "data-band": band === null ? undefined : band
+            },
+              React.createElement("button", {
+                type: "button",
+                className: "dsau-cal-day",
+                "data-edge": isEdge ? "1" : "0",
+                "data-in-range": band === "middle" ? "1" : "0",
+                "data-hover": hovered ? "1" : "0",
+                "data-today": isToday ? "1" : "0",
+                "data-disabled": disabled ? "1" : "0",
+                "data-focus-key": key,
+                tabIndex: focusedKey === key ? 0 : -1,
+                "aria-label": key,
+                "aria-current": isToday ? "date" : undefined,
+                "aria-selected": isEdge ? "true" : undefined,
+                "aria-disabled": disabled ? "true" : undefined,
+                onClick: disabled ? undefined : () => onPick(key),
+                onMouseEnter: () => onHover(disabled ? null : key),
+                onFocus: () => onHover(disabled ? null : key)
+              },
+                cell.day,
+                // 今日恰好是区间端点时，用右下角小圆点标记（对应参考图 19 号）。
+                isToday && isEdge ? React.createElement("span", { className: "dsau-cal-dot" }) : null
+              )
+            );
+          })
+        )
+      );
+      return React.createElement("div", { className: "dsau-cal-month" },
+        React.createElement("div", { className: "dsau-cal-weekdays" },
+          weekdays.map((label, index) => React.createElement("div", { key: index, className: "dsau-cal-wd" }, label))
+        ),
+        rows
+      );
+    }
+
+    /** 浮层面板：标题行 + 双月（或窄屏单月）。 */
+    function CalendarPanel({ panelRef, panelStyle, grids, staged, hoverKey, focusedKey, todayKey, canNext, onPrev, onNext, onPick, onHover, onKeyDown, label, t }) {
+      return React.createElement("div", {
+        ref: panelRef,
+        className: "dsau-cal",
+        role: "dialog",
+        "aria-modal": "false",
+        "aria-label": label,
+        tabIndex: -1,
+        style: panelStyle,
+        onKeyDown,
+        onMouseLeave: () => onHover(null)
+      },
+        React.createElement("div", { className: "dsau-cal-head" },
+          React.createElement("button", { type: "button", className: "dsau-cal-nav", onClick: onPrev, "aria-label": t("rangePrevMonth") }, calendarChevron("prev")),
+          React.createElement("div", { className: "dsau-cal-titles" },
+            grids.map((grid) =>
+              React.createElement("p", { key: grid.year + "-" + grid.month, className: "dsau-cal-title" },
+                formatMonthTitle(grid.year, grid.month, t)
+              )
+            )
+          ),
+          React.createElement("button", { type: "button", className: "dsau-cal-nav", onClick: onNext, disabled: canNext !== true, "aria-label": t("rangeNextMonth") }, calendarChevron("next"))
+        ),
+        React.createElement("div", { className: "dsau-cal-months" },
+          grids.map((grid) =>
+            React.createElement(CalendarMonth, {
+              key: grid.year + "-" + grid.month,
+              grid,
+              staged,
+              hoverKey,
+              focusedKey,
+              todayKey,
+              onPick,
+              onHover,
+              t
+            })
+          )
+        )
+      );
+    }
+
+    function RangeSelector({ range, onApply, t, visible }) {
+      const todayKey = todayDate();
+      const todayMonth = monthOfDateKey(todayKey);
+      const todayIndex = todayMonth.year * 12 + (todayMonth.month - 1);
+      const [staged, setStaged] = React.useState({ from: range.from, to: range.to });
       const [activePreset, setActivePreset] = React.useState("thisMonth");
-      const applyPreset = (p) => {
-        setActivePreset(p.id);
-        setCustomFrom(p.from);
-        setCustomTo(p.to);
-        onApply({ from: p.from, to: p.to });
+      const [open, setOpen] = React.useState(false);
+      const [hoverKey, setHoverKey] = React.useState(null);
+      const [focusedKey, setFocusedKey] = React.useState(null);
+      const [anchorMonth, setAnchorMonth] = React.useState(() => monthOfDateKey(range.to, todayKey));
+      const [layout, setLayout] = React.useState(currentCalendarLayout);
+      const [position, setPosition] = React.useState({ left: 0, top: 0 });
+      const triggerRef = React.useRef(null);
+      const panelRef = React.useRef(null);
+      // 关闭逻辑挂在 document 监听上，读 ref 才能拿到最新暂存区间（避免闭包过期）。
+      const stagedRef = React.useRef({ from: range.from, to: range.to });
+      // 浮层挂到 body 上避免被设置页滚动容器裁切；运行时缺少 createPortal 时就地渲染。
+      const usePortal =
+        typeof document !== "undefined" &&
+        document !== null &&
+        document.body !== null &&
+        document.body !== undefined &&
+        ReactDOM !== null &&
+        typeof ReactDOM.createPortal === "function";
+
+      React.useEffect(() => {
+        ensureCalendarStyles();
+      }, []);
+      // 标签页切走时内容被 display:none 隐藏，但浮层挂在 body 上不会跟着隐藏，必须主动关闭。
+      React.useEffect(() => {
+        if (visible === false && open) {
+          setOpen(false);
+          setHoverKey(null);
+          setStaged({ from: range.from, to: range.to });
+        }
+      }, [visible, open, range.from, range.to]);
+
+
+      // 预设切换后把暂存区间同步回已应用区间。
+      React.useEffect(() => {
+        setStaged({ from: range.from, to: range.to });
+      }, [range.from, range.to]);
+
+      React.useEffect(() => {
+        stagedRef.current = staged;
+      }, [staged]);
+
+      // 窄屏只显示一个月，窗口尺寸变化时重算。
+      React.useEffect(() => {
+        if (typeof window === "undefined") return undefined;
+        const sync = () => setLayout(currentCalendarLayout());
+        sync();
+        window.addEventListener("resize", sync);
+        return () => window.removeEventListener("resize", sync);
+      }, []);
+
+      const visibleMonths =
+        layout === "single"
+          ? [anchorMonth]
+          : [addMonths(anchorMonth.year, anchorMonth.month, -1), anchorMonth];
+      const grids = visibleMonths.map((month) => buildMonthGrid(month.year, month.month));
+      const weekRows = grids.reduce((max, grid) => Math.max(max, grid.weeks.length), 0);
+      const panelWidth = calendarWidth(layout);
+      const panelHeight = calendarHeight(weekRows);
+      const anchorIndex = anchorMonth.year * 12 + (anchorMonth.month - 1);
+      const canNext = anchorIndex < todayIndex;
+
+      // 浮层定位：默认贴触发框下方，下方不够且上方够时翻转，横向夹在视口内。
+      React.useLayoutEffect(() => {
+        if (!open || !usePortal || typeof window === "undefined") return undefined;
+        const update = () => {
+          const trigger = triggerRef.current;
+          if (trigger === null || typeof trigger.getBoundingClientRect !== "function") return;
+          const rect = trigger.getBoundingClientRect();
+          const margin = 8;
+          let left = rect.left;
+          const maxLeft = window.innerWidth - panelWidth - margin;
+          if (left > maxLeft) left = maxLeft;
+          if (left < margin) left = margin;
+          let top = rect.bottom + margin;
+          if (top + panelHeight > window.innerHeight - margin) {
+            const above = rect.top - panelHeight - margin;
+            top = above >= margin ? above : Math.max(margin, window.innerHeight - panelHeight - margin);
+          }
+          const nextLeft = Math.round(left);
+          const nextTop = Math.round(top);
+          setPosition((prev) => (prev.left === nextLeft && prev.top === nextTop ? prev : { left: nextLeft, top: nextTop }));
+        };
+        update();
+        window.addEventListener("scroll", update, true);
+        window.addEventListener("resize", update);
+        return () => {
+          window.removeEventListener("scroll", update, true);
+          window.removeEventListener("resize", update);
+        };
+      }, [open, usePortal, panelWidth, panelHeight]);
+
+      /** 焦点交还触发框（关闭浮层后保持键盘可达）。 */
+      const focusTrigger = () => {
+        const trigger = triggerRef.current;
+        if (trigger !== null && typeof trigger.focus === "function") trigger.focus();
       };
-      const applyCustom = () => {
-        setActivePreset("custom");
-        if (customFrom === "" || customTo === "") return;
-        const from = customFrom <= customTo ? customFrom : customTo;
-        const to = customFrom <= customTo ? customTo : customFrom;
-        onApply({ from, to });
+
+      /**
+       * 关闭并应用（0.5.0：没有「应用」按钮，关闭即按所选区间筛选）。
+       * 只选了起点就关闭时视为放弃，回滚到已应用区间。
+       */
+      const closeAndApply = React.useCallback(() => {
+        const current = stagedRef.current;
+        const normalized = normalizeRange(current.from, current.to);
+        setOpen(false);
+        setHoverKey(null);
+        if (normalized === null) {
+          setStaged({ from: range.from, to: range.to });
+        } else if (normalized.from !== range.from || normalized.to !== range.to) {
+          onApply(normalized);
+        }
+        focusTrigger();
+      }, [range.from, range.to, onApply]);
+
+      // 关闭：Esc / 点浮层与触发框之外 → 都按当前所选区间筛选（见 closeAndApply）。
+      React.useEffect(() => {
+        if (!open || typeof document === "undefined") return undefined;
+        const onPointerDown = (event) => {
+          const target = event.target;
+          if (panelRef.current !== null && panelRef.current.contains(target)) return;
+          if (triggerRef.current !== null && triggerRef.current.contains(target)) return;
+          closeAndApply();
+        };
+        const onKeyDown = (event) => {
+          if (event.key !== "Escape") return;
+          event.preventDefault();
+          event.stopPropagation();
+          closeAndApply();
+        };
+        document.addEventListener("pointerdown", onPointerDown, true);
+        document.addEventListener("keydown", onKeyDown, true);
+        return () => {
+          document.removeEventListener("pointerdown", onPointerDown, true);
+          document.removeEventListener("keydown", onKeyDown, true);
+        };
+      }, [open, closeAndApply]);
+
+      // 焦点落到当前焦点格（打开时定位到区间终点）。
+      React.useEffect(() => {
+        if (!open || focusedKey === null) return;
+        const panel = panelRef.current;
+        if (panel === null || typeof panel.querySelector !== "function") return;
+        const target = panel.querySelector('[data-focus-key="' + focusedKey + '"]');
+        if (target !== null && typeof target.focus === "function") target.focus();
+      }, [open, focusedKey, anchorMonth, layout]);
+
+      const openPanel = (fromKey, toKey) => {
+        setStaged({ from: fromKey, to: toKey });
+        setAnchorMonth(monthOfDateKey(toKey, todayKey));
+        setHoverKey(null);
+        setFocusedKey(isDateKey(toKey) ? toKey : todayKey);
+        setOpen(true);
       };
-      const onSelect = (e) => {
-        const id = e.target.value;
-        if (id === "custom") {
-          // 仅切到自定义模式，区间在点击「应用」后生效
-          setActivePreset("custom");
+
+      const toggleOpen = () => {
+        if (open) {
+          closeAndApply();
           return;
         }
-        const p = presets().find((x) => x.id === id);
-        if (p) applyPreset(p);
+        openPanel(range.from, range.to);
       };
+
+      /**
+       * 点击某一天：无起点或两端齐全 → 重开区间；只有起点 → 补齐终点。
+       * 两端选满即视为完成，立刻关闭浮层并按该区间筛选。
+       */
+      const pick = (key) => {
+        setActivePreset("custom");
+        setFocusedKey(key);
+        const from = isDateKey(staged.from) ? staged.from : null;
+        const to = isDateKey(staged.to) ? staged.to : null;
+        if (from === null || to !== null) {
+          setStaged({ from: key, to: null });
+          return;
+        }
+        const normalized = normalizeRange(from, key);
+        if (normalized === null) return;
+        setStaged(normalized);
+        setOpen(false);
+        setHoverKey(null);
+        if (normalized.from !== range.from || normalized.to !== range.to) onApply(normalized);
+        focusTrigger();
+      };
+
+      const moveMonth = (delta) => {
+        setAnchorMonth((prev) => {
+          const next = addMonths(prev.year, prev.month, delta);
+          const nextIndex = next.year * 12 + (next.month - 1);
+          return nextIndex > todayIndex ? prev : next;
+        });
+      };
+
+      const onPanelKeyDown = (event) => {
+        const current = isDateKey(focusedKey) ? focusedKey : todayKey;
+        let next = null;
+        if (event.key === "ArrowLeft") next = addDays(current, -1);
+        else if (event.key === "ArrowRight") next = addDays(current, 1);
+        else if (event.key === "ArrowUp") next = addDays(current, -7);
+        else if (event.key === "ArrowDown") next = addDays(current, 7);
+        else if (event.key === "PageUp") next = shiftMonthKey(current, -1);
+        else if (event.key === "PageDown") next = shiftMonthKey(current, 1);
+        else if (event.key === "Home") next = startOfWeekKey(current);
+        else if (event.key === "End") next = endOfWeekKey(current);
+        else if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          if (!isFutureDate(current, todayKey)) pick(current);
+          return;
+        } else return;
+        event.preventDefault();
+        // 未来日期不可选，焦点也不越过今天。
+        if (next > todayKey) next = todayKey;
+        setFocusedKey(next);
+        const targetMonth = monthOfDateKey(next);
+        const targetIndex = targetMonth.year * 12 + (targetMonth.month - 1);
+        if (layout === "single") {
+          if (targetIndex !== anchorIndex) setAnchorMonth(targetMonth);
+        } else if (targetIndex > anchorIndex) {
+          setAnchorMonth(targetMonth);
+        } else if (targetIndex < anchorIndex - 1) {
+          setAnchorMonth(addMonths(targetMonth.year, targetMonth.month, 1));
+        }
+      };
+
+      const onSelect = (event) => {
+        const id = event.target.value;
+        if (id === "custom") {
+          // 切到自定义：直接打开日历，区间在点击「应用」后生效。
+          setActivePreset("custom");
+          if (!open) openPanel(range.from, range.to);
+          return;
+        }
+        const preset = presets().find((item) => item.id === id);
+        if (preset === undefined) return;
+        setActivePreset(preset.id);
+        setStaged({ from: preset.from, to: preset.to });
+        setOpen(false);
+        setHoverKey(null);
+        onApply({ from: preset.from, to: preset.to });
+      };
+
+      const stagedFrom = isDateKey(staged.from) ? staged.from : null;
+      const stagedTo = isDateKey(staged.to) ? staged.to : null;
+      const triggerLabel =
+        stagedFrom === null
+          ? React.createElement("span", { className: "dsau-trigger-empty" }, t("rangeSelectDates"))
+          : React.createElement(React.Fragment, null,
+            React.createElement("span", null, fmtSlashDate(stagedFrom)),
+            React.createElement("span", { className: "dsau-trigger-sep" }, t("rangeSeparator")),
+            React.createElement("span", { className: stagedTo === null ? "dsau-trigger-empty" : undefined },
+              stagedTo === null ? "…" : fmtSlashDate(stagedTo)
+            )
+          );
+
+      const panelStyle = usePortal
+        ? { position: "fixed", left: position.left, top: position.top, width: panelWidth }
+        : { position: "absolute", left: 0, top: "calc(100% + 8px)", width: panelWidth };
+      const panel = open
+        ? React.createElement(CalendarPanel, {
+          panelRef,
+          panelStyle,
+          grids,
+          staged,
+          hoverKey,
+          focusedKey,
+          todayKey,
+          canNext,
+          onPrev: () => moveMonth(-1),
+          onNext: () => moveMonth(1),
+          onPick: pick,
+          onHover: setHoverKey,
+          onKeyDown: onPanelKeyDown,
+          label: t("rangeCustomRow"),
+          t
+        })
+        : null;
+      const panelNode = panel !== null && usePortal ? ReactDOM.createPortal(panel, document.body) : panel;
+
       return React.createElement("div", { style: styles.section },
         React.createElement("div", { style: styles.buttonsRow },
           React.createElement("p", { style: styles.hint }, t("rangeTitle")),
@@ -1376,18 +2025,29 @@ window.__ModuleLoader__.load({
             style: styles.select,
             "aria-label": t("rangeTitle")
           },
-            presets().map((p) =>
-              React.createElement("option", { key: p.id, value: p.id }, t(PRESET_LABEL_KEYS[p.id]))
+            presets().map((preset) =>
+              React.createElement("option", { key: preset.id, value: preset.id }, t(PRESET_LABEL_KEYS[preset.id]))
             ),
             React.createElement("option", { value: "custom" }, t("rangeCustom"))
           )
         ),
-        React.createElement("div", { style: styles.buttonsRow },
+        React.createElement("div", { className: "dsau-range-row" },
           React.createElement("span", { style: styles.hint }, t("rangeCustomRow")),
-          React.createElement("input", { type: "date", value: customFrom, onChange: (e) => setCustomFrom(e.target.value), style: styles.dateInput }),
-          React.createElement("input", { type: "date", value: customTo, onChange: (e) => setCustomTo(e.target.value), style: styles.dateInput }),
-          React.createElement("button", { style: styles.button, onClick: applyCustom }, t("rangeApply"))
-        )
+          React.createElement("button", {
+            ref: triggerRef,
+            type: "button",
+            className: "dsau-trigger",
+            "data-open": open ? "1" : "0",
+            "aria-haspopup": "dialog",
+            "aria-expanded": open ? "true" : "false",
+            onClick: toggleOpen
+          },
+            triggerLabel,
+            React.createElement("span", { className: "dsau-trigger-icon" }, calendarGlyph())
+          ),
+          usePortal ? null : panel
+        ),
+        usePortal ? panelNode : null
       );
     }
 
@@ -1496,7 +2156,7 @@ window.__ModuleLoader__.load({
       );
     }
 
-    function DeepSeekPanel({ credApi, t }) {
+    function DeepSeekPanel({ credApi, t, visible }) {
       const [summary, setSummary] = React.useState({ kind: "loading" });
       const [usage, setUsage] = React.useState({ kind: "loading" });
       const [range, setRange] = React.useState(() => {
@@ -1584,6 +2244,27 @@ window.__ModuleLoader__.load({
             ? usageModels[0].model
             : null;
 
+      // 合计口径（0.5.0）：消费金额与请求次数把工具（网页搜索/抓取）消耗一并计入。
+      const totals =
+        usage.kind === "done" && usage.value.ok === true ? combinedTotals(usage.value) : null;
+      const toolsTotalsOk = totals !== null && totals.toolsOk === true;
+      const splitHint = (key, modelText, toolText) =>
+        t(key).replace("{model}", modelText).replace("{tools}", toolText);
+      const costHint =
+        totals === null
+          ? null
+          : !toolsTotalsOk
+            ? t("totalsToolsUnavailable")
+            : totals.costPartial
+              ? t("totalsToolsCostUnavailable")
+              : splitHint("totalsCostHint", fmtMoney(totals.modelCost, currency), fmtMoney(totals.toolCost, currency));
+      const requestsHint =
+        totals === null
+          ? null
+          : toolsTotalsOk && !totals.requestsPartial
+            ? splitHint("totalsRequestsHint", fmtCount(totals.modelRequests), fmtCount(totals.toolCalls))
+            : t("totalsToolsUnavailable");
+
       return React.createElement("div", { style: styles.section },
         React.createElement("div", { style: styles.panelTitle },
           React.createElement("span", null, t("deepseekPanel")),
@@ -1615,9 +2296,9 @@ window.__ModuleLoader__.load({
                   React.createElement(StatGridItem, { label: t("summaryCumulative"), value: fmtMoney(summary.value.cumulativeCost, currency) })
                 )
         ),
-        // 模块三：用量与图表
+        // 模块三：用量（筛选 + 合计口径 = 模型 + 工具）
         React.createElement(ModuleCard, { title: t("moduleUsage") },
-          React.createElement(RangeSelector, { range, onApply: applyRange, t }),
+          React.createElement(RangeSelector, { range, onApply: applyRange, t, visible }),
           usage.kind === "loading"
             ? React.createElement("p", { style: styles.hint }, t("loading"))
             : usage.kind === "failure"
@@ -1629,10 +2310,29 @@ window.__ModuleLoader__.load({
                     ? React.createElement("p", { style: styles.hint }, t("rangeClipped"))
                     : null,
                   React.createElement("div", { style: styles.cardsGrid },
-                    React.createElement(StatGridItem, { label: t("totalsCost"), value: fmtMoney(usage.value.totals?.cost, currency) }),
-                    React.createElement(StatGridItem, { label: t("totalsRequests"), value: fmtCount(usage.value.totals?.requests) }),
-                    React.createElement(StatGridItem, { label: t("totalsTokens"), value: fmtCount(usage.value.totals?.tokens) })
-                  ),
+                    React.createElement(StatGridItem, {
+                      label: t("totalsCost"),
+                      value: fmtMoney(totals.cost, currency),
+                      hint: costHint
+                    }),
+                    React.createElement(StatGridItem, {
+                      label: t("totalsRequests"),
+                      value: fmtCount(totals.requests),
+                      hint: requestsHint
+                    }),
+                    React.createElement(StatGridItem, { label: t("totalsTokens"), value: fmtCount(totals.tokens) })
+                  )
+                )
+        ),
+        // 模块四：模型用量明细（消费/Token 图表 + 模型明细表，均为模型口径）
+        React.createElement(ModuleCard, { title: t("moduleModels") },
+          usage.kind === "loading"
+            ? React.createElement("p", { style: styles.hint }, t("loading"))
+            : usage.kind === "failure"
+              ? React.createElement("p", { style: styles.error }, usage.message)
+              : usage.value.ok !== true
+                ? React.createElement("p", { style: styles.error }, errorText(usage.value, t))
+                : React.createElement(React.Fragment, null,
                   React.createElement("div", { style: styles.card },
                     React.createElement("p", { style: styles.statLabel }, t("chartTitle")),
                     React.createElement(BarChart, { days: usage.value.days, currency, t })
@@ -1654,10 +2354,14 @@ window.__ModuleLoader__.load({
                         React.createElement(TokenLegend, { t })
                       )
                       : React.createElement("p", { style: styles.hint }, t("tokenChartEmpty"))
+                  ),
+                  React.createElement("div", { style: styles.card },
+                    React.createElement("p", { style: styles.statLabel }, t("modelTableTitle")),
+                    React.createElement(ModelTable, { models: usage.value.models, currency, t })
                   )
                 )
         ),
-        // 模块四：网页搜索与抓取（调用类型用量）
+        // 模块五：网页搜索与抓取（调用类型用量）
         React.createElement(ModuleCard, { title: t("moduleTools") },
           usage.kind === "loading"
             ? React.createElement("p", { style: styles.hint }, t("loading"))
@@ -1666,16 +2370,6 @@ window.__ModuleLoader__.load({
               : usage.value.ok !== true
                 ? React.createElement("p", { style: styles.error }, errorText(usage.value, t))
                 : React.createElement(ToolUsageSection, { tools: usage.value.tools, currency, t })
-        ),
-        // 模块五：模型明细
-        React.createElement(ModuleCard, { title: t("moduleModels") },
-          usage.kind === "loading"
-            ? React.createElement("p", { style: styles.hint }, t("loading"))
-            : usage.kind === "failure"
-              ? React.createElement("p", { style: styles.error }, usage.message)
-              : usage.value.ok !== true
-                ? React.createElement("p", { style: styles.error }, errorText(usage.value, t))
-                : React.createElement(ModelTable, { models: usage.value.models, currency, t })
         )
       );
     }
@@ -2442,7 +3136,7 @@ window.__ModuleLoader__.load({
           }, t("tabOpencode"))
         ),
         React.createElement("div", { style: tab === "deepseek" ? { display: "block" } : { display: "none" } },
-          React.createElement(DeepSeekPanel, { credApi, t })
+          React.createElement(DeepSeekPanel, { credApi, t, visible: tab === "deepseek" })
         ),
         React.createElement("div", { style: tab === "opencode" ? { display: "block" } : { display: "none" } },
           React.createElement(OpencodePanel, { credApi, t })
@@ -3133,6 +3827,26 @@ window.__ModuleLoader__.load({
     exports.fmtCountdown = fmtCountdown;
     exports.balanceTextOf = balanceTextOf;
     exports.toolLabelOf = toolLabelOf;
+    // 区间日历与合计口径的纯函数（0.5.0，供单测锁定边界）
+    exports.isDateKey = isDateKey;
+    exports.addMonths = addMonths;
+    exports.buildMonthGrid = buildMonthGrid;
+    exports.weekdayLabels = weekdayLabels;
+    exports.formatMonthTitle = formatMonthTitle;
+    exports.normalizeRange = normalizeRange;
+    exports.isFutureDate = isFutureDate;
+    exports.monthOfDateKey = monthOfDateKey;
+    exports.shiftMonthKey = shiftMonthKey;
+    exports.startOfWeekKey = startOfWeekKey;
+    exports.endOfWeekKey = endOfWeekKey;
+    exports.previewRange = previewRange;
+    exports.bandKind = bandKind;
+    exports.combinedTotals = combinedTotals;
+    exports.CalendarMonth = CalendarMonth;
+    exports.CalendarPanel = CalendarPanel;
+    exports.DeepSeekPanel = DeepSeekPanel;
+    exports.AccountPage = AccountPage;
+    exports.RangeSelector = RangeSelector;
     // 用量趋势相关纯函数（供单测锁定格式与坐标系换算）
     exports.fmtCompactCount = fmtCompactCount;
     exports.fmtPercent = fmtPercent;
@@ -3145,4 +3859,4 @@ window.__ModuleLoader__.load({
   }
 });
 
-// client reload probe 1794632730
+// client reload probe 1795057302

@@ -10,7 +10,7 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 > npm 包名：`@ycet/dsh-account-usage`。npm 上同名的 [`dsh-account-usage`](https://www.npmjs.com/package/dsh-account-usage) 是另一个作者的独立项目，与本插件无关，请勿混装。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.4.1-blue.svg?style=for-the-badge)](package.json)
+[![Version](https://img.shields.io/badge/version-0.5.0-blue.svg?style=for-the-badge)](package.json)
 [![npm](https://img.shields.io/npm/v/%40ycet%2Fdsh-account-usage?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@ycet/dsh-account-usage)
 [![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.6%2B-purple.svg?style=for-the-badge)](https://github.com/deepseek-ai/deepseek-harness)
 
@@ -36,7 +36,7 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 
 ## 📸 界面预览
 
-**DeepSeek 平台内容**（默认嵌入官方「账号与余额」页底部；旧截图为独立兜底页布局）：余额概览、时间维度与自定义区间、每日消费/Token 柱状图、网页搜索/抓取用量图表、按模型明细表。
+**DeepSeek 平台内容**（默认嵌入官方「账号与余额」页底部；旧截图为独立兜底页布局）：余额概览、时间维度与官方样式双月区间日历、用量合计（模型 + 工具）、消费/Token 柱状图与模型明细表、网页搜索/抓取用量图表。
 
 ![DeepSeek 平台「账户」页界面截图](assets/images/account-usage-U--01.png)
 
@@ -51,18 +51,23 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 | 功能 | 说明 |
 |------|------|
 | **DeepSeek 平台概览** | 充值余额、赠送余额、累计消费金额、本月消费金额、本月 Tokens |
-| **每日柱状图** | 消费金额与 Token 消耗双图表，SVG 渲染，鼠标悬停查看每日明细 |
-| **网页搜索 / 抓取用量** | 按日展示 tool-search / tool-fetch 的调用次数、调用类型费用与分工具面积图，随所选时间维度联动；超过 31 天自动分段查询 |
+| **用量卡片（模型 + 工具）** | 「消费金额」「API 请求次数」为模型消耗与网页搜索/抓取消耗的合计，下方小字标注「模型 ¥x + 工具 ¥x」拆分；工具接口不可用时如实降级提示 |
+| **模型用量明细卡片** | 消费金额与 Token 消耗双柱状图（SVG，鼠标悬停看每日明细）+ 按模型明细表，均为模型口径 |
+| **网页搜索 / 抓取用量** | 统计区先给出「工具消费总额」，再按日展示 tool-search / tool-fetch 的调用次数、调用类型费用与分工具面积图，随所选时间维度联动；超过 31 天自动分段查询 |
 | **合并至官方账号与余额页** | 官方账户页存在时，插件内容嵌入其原生卡片下方，不再占用独立导航项；切分区时隐藏、切回恢复 |
 | **账户菜单余额入口** | 在账户菜单「设置」上方显示「余额：¥x.xx」（充值余额 + 赠送余额），点击打开官方「账号与余额」页；官方页不可用时回退到兜底页 |
-| **时间维度切换** | 今天 / 近 7 天 / 近 30 天 / 近 90 天 / 本月 / 上月 / 自定义区间 |
-| **按模型明细表** | deepseek-v4-flash / deepseek-v4-pro / 其他：请求次数、输入/缓存/输出 Tokens、费用 |
+| **时间维度切换** | 今天 / 近 7 天 / 近 30 天 / 近 90 天 / 本月 / 上月 / 自定义区间（点开区间框在双月日历里选起止日，选满两端或关闭日历即按所选区间筛选） |
+| **区间日历** | 官方开放平台样式的双月区间日历：周日起始、深色圆端点、浅灰区间带、今日标记、未来日期置灰、窄屏自动单月、完整键盘操作 |
 | **OpenCode Go 配额** | 5 小时滚动 / 每周 / 每月三个窗口的用量百分比与下次重置时间 |
 | **额度消耗趋势与预测** | 当前订阅周期内按天的累计已用额度折线 + 到重置日的线性外推虚线；悬浮显示日期、累计已用、当日增量、当日请求数；缺口如实标注、不插值 |
 | **本周期模型用量（需 Cookie）** | 配置 OpenCode Console Cookie 后展示本周期最常用模型及占比、总请求数与总 Tokens（数据来自官方日榜） |
+| **标签栏吸附** | deepseek / opencode go 标签栏在设置页向下滚动时吸附在内容区顶部，不随内容滑出 |
 | **自动刷新** | 页面挂载期间每 60 秒自动轮询最新数据 |
 | **双语言界面** | 完整的中英文切换支持 |
 | **兜底独立账户页** | 未登录 DSH 官方账号或旧版没有官方账户页时，自动注册插件独立「账户」分区，保证令牌与用量仍可访问 |
+
+> [!NOTE]
+> `0.5.0` 把「自定义区间」的原生日期输入换成**官方开放平台样式的双月区间日历**（周日起始、深色圆端点、逐日浅灰区间带、今日浅灰圆/端点内白点、未来日期置灰、窄屏单月、方向键 + Enter/Esc 键盘操作），并把 DeepSeek 页拆成「用量 / 模型用量明细 / 网页搜索与抓取」三张卡片：用量卡片的消费金额与 API 请求次数改为**模型 + 工具合计**并给出拆分小字，模型用量明细卡片合并了原「模型明细」表，网页搜索与抓取卡片新增「工具消费总额」；标签栏改为滚动吸附。纯客户端改动，宿主接口与令牌无需调整；升级后按上面的命令重装并刷新页面即可（本地 `link` 安装只需刷新）。
 
 > [!NOTE]
 > `0.4.1` 发布到 npm：包名改为 **`@ycet/dsh-account-usage`**（npm 上的 `dsh-account-usage` 已被他人占用，是另一个项目），同步更新 `cordis.patch.yml` 的加载项名与客户端模块 id，并补全 `repository` / `homepage` / `bugs` / `publishConfig` 等 npm 元数据。已安装旧名字副本的请先 `dsh plugin --profile web remove dsh-account-usage` 再按新版安装命令安装，然后完全退出重开 DSH。
@@ -89,16 +94,16 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 
 ```sh
 # 方式一：从 npm 安装（推荐，支持插件页一键更新）
-dsh plugin --profile web add @ycet/dsh-account-usage@0.4.1
+dsh plugin --profile web add @ycet/dsh-account-usage@0.5.0
 
 # 方式二：从本地源码安装（开发）
 dsh plugin --profile web add <absolute-path-to-plugin>
 
 # 方式三：从 GitHub 安装（锁定版本 tag，需本机有 git，无需 npm 账号）
-dsh plugin --profile web add "github:Ycet/dsh-account-usage#v0.4.1"
+dsh plugin --profile web add "github:Ycet/dsh-account-usage#v0.5.0"
 
 # 方式四：从 Release 资产安装（tarball，无需 git、无需 npm 账号）
-dsh plugin --profile web add "https://github.com/Ycet/dsh-account-usage/releases/download/v0.4.1/dsh-account-usage-0.4.1.tgz"
+dsh plugin --profile web add "https://github.com/Ycet/dsh-account-usage/releases/download/v0.5.0/dsh-account-usage-0.5.0.tgz"
 ```
 
 包声明了 `dsh.bundle` 补丁层，`dsh plugin` 会自动把加载项合入 profile 的 bundle 层，无需手动编辑 `cordis.patch.yml`。方式二～四均无需 npm 账号；桌面端把 `--profile web` 换成 `--profile desktop`（使用桌面端自带 CLI）。
@@ -176,9 +181,9 @@ DEEPSEEK_PLATFORM_TOKEN: <令牌>
 
 - 在设置面板打开「账号与余额」页，插件内容显示在官方身份/余额卡下方；未登录时则打开插件独立「账户」页；
 - 在插件内容顶部切换 **deepseek / opencode go** 两个标签查看对应数据；
-- DeepSeek 页可切换时间维度（今天 / 近 7 天 / 近 30 天 / 近 90 天 / 本月 / 上月），或选择「自定义区间」后点击「应用」；
-- 柱状图支持鼠标悬停查看每日明细；模型明细表展示所选区间内各模型的请求次数、Tokens 与费用；
-- 「网页搜索与抓取」模块展示所选区间内 tool-search / tool-fetch 的调用次数、调用类型费用与每日面积图；超过 31 天的区间会自动分段查询后合并；
+- DeepSeek 页可切换时间维度（今天 / 近 7 天 / 近 30 天 / 近 90 天 / 本月 / 上月），或点开「自定义区间」的只读区间框，在官方样式的双月日历里选起止日——**选满两端会自动关闭并按该区间筛选**，中途按 Esc / 点击面板外也会按已选好的区间筛选（只选了一端则视为放弃）；选完第一端后可用鼠标悬停预览区间；
+- 「用量」卡片的消费金额与 API 请求次数是模型 + 工具（网页搜索/抓取）的合计，小字给出拆分；「模型用量明细」卡片里是消费/Token 柱状图与按模型明细表，支持鼠标悬停查看每日明细；
+- 「网页搜索与抓取」模块先给出工具消费总额，再展示所选区间内 tool-search / tool-fetch 的调用次数、调用类型费用与每日面积图；超过 31 天的区间会自动分段查询后合并；
 - 账户菜单（侧栏账户头像菜单）中「设置」上方新增「余额：¥x.xx」入口，数值为充值余额 + 赠送余额，点击后打开设置并定位到官方「账号与余额」页（无官方页时定位到插件兜底页）；
 - OpenCode Go 页展示三个配额窗口的用量百分比、下次重置时间与限额参考，可一键「跳转」到 opencode.ai 或「刷新」；
 - 三张额度卡下方是「用量趋势（当前订阅周期）」：横轴为本次订阅周期（由每月窗口的重置时间倒推一个自然月），绿线为已用额度累计、黄虚线为到期预测、灰虚线为 100% 上限；鼠标悬浮任意一天可看「日期 / 已用 / 当日 / 请求数」；

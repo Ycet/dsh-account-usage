@@ -10,7 +10,7 @@ A DeepSeek Harness (DSH) web-GUI plugin: adds an "Account" page to the settings 
 > npm package: `@ycet/dsh-account-usage`. The unscoped [`dsh-account-usage`](https://www.npmjs.com/package/dsh-account-usage) on npm is an unrelated project by another author — do not mix the two.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.4.1-blue.svg?style=for-the-badge)](package.json)
+[![Version](https://img.shields.io/badge/version-0.5.0-blue.svg?style=for-the-badge)](package.json)
 [![npm](https://img.shields.io/npm/v/%40ycet%2Fdsh-account-usage?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@ycet/dsh-account-usage)
 [![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.6%2B-purple.svg?style=for-the-badge)](https://github.com/deepseek-ai/deepseek-harness)
 
@@ -36,7 +36,7 @@ A DeepSeek Harness (DSH) web-GUI plugin: adds an "Account" page to the settings 
 
 ## 📸 Preview
 
-**DeepSeek platform content** (embedded below the native cards of the official Account & balance page by default; the old screenshots show the standalone fallback layout): balance overview, time-range selector with custom range, daily cost/token bar charts, web search/fetch usage charts, per-model detail table.
+**DeepSeek platform content** (embedded below the native cards of the official Account & balance page by default; the old screenshots show the standalone fallback layout): balance overview, time-range selector with an open-platform-style two-month range calendar, usage totals (model + tools), cost/token bar charts with the per-model table, and web search/fetch usage charts.
 
 ![Screenshot of the DeepSeek platform "Account" page](assets/images/account-usage-U--01.png)
 
@@ -51,18 +51,23 @@ A DeepSeek Harness (DSH) web-GUI plugin: adds an "Account" page to the settings 
 | Feature | Description |
 |---------|-------------|
 | **DeepSeek platform overview** | Recharge balance, bonus balance, cumulative spending, current-month spending and tokens |
-| **Daily bar charts** | Cost and token consumption charts, SVG-rendered, with hover tooltips per day |
-| **Web search / fetch usage** | Daily call counts and cost by call type (`tool-search` / `tool-fetch`) with per-tool area charts, following the selected range; ranges over 31 days are queried in windows and merged |
+| **Usage card (model + tools)** | "Spend" and "API requests" combine model usage with web search/fetch usage, with a small breakdown line ("model ¥x + tools ¥x"); degraded honestly when the tool endpoint is unavailable |
+| **Model usage details card** | Cost and token bar charts (SVG, hover for per-day detail) plus the per-model table, all on the model-only basis |
+| **Web search / fetch usage** | The stats area starts with the total tool cost, then daily call counts and cost by call type (`tool-search` / `tool-fetch`) with per-tool area charts, following the selected range; ranges over 31 days are queried in windows and merged |
 | **Merge into the official Account & balance page** | When the official page exists, plugin content is embedded below its native cards and no separate nav entry is added; switching sections hides it and switching back restores it |
 | **Account-menu balance entry** | Shows "Balance: ¥x.xx" (top-up + granted) above "Settings" in the account menu; click to open the official Account & balance page, falling back to the plugin's own page when the official one is unavailable |
-| **Time-range switching** | Today / last 7 days / last 30 days / last 90 days / this month / last month / custom range |
-| **Per-model table** | deepseek-v4-flash / deepseek-v4-pro / others: request count, input/cached/output tokens, cost |
+| **Time-range switching** | Today / last 7 days / last 30 days / last 90 days / this month / last month / custom range (open the range box and pick start/end in the two-month calendar; the range applies as soon as both ends are picked or the calendar closes) |
+| **Range calendar** | Open-platform-style two-month range calendar: Sunday-first, dark circular endpoints, light in-range fill, today marker, future dates disabled, single month on narrow screens, full keyboard support |
 | **OpenCode Go quotas** | Usage percentage and next reset time for the 5-hour rolling / weekly / monthly windows |
 | **Quota trend & forecast** | Per-day cumulative quota line for the current subscription period plus a linear forecast to the reset date; hover shows date, cumulative used, that day's increment and that day's requests; gaps are labelled, never interpolated |
 | **Models this period (cookie only)** | With an OpenCode Console cookie: the period's most-used models with shares, total requests and total tokens (from the official daily report) |
+| **Sticky tabs** | The deepseek / opencode go tab bar sticks to the top of the settings content area while scrolling |
 | **Auto refresh** | Polls for fresh data every 60 seconds while the page is mounted |
 | **Bilingual UI** | Full Chinese/English switching |
 | **Fallback standalone page** | When DSH is signed out or the official account page does not exist, the plugin registers its own "Account" section so the token and usage stay reachable |
+
+> [!NOTE]
+> `0.5.0` replaces the native date inputs with an **open-platform-style two-month range calendar** (Sunday-first, dark circular endpoints, per-day light range fill, light circle for today / white dot when today is an endpoint, future dates disabled, single month on narrow screens, arrow-key + Enter/Esc support) and splits the DeepSeek page into three cards — Usage, Model usage details, and Web search & fetch. The Usage card now reports spend and API requests as **model + tools totals** with a breakdown line, the model table moved into Model usage details, the tool card gained a total tool cost stat, and the tab bar sticks to the top while scrolling. Client-side only: host routes and credentials are unchanged, so reinstall with the command above and refresh the page (a local `link` install only needs a refresh).
 
 > [!NOTE]
 > `0.4.1` publishes to npm under the scoped name **`@ycet/dsh-account-usage`** (the unscoped `dsh-account-usage` is taken by another project). The `cordis.patch.yml` loader entry name and the client module id follow the package name, and the manifest now carries `repository` / `homepage` / `bugs` / `publishConfig`. If you installed an older copy under the previous name, run `dsh plugin --profile web remove dsh-account-usage` first, then install with the command above and fully quit and reopen DSH.
@@ -87,16 +92,16 @@ A DeepSeek Harness (DSH) web-GUI plugin: adds an "Account" page to the settings 
 
 ```sh
 # Option 1: install from npm (recommended; can be updated from the plugin page)
-dsh plugin --profile web add @ycet/dsh-account-usage@0.4.1
+dsh plugin --profile web add @ycet/dsh-account-usage@0.5.0
 
 # Option 2: install from a local source directory (development)
 dsh plugin --profile web add <absolute-path-to-plugin>
 
 # Option 3: install from GitHub (pinned to a release tag; requires git, no npm account)
-dsh plugin --profile web add "github:Ycet/dsh-account-usage#v0.4.1"
+dsh plugin --profile web add "github:Ycet/dsh-account-usage#v0.5.0"
 
 # Option 4: install from a Release asset (tarball; no git, no npm account)
-dsh plugin --profile web add "https://github.com/Ycet/dsh-account-usage/releases/download/v0.4.1/dsh-account-usage-0.4.1.tgz"
+dsh plugin --profile web add "https://github.com/Ycet/dsh-account-usage/releases/download/v0.5.0/dsh-account-usage-0.5.0.tgz"
 ```
 
 The package declares a `dsh.bundle` patch layer; `dsh plugin` merges the loader entry into the profile's bundle layer automatically — no manual editing of `cordis.patch.yml` required. Options 2–4 need no npm account; for the desktop app replace `--profile web` with `--profile desktop` (using the desktop-bundled CLI).
@@ -174,7 +179,7 @@ It is optional: without it the trend falls back to local sampling (labelled "loc
 
 - Open the official "Account & balance" page in settings; the plugin content appears below the native identity/balance cards. When signed out, the plugin's standalone "Account" page is shown instead;
 - Switch between the **deepseek / opencode go** tabs at the top of the embedded plugin content;
-- On the DeepSeek tab, pick a time range (Today / last 7 days / last 30 days / last 90 days / this month / last month) or choose a custom range and click "Apply";
+- On the DeepSeek tab, pick a time range (Today / last 7 days / last 30 days / last 90 days / this month / last month), or open the read-only range box and pick start/end in the open-platform-style two-month calendar — **picking both ends closes the calendar and applies the range**, and closing it by Esc or an outside click also applies whatever range is staged (an unfinished single-end pick is discarded); hovering previews the range after the first click;
 - Hover over the bar charts for daily details; the per-model table shows requests, tokens and cost for the selected range;
 - The "Web Search & Fetch" module shows daily `tool-search` / `tool-fetch` call counts, call-type cost and per-tool area charts for the selected range; ranges over 31 days are split and merged automatically;
 - The account menu (sidebar account avatar) gets a "Balance: ¥x.xx" entry above "Settings" (top-up + granted balance); clicking it opens Settings on the official "Account & balance" page (or the fallback page when the official one is unavailable);
