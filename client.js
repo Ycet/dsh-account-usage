@@ -107,8 +107,8 @@ window.__ModuleLoader__.load({
       tooltipTotal: "总消耗",
       tokenChartTitle: "Token 消耗柱状图",
       tokenChartEmpty: "所选区间内暂无 token 数据",
-      legendMiss: "未命中输入",
-      legendHit: "命中输入",
+      legendMiss: "输入（未命中缓存）",
+      legendHit: "输入（命中缓存）",
       legendOut: "输出",
       modelTableTitle: "模型明细表",
       modelsEmpty: "暂无模型数据",
@@ -247,8 +247,8 @@ window.__ModuleLoader__.load({
       tooltipTotal: "Total",
       tokenChartTitle: "Token usage chart",
       tokenChartEmpty: "No token data in the selected range",
-      legendMiss: "Input (miss)",
-      legendHit: "Cache hit",
+      legendMiss: "Input (cache miss)",
+      legendHit: "Input (cache hit)",
       legendOut: "Output",
       modelTableTitle: "Per-model table",
       modelsEmpty: "No model data",
@@ -338,6 +338,8 @@ window.__ModuleLoader__.load({
       panelTitle: { fontSize: 16, fontWeight: 600, margin: 0, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 },
       section: { display: "flex", flexDirection: "column", gap: 12 },
       hint: { color: "var(--dsw-alias-label-tertiary)", fontSize: 13, lineHeight: 1.6, margin: 0 },
+      // 区间控件的行内标签：定宽 + 不收缩，保证两个控件左边缘对齐。
+      rangeLabel: { color: "var(--dsw-alias-label-tertiary)", fontSize: 13, lineHeight: 1.6, margin: 0, minWidth: 88, flexShrink: 0 },
       error: { color: "var(--dsw-alias-state-error-primary)", fontSize: 13, lineHeight: 1.6, margin: 0 },
       ok: { color: "var(--dsw-alias-state-success-primary)", fontSize: 12, lineHeight: 1.6, margin: 0 },
       card: { border: "1px solid var(--dsw-alias-border-l2)", background: "var(--dsw-alias-bg-layer-3)", borderRadius: 10, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 8 },
@@ -356,7 +358,6 @@ window.__ModuleLoader__.load({
       buttonActive: { border: "1px solid var(--dsw-alias-state-business-primary)", color: "var(--dsw-alias-state-business-primary)", font: "inherit", cursor: "pointer", background: "transparent", borderRadius: 6, padding: "5px 12px" },
       buttonsRow: { display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" },
       input: { flex: 1, minWidth: 200, border: "1px solid var(--dsw-alias-border-l2)", background: "var(--dsw-alias-bg-layer-1)", color: "var(--dsw-alias-label-primary)", font: "inherit", borderRadius: 6, padding: "5px 10px" },
-      select: { border: "1px solid var(--dsw-alias-border-l2)", background: "var(--dsw-alias-bg-layer-1)", color: "var(--dsw-alias-label-primary)", font: "inherit", borderRadius: 6, padding: "5px 10px", cursor: "pointer", maxWidth: 200 },
       tokenRow: { display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" },
       barTrack: { height: 8, borderRadius: 4, background: "var(--dsw-alias-bg-layer-1)", overflow: "hidden" },
       barFill: { height: "100%", borderRadius: 4, background: "var(--dsw-alias-state-business-primary)", transition: "width .2s ease" },
@@ -381,6 +382,12 @@ window.__ModuleLoader__.load({
       tooltip: { position: "absolute", zIndex: 6, background: "var(--dsw-alias-bg-layer-3)", border: "1px solid var(--dsw-alias-border-l2)", borderRadius: 8, padding: "6px 10px", fontSize: 12, lineHeight: 1.6, whiteSpace: "nowrap", pointerEvents: "none", boxShadow: "0 4px 16px rgb(0 0 0 / 0.25)" },
       tooltipTitle: { margin: 0, fontWeight: 600, color: "var(--dsw-alias-label-primary)", fontSize: 12 },
       tooltipRow: { margin: 0, color: "var(--dsw-alias-label-secondary)", fontSize: 12, fontVariantNumeric: "tabular-nums" },
+      // Token 图 tooltip：表头（日期 + 总量）与「色块 + 名称 + 右对齐数值」明细行
+      tooltipHead: { display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 16, margin: 0, fontWeight: 600, fontSize: 12, lineHeight: 1.6, color: "var(--dsw-alias-label-primary)" },
+      tooltipHeadValue: { fontWeight: 600, fontVariantNumeric: "tabular-nums" },
+      tooltipSwatchRow: { display: "flex", alignItems: "center", gap: 6, margin: 0, fontSize: 12, lineHeight: 1.6, color: "var(--dsw-alias-label-secondary)" },
+      tooltipSwatch: { display: "inline-block", width: 10, height: 10, flex: "none", borderRadius: 2 },
+      tooltipValue: { marginLeft: "auto", color: "var(--dsw-alias-label-primary)", fontVariantNumeric: "tabular-nums" },
       chip: { border: "1px solid var(--dsw-alias-border-l2)", color: "var(--dsw-alias-label-primary)", font: "inherit", cursor: "pointer", background: "transparent", borderRadius: 999, padding: "4px 12px", fontSize: 12 },
       chipActive: { border: "1px solid var(--dsw-alias-state-business-primary)", color: "var(--dsw-alias-state-business-primary)", font: "inherit", cursor: "pointer", background: "transparent", borderRadius: 999, padding: "4px 12px", fontSize: 12 },
       legendRow: { display: "flex", flexWrap: "wrap", gap: 14, alignItems: "center" },
@@ -954,11 +961,14 @@ window.__ModuleLoader__.load({
       );
     }
 
-    /** Token 柱状图分类色：未命中输入 / 命中输入 / 输出。 */
+    /**
+     * Token 柱状图分类色：输入（命中缓存）浅蓝 → 输入（未命中缓存）中蓝 → 输出 深蓝，
+     * 与官方开放平台的用量图一致；取 DSH 静态蓝色梯度，深浅色主题下都稳定。
+     */
     const TOKEN_COLORS = {
-      miss: "var(--dsw-alias-state-business-primary)",
-      hit: "var(--dsw-alias-state-success-primary)",
-      out: "var(--dsw-alias-state-warn-primary)"
+      hit: "var(--dsw-static-blue-300)",
+      miss: "var(--dsw-static-blue-400)",
+      out: "var(--dsw-static-blue-600)"
     };
 
     /**
@@ -989,8 +999,8 @@ window.__ModuleLoader__.load({
       const slot = innerW / series.length;
       const bw = Math.max(1, Math.min(28, slot * 0.7));
       const segs = (s) => [
-        { key: "miss", v: s.miss, color: TOKEN_COLORS.miss },
         { key: "hit", v: s.hit, color: TOKEN_COLORS.hit },
+        { key: "miss", v: s.miss, color: TOKEN_COLORS.miss },
         { key: "out", v: s.out, color: TOKEN_COLORS.out }
       ];
       const bars = series.map((s, i) => {
@@ -1035,11 +1045,14 @@ window.__ModuleLoader__.load({
       if (hovered !== null) {
         const s = series[hovered];
         tooltip = React.createElement(ChartTooltip, { anchorIndex: hovered, count: series.length, wrapRef },
-          React.createElement("p", { style: styles.tooltipTitle }, s.date),
-          React.createElement("p", { style: styles.tooltipRow }, `${t("legendMiss")}: ${fmtCount(s.miss)}`),
-          React.createElement("p", { style: styles.tooltipRow }, `${t("legendHit")}: ${fmtCount(s.hit)}`),
-          React.createElement("p", { style: styles.tooltipRow }, `${t("legendOut")}: ${fmtCount(s.out)}`),
-          React.createElement("p", { style: { ...styles.tooltipRow, fontWeight: 600 } }, `${t("tooltipTotal")}: ${fmtCount(s.miss + s.hit + s.out)}`)
+          // 表头：日期 + 当日总量
+          React.createElement("div", { style: styles.tooltipHead },
+            React.createElement("span", null, s.date),
+            React.createElement("span", { style: styles.tooltipHeadValue }, fmtCount(s.hit + s.miss + s.out))
+          ),
+          tokenTooltipRow(TOKEN_COLORS.hit, t("legendHit"), s.hit),
+          tokenTooltipRow(TOKEN_COLORS.miss, t("legendMiss"), s.miss),
+          tokenTooltipRow(TOKEN_COLORS.out, t("legendOut"), s.out)
         );
       }
       return React.createElement("div", { ref: wrapRef, style: styles.chartWrap },
@@ -1052,17 +1065,28 @@ window.__ModuleLoader__.load({
       );
     }
 
-    /** Token 图图例。 */
+    /** Token 图 tooltip 的一行：色块 + 名称 + 右对齐数值（对齐官方平台用量图）。 */
+    function tokenTooltipRow(color, label, value) {
+      return React.createElement("div", { style: styles.tooltipSwatchRow },
+        React.createElement("span", { style: { ...styles.tooltipSwatch, background: color } }),
+        React.createElement("span", null, label),
+        React.createElement("span", { style: styles.tooltipValue }, value)
+      );
+    }
+
+    /** Token 图图例：顺序与堆叠一致（命中 → 未命中 → 输出）。 */
     function TokenLegend({ t }) {
+      const items = [
+        { key: "hit", color: TOKEN_COLORS.hit, label: t("legendHit") },
+        { key: "miss", color: TOKEN_COLORS.miss, label: t("legendMiss") },
+        { key: "out", color: TOKEN_COLORS.out, label: t("legendOut") }
+      ];
       return React.createElement("div", { style: styles.legendRow },
-        React.createElement("span", { style: { color: "var(--dsw-alias-label-secondary)", fontSize: 12 } },
-          React.createElement("span", { style: { ...styles.swatch, background: TOKEN_COLORS.miss } }), t("legendMiss")
-        ),
-        React.createElement("span", { style: { color: "var(--dsw-alias-label-secondary)", fontSize: 12 } },
-          React.createElement("span", { style: { ...styles.swatch, background: TOKEN_COLORS.hit } }), t("legendHit")
-        ),
-        React.createElement("span", { style: { color: "var(--dsw-alias-label-secondary)", fontSize: 12 } },
-          React.createElement("span", { style: { ...styles.swatch, background: TOKEN_COLORS.out } }), t("legendOut")
+        items.map((item) =>
+          React.createElement("span", { key: item.key, style: { color: "var(--dsw-alias-label-secondary)", fontSize: 12 } },
+            React.createElement("span", { style: { ...styles.swatch, background: item.color } }),
+            item.label
+          )
         )
       );
     }
@@ -1542,6 +1566,14 @@ window.__ModuleLoader__.load({
       ".dsau-trigger-sep{padding:0 2px;color:var(--dsw-alias-label-tertiary)}",
       ".dsau-trigger-empty{color:var(--dsw-alias-label-tertiary)}",
       ".dsau-trigger-icon{display:inline-flex;flex:none;align-items:center;justify-content:center;width:14px;height:14px;color:var(--dsw-alias-label-tertiary)}",
+      // 预设下拉：原生 <select> 的边框在切换选项后偶尔不重绘（只剩圆角），
+      // 因此把外观（边框/圆角/底色/箭头）画在外层 span 上，select 只负责交互。
+      ".dsau-select{position:relative;display:inline-flex;align-items:center;height:34px;padding:0 30px 0 12px;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary)}",
+      ".dsau-select:hover{background:var(--dsw-alias-interactive-bg-hover)}",
+      ".dsau-select:focus-within{border-color:var(--dsw-alias-state-business-primary);box-shadow:0 0 0 2px color-mix(in srgb, var(--dsw-alias-state-business-primary) 28%, transparent)}",
+      ".dsau-select-input{appearance:none;-webkit-appearance:none;margin:0;padding:0;border:0;outline:none;background:transparent;color:inherit;font:inherit;font-size:14px;line-height:20px;height:32px;cursor:pointer}",
+      ".dsau-select-input option{background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary)}",
+      ".dsau-select-icon{position:absolute;right:9px;top:50%;display:inline-flex;align-items:center;justify-content:center;width:12px;height:12px;transform:translateY(-50%);color:var(--dsw-alias-label-tertiary);pointer-events:none}",
       ".dsau-cal{position:fixed;z-index:1200;box-sizing:border-box;padding:16px;border-radius:12px;background:var(--dsw-alias-bg-layer-2);box-shadow:var(--dsw-elevation-panel);color:var(--dsw-alias-label-primary);font-size:14px;line-height:20px;outline:none}",
       ".dsau-cal-head{display:flex;align-items:center;gap:4px;height:36px}",
       ".dsau-cal-nav{display:inline-flex;flex:none;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:none;border-radius:var(--dsw-radius-sm);background:transparent;color:var(--dsw-alias-label-tertiary);cursor:pointer}",
@@ -1570,14 +1602,19 @@ window.__ModuleLoader__.load({
       ".dsau-cal-dot{position:absolute;right:2px;bottom:2px;width:4px;height:4px;border-radius:50%;background:var(--dsw-alias-label-primary-foreground)}"
     ].join("\n");
 
-    let calendarStylesReady = false;
-
-    /** 幂等注入日历样式；非浏览器环境（单测/SSR）直接跳过。 */
+    /**
+     * 注入（或校正）区间控件样式；非浏览器环境（单测/SSR）直接跳过。
+     * 注意：客户端热更新只替换 JS、不会清掉已注入的 <style>，所以发现旧样式表
+     * 内容与当前 CALENDAR_CSS 不一致时必须覆盖，否则新类名拿不到规则。
+     */
     function ensureCalendarStyles() {
-      if (calendarStylesReady) return;
       if (typeof document === "undefined" || document.head === null || document.head === undefined) return;
-      calendarStylesReady = true;
-      if (document.querySelector('style[data-plugin-css="' + CALENDAR_STYLE_ID + '"]') !== null) return;
+      const selector = 'style[data-plugin-css="' + CALENDAR_STYLE_ID + '"]';
+      const existing = document.querySelector(selector);
+      if (existing !== null && existing !== undefined) {
+        if (existing.textContent !== CALENDAR_CSS) existing.textContent = CALENDAR_CSS;
+        return;
+      }
       const style = document.createElement("style");
       style.dataset.plugin = "dsh-account-usage";
       style.dataset.pluginCss = CALENDAR_STYLE_ID;
@@ -1621,6 +1658,18 @@ window.__ModuleLoader__.load({
       },
         React.createElement("path", {
           d: direction === "prev" ? "M10 3.5 5.5 8l4.5 4.5" : "M6 3.5 10.5 8 6 12.5",
+          stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round"
+        })
+      );
+    }
+
+    /** 预设下拉的下拉箭头。 */
+    function selectChevron() {
+      return React.createElement("svg", {
+        width: 12, height: 12, viewBox: "0 0 16 16", fill: "none", "aria-hidden": true, focusable: "false", style: { display: "block" }
+      },
+        React.createElement("path", {
+          d: "M3.5 6 8 10.5 12.5 6",
           stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round"
         })
       );
@@ -2018,21 +2067,24 @@ window.__ModuleLoader__.load({
 
       return React.createElement("div", { style: styles.section },
         React.createElement("div", { style: styles.buttonsRow },
-          React.createElement("p", { style: styles.hint }, t("rangeTitle")),
-          React.createElement("select", {
-            value: activePreset,
-            onChange: onSelect,
-            style: styles.select,
-            "aria-label": t("rangeTitle")
-          },
-            presets().map((preset) =>
-              React.createElement("option", { key: preset.id, value: preset.id }, t(PRESET_LABEL_KEYS[preset.id]))
+          React.createElement("p", { style: styles.rangeLabel }, t("rangeTitle")),
+          React.createElement("span", { className: "dsau-select" },
+            React.createElement("select", {
+              value: activePreset,
+              onChange: onSelect,
+              className: "dsau-select-input",
+              "aria-label": t("rangeTitle")
+            },
+              presets().map((preset) =>
+                React.createElement("option", { key: preset.id, value: preset.id }, t(PRESET_LABEL_KEYS[preset.id]))
+              ),
+              React.createElement("option", { value: "custom" }, t("rangeCustom"))
             ),
-            React.createElement("option", { value: "custom" }, t("rangeCustom"))
+            React.createElement("span", { className: "dsau-select-icon" }, selectChevron())
           )
         ),
         React.createElement("div", { className: "dsau-range-row" },
-          React.createElement("span", { style: styles.hint }, t("rangeCustomRow")),
+          React.createElement("span", { style: styles.rangeLabel }, t("rangeCustomRow")),
           React.createElement("button", {
             ref: triggerRef,
             type: "button",
@@ -3534,7 +3586,12 @@ window.__ModuleLoader__.load({
       };
 
       const injectMenuStyles = () => {
-        if (document.querySelector('style[data-plugin-css="' + MENU_STYLE_ID + '"]') !== null) return;
+        // 与 ensureCalendarStyles 同理：热更新后旧样式表还在，内容不一致就覆盖。
+        const existing = document.querySelector('style[data-plugin-css="' + MENU_STYLE_ID + '"]');
+        if (existing !== null) {
+          if (existing.textContent !== MENU_CSS) existing.textContent = MENU_CSS;
+          return;
+        }
         const style = document.createElement("style");
         style.dataset.plugin = "dsh-account-usage";
         style.dataset.pluginCss = MENU_STYLE_ID;
@@ -3824,6 +3881,9 @@ window.__ModuleLoader__.load({
     exports.unwrapRpc = unwrapRpc;
     exports.BarChart = BarChart;
     exports.TokenChart = TokenChart;
+    exports.TokenLegend = TokenLegend;
+    exports.TOKEN_COLORS = TOKEN_COLORS;
+    exports.tokenTooltipRow = tokenTooltipRow;
     exports.fmtCountdown = fmtCountdown;
     exports.balanceTextOf = balanceTextOf;
     exports.toolLabelOf = toolLabelOf;
@@ -3842,6 +3902,8 @@ window.__ModuleLoader__.load({
     exports.previewRange = previewRange;
     exports.bandKind = bandKind;
     exports.combinedTotals = combinedTotals;
+    exports.CALENDAR_CSS = CALENDAR_CSS;
+    exports.ensureCalendarStyles = ensureCalendarStyles;
     exports.CalendarMonth = CalendarMonth;
     exports.CalendarPanel = CalendarPanel;
     exports.DeepSeekPanel = DeepSeekPanel;

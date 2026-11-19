@@ -414,3 +414,84 @@ test("DeepSeekPanel 拆成用量 / 模型用量明细 / 网页搜索与抓取三
   // 旧的 <input type="date"> 已移除
   assert.equal(collect(tree, "input").filter((node) => node.props.type === "date").length, 0);
 });
+
+test("ensureCalendarStyles 遇到旧样式表会覆盖内容（热更新后样式不落后于 JS）", () => {
+  const previousDocument = globalThis.document;
+  const appended = [];
+  const staleStyle = { textContent: ".dsau-old{color:red}" };
+  globalThis.document = {
+    head: { appendChild: (el) => appended.push(el) },
+    createElement: () => ({ dataset: {}, textContent: "" }),
+    querySelector: (selector) => (String(selector).includes("dsh-account-usage/calendar.css") ? staleStyle : null)
+  };
+  try {
+    client.ensureCalendarStyles();
+    // 旧样式表被就地覆盖成当前 CSS，而不是被跳过
+    assert.equal(staleStyle.textContent, client.CALENDAR_CSS);
+    assert.equal(appended.length, 0, "不应重复插入 style 元素");
+    // 内容已经一致时再调用不产生副作用
+    client.ensureCalendarStyles();
+    assert.equal(staleStyle.textContent, client.CALENDAR_CSS);
+    assert.equal(appended.length, 0);
+  } finally {
+    if (previousDocument === undefined) delete globalThis.document;
+    else globalThis.document = previousDocument;
+  }
+});
+
+test("ensureCalendarStyles 在没有样式表时插入一份", () => {
+  const previousDocument = globalThis.document;
+  const appended = [];
+  globalThis.document = {
+    head: { appendChild: (el) => appended.push(el) },
+    createElement: () => ({ dataset: {}, textContent: "" }),
+    querySelector: () => null
+  };
+  try {
+    client.ensureCalendarStyles();
+    assert.equal(appended.length, 1);
+    assert.equal(appended[0].textContent, client.CALENDAR_CSS);
+    assert.equal(appended[0].dataset.pluginCss, "dsh-account-usage/calendar.css");
+  } finally {
+    if (previousDocument === undefined) delete globalThis.document;
+    else globalThis.document = previousDocument;
+  }
+});
+
+test("Token 图用三种蓝色区分 命中/未命中/输出，堆叠与图例顺序一致", async () => {
+  const withHooks = await loadClientWithHooks();
+  const colors = withHooks.TOKEN_COLORS;
+  // 三段颜色必须互不相同，且命中比未命中浅、输出最深
+  assert.notEqual(colors.hit, colors.miss);
+  assert.notEqual(colors.miss, colors.out);
+  assert.equal(colors.hit, "var(--dsw-static-blue-300)");
+  assert.equal(colors.miss, "var(--dsw-static-blue-400)");
+  assert.equal(colors.out, "var(--dsw-static-blue-600)");
+
+  const days = [
+    { date: "2026-11-04", models: { m: { cacheHitTokens: 6400, cacheMissTokens: 285854, responseTokens: 5191 } } }
+  ];
+  const chart = render(withHooks.TokenChart({ days, model: "m", currency: "CNY", t: zhT }));
+  const fills = collect(chart, "rect")
+    .map((node) => node.props.fill)
+    .filter((fill) => fill === colors.hit || fill === colors.miss || fill === colors.out);
+  // 自下而上：命中 → 未命中 → 输出
+  assert.deepEqual(fills, [colors.hit, colors.miss, colors.out]);
+
+  const legend = render(withHooks.TokenLegend({ t: zhT }));
+  const legendColors = collect(legend, "span")
+    .map((node) => (node.props.style === undefined ? null : node.props.style.background))
+    .filter(Boolean);
+  assert.deepEqual(legendColors, [colors.hit, colors.miss, colors.out]);
+});
+
+test("Token 图 tooltip 一行 = 色块 + 名称 + 数值", async () => {
+  const withHooks = await loadClientWithHooks();
+  const row = withHooks.tokenTooltipRow("var(--dsw-static-blue-300)", "输入（命中缓存）", "6,400");
+  const spans = collect(row, "span");
+  assert.equal(spans.length, 3);
+  assert.equal(spans[0].props.style.background, "var(--dsw-static-blue-300)");
+  assert.equal(spans[1].children[0], "输入（命中缓存）");
+  assert.equal(spans[2].children[0], "6,400");
+  assert.equal(spans[2].props.style.marginLeft, "auto");
+});
