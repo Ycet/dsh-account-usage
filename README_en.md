@@ -10,7 +10,7 @@ A DeepSeek Harness (DSH) web-GUI plugin: adds an "Account" page to the settings 
 > npm package: `@ycet/dsh-account-usage`. The unscoped [`dsh-account-usage`](https://www.npmjs.com/package/dsh-account-usage) on npm is an unrelated project by another author — do not mix the two.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.5.1-blue.svg?style=for-the-badge)](package.json)
+[![Version](https://img.shields.io/badge/version-0.5.2-blue.svg?style=for-the-badge)](package.json)
 [![npm](https://img.shields.io/npm/v/%40ycet%2Fdsh-account-usage?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@ycet/dsh-account-usage)
 [![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.6%2B-purple.svg?style=for-the-badge)](https://github.com/deepseek-ai/deepseek-harness)
 
@@ -123,6 +123,9 @@ Quota progress bars, reset times and reference limits for the three windows, plu
 | **Bilingual UI** | Full Chinese/English switching |
 
 > [!NOTE]
+> `0.5.2` fixes the Overview token accounting: **a subagent session replays its parent's entire history into its own log, and that replay was being counted a second time**, inflating daily usage noticeably (on this machine 2026-11-17 showed 1.14B instead of 404.6M — about 92% too high for the day, and roughly 33.7% too high overall). Folding a session's events now recognises the `session/end-seed` event (`data.inherited === true`) and skips every replayed event before it, so the numbers match the real consumption in the DSH session log. The ledger format is bumped to version 2 and old entries are recomputed on the next scan; history from sessions whose logs are already gone is preserved as-is. Open the Overview tab and hit refresh once (or wait for the first automatic scan) to see corrected figures.
+
+> [!NOTE]
 > `0.5.1` moves the "at most 3 calendar months" cap **into the calendar itself**: once one end is picked, days beyond the limit are greyed out and unclickable with a hover reason, and the host-side "Range exceeds the per-query month cap; clipped to the most recent months" notice is gone. The "last 90 days" preset is removed (it spans 4 calendar months on 338 of 365 days); Today / last 7 days / last 30 days / this month / last month remain. The account-menu "Balance: ¥x.xx" entry now opens the Account & balance page **straight on the DeepSeek tab** (entering from the settings gear or nav still defaults to Overview). Client-side only: host routes and credentials are unchanged, so reinstall with the command above and refresh the page (a local `link` install only needs a refresh).
 
 > [!NOTE]
@@ -151,16 +154,16 @@ Quota progress bars, reset times and reference limits for the three windows, plu
 
 ```sh
 # Option 1: install from npm (recommended; can be updated from the plugin page)
-dsh plugin --profile web add @ycet/dsh-account-usage@0.5.1
+dsh plugin --profile web add @ycet/dsh-account-usage@0.5.2
 
 # Option 2: install from a local source directory (development)
 dsh plugin --profile web add <absolute-path-to-plugin>
 
 # Option 3: install from GitHub (pinned to a release tag; requires git, no npm account)
-dsh plugin --profile web add "github:Ycet/dsh-account-usage#v0.5.1"
+dsh plugin --profile web add "github:Ycet/dsh-account-usage#v0.5.2"
 
 # Option 4: install from a Release asset (tarball; no git, no npm account)
-dsh plugin --profile web add "https://github.com/Ycet/dsh-account-usage/releases/download/v0.5.1/dsh-account-usage-0.5.1.tgz"
+dsh plugin --profile web add "https://github.com/Ycet/dsh-account-usage/releases/download/v0.5.2/dsh-account-usage-0.5.2.tgz"
 ```
 
 The package declares a `dsh.bundle` patch layer; `dsh plugin` merges the loader entry into the profile's bundle layer automatically — no manual editing of `cordis.patch.yml` required. Options 2–4 need no npm account; for the desktop app replace `--profile web` with `--profile desktop` (using the desktop-bundled CLI).
@@ -339,7 +342,7 @@ flowchart LR
 ## ⚠️ Known Limitations
 
 - The Overview tab relies on DSH's `sessionPersistence` service to read local session logs: on first use (or on a new machine) the ledger is empty until the background scan finishes, and the page shows "Scanning…" meanwhile. The ledger lives at `~/.dsh/storages/dsh-account-usage/usage-ledger.v1.json`; deleting it **loses the historical totals of already-deleted sessions** (their logs are no longer on disk), so clean it up carefully. On older DSH versions without that service the tab reports that session-log statistics are unsupported.
-- Sessions started from a worktree and sessions from subagents both count; the longest-task stat only measures main-session turns, not subagent time.
+- Sessions started from a worktree and sessions from subagents both count; the longest-task stat only measures main-session turns, not subagent time. The parent history a subagent replays at startup (events before a `session/end-seed` with `data.inherited === true`) is excluded from tokens so it is not billed twice.
 - The DeepSeek usage APIs are **undocumented private endpoints**; fields may change as the platform evolves. The plugin parses responses defensively and degrades missing fields to "—" instead of failing. If "—" persists, re-capture the API and report back.
 - "Cumulative spending" and "API request count" are not in public docs: cumulative spending is located by a naming heuristic in the summary response (shows "—" if not found), and request count reads `count/requests/request_count/req_count/calls` fields on model entries. Both were calibrated against a real token.
 - The web search/fetch usage API accepts at most 31 days per request; the plugin splits longer ranges into 31-day windows, so very long ranges make more requests. Tool names come from the platform's `functions` array (`tool-search` / `tool-fetch` today); unknown tools are shown as-is.

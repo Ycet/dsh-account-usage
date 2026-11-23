@@ -10,7 +10,7 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 > npm 包名：`@ycet/dsh-account-usage`。npm 上同名的 [`dsh-account-usage`](https://www.npmjs.com/package/dsh-account-usage) 是另一个作者的独立项目，与本插件无关，请勿混装。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.5.1-blue.svg?style=for-the-badge)](package.json)
+[![Version](https://img.shields.io/badge/version-0.5.2-blue.svg?style=for-the-badge)](package.json)
 [![npm](https://img.shields.io/npm/v/%40ycet%2Fdsh-account-usage?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@ycet/dsh-account-usage)
 [![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.6%2B-purple.svg?style=for-the-badge)](https://github.com/deepseek-ai/deepseek-harness)
 
@@ -123,6 +123,9 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 | **双语言界面** | 完整的中英文切换支持 |
 
 > [!NOTE]
+> `0.5.2` 修正概览页的 token 统计口径：**子代理会话启动时会把父会话历史整段重放进自己的日志，这段重放过去被重复计了一次账**，导致按日用量明显虚高（本机 2026-11-17 曾显示 1.14B，实际 404.6M，全天虚高约 92%；账本总量虚高约 33.7%）。现在折叠会话事件时会识别 `session/end-seed`（`data.inherited === true`）并跳过其之前的全部重放事件，数字与 DSH 会话日志的实际消耗一致。账本结构版本升到 2，首次扫描会自动重算旧条目；已删除会话的历史累计不受影响，仍按原值保留。升级后打开概览页并点一次刷新（或等待首次自动扫描）即可看到修正后的数字。
+
+> [!NOTE]
 > `0.5.1` 把「自定义区间最多 3 个自然月」的限制**前置到日历里**：选好一端后，超出上限的日期直接置灰不可点，悬停给出原因，宿主返回的「区间超过单次可查询的月份上限，已自动裁剪至最近月份」提示条随之移除；同时删掉会跨 4 个自然月的「近 90 天」预设（保留今天 / 近 7 天 / 近 30 天 / 本月 / 上月）。账户菜单的「余额：¥x.xx」入口改为打开「账户与余额」页并**直达 DeepSeek 标签页**（从设置齿轮或导航进入时仍默认「概览」）。纯客户端改动，宿主接口与令牌无需调整；升级后按上面的命令重装并刷新页面即可（本地 `link` 安装只需刷新）。
 
 > [!NOTE]
@@ -153,16 +156,16 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 
 ```sh
 # 方式一：从 npm 安装（推荐，支持插件页一键更新）
-dsh plugin --profile web add @ycet/dsh-account-usage@0.5.1
+dsh plugin --profile web add @ycet/dsh-account-usage@0.5.2
 
 # 方式二：从本地源码安装（开发）
 dsh plugin --profile web add <absolute-path-to-plugin>
 
 # 方式三：从 GitHub 安装（锁定版本 tag，需本机有 git，无需 npm 账号）
-dsh plugin --profile web add "github:Ycet/dsh-account-usage#v0.5.1"
+dsh plugin --profile web add "github:Ycet/dsh-account-usage#v0.5.2"
 
 # 方式四：从 Release 资产安装（tarball，无需 git、无需 npm 账号）
-dsh plugin --profile web add "https://github.com/Ycet/dsh-account-usage/releases/download/v0.5.1/dsh-account-usage-0.5.1.tgz"
+dsh plugin --profile web add "https://github.com/Ycet/dsh-account-usage/releases/download/v0.5.2/dsh-account-usage-0.5.2.tgz"
 ```
 
 包声明了 `dsh.bundle` 补丁层，`dsh plugin` 会自动把加载项合入 profile 的 bundle 层，无需手动编辑 `cordis.patch.yml`。方式二～四均无需 npm 账号；桌面端把 `--profile web` 换成 `--profile desktop`（使用桌面端自带 CLI）。
@@ -341,7 +344,7 @@ flowchart LR
 ## ⚠️ 已知限制
 
 - 「概览」页依赖 DSH 的 `sessionPersistence` 服务读取本机会话日志：首次进入（或换机器）时账本为空，需要等后台扫描完成才有完整数据；扫描期间页面显示「统计中…」。账本落盘在 `~/.dsh/storages/dsh-account-usage/usage-ledger.v1.json`，删除该文件会**丢失已删除会话的历史累计**（因为它们的日志已不在磁盘上），请谨慎清理。旧版 DSH 若没有该服务，概览页会显示「当前 DSH 版本不支持会话日志统计」。
-- 从工作树直接启动、以及子代理产生的会话都会计入统计；任务用时只统计主会话的回合，不累加子代理时长。
+- 从工作树直接启动、以及子代理产生的会话都会计入统计；任务用时只统计主会话的回合，不累加子代理时长。子代理会话启动时重放的父会话历史（`session/end-seed` 且 `data.inherited === true` 之前的事件）不计入 token，避免与父会话重复计费。
 - DeepSeek 平台用量接口为**未公开的私有接口**，字段可能随平台升级变化；插件对响应做防御式解析，字段缺失时降级为「—」而非报错。若页面长期显示「—」，请重新抓包确认字段并反馈。
 - 「累计消费金额」「API 请求次数」字段不在公开文档中：累计消费按命名启发式在概要响应中搜索（找不到则显示「—」），请求次数读取模型条目上的 `count/requests/request_count/req_count/calls` 字段。两者均在真实令牌实测后校准。
 - 网页搜索/抓取用量接口单次最多查询 31 天；插件按 31 天窗口自动分段，区间过长时请求数会相应增加。工具名来自平台返回的 `functions` 数组（当前为 `tool-search` / `tool-fetch`），未知工具原样展示。

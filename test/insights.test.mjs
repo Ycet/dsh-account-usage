@@ -4,12 +4,15 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  LEDGER_VERSION,
   aggregateLedger,
   emptyLedger,
   foldSessionEvents,
+  inheritedSeedCutOf,
   localDateKeyOf,
   localYearOf,
   mergeLedger,
+  rebuildRequired,
   usageTokens
 } from "../lib/insights.js";
 
@@ -80,6 +83,98 @@ test("foldSessionEvents trackTurns=false 时只算 token（子代理）", () => 
   const folded = foldSessionEvents(events, { offsetMin: TZ, trackTurns: false });
   assert.deepEqual(folded.days, { "2026-11-04": 42 });
   assert.deepEqual(folded.longestTurnMsByYear, {});
+});
+
+test("inheritedSeedCutOf 取最大继承种子 seq，无种子返回 -1", () => {
+  assert.equal(inheritedSeedCutOf([]), -1);
+  assert.equal(
+    inheritedSeedCutOf([
+      { type: "session/end-seed", seq: 10, data: { inherited: true } },
+      { type: "session/end-seed", seq: 30, data: { inherited: true } },
+      // 非 inherited 的 end-seed 不算
+      { type: "session/end-seed", seq: 99, data: {} }
+    ]),
+    30
+  );
+  assert.equal(inheritedSeedCutOf([{ type: "session/end-seed", seq: 5 }]), -1);
+});
+
+test("foldSessionEvents 跳过子代理继承的父会话重放，只算新增部分", () => {
+  const replayDay = at("2026-11-16T02:00:00Z");
+  const workDay = at("2026-11-17T02:00:00Z");
+  const events = [
+    // --- 父会话历史的整段重放（seq 0..20），不应计入 ---
+    { type: "assistant/message", seq: 5, time: replayDay, data: { usage: { totalTokens: 900 } } },
+    { type: "turn/start", seq: 6, time: replayDay, data: { turn: 1 } },
+    { type: "assistant/message", seq: 7, time: replayDay, data: { usage: { totalTokens: 100 } } },
+    { type: "session/end-seed", seq: 20, time: replayDay, data: { inherited: true } },
+    // --- 子会话真正新增（seq > 20），应计入 ---
+    { type: "turn/start", seq: 21, time: workDay, data: { turn: 2 } },
+    { type: "assistant/message", seq: 22, time: workDay, data: { usage: { totalTokens: 7 } } },
+    { type: "turn/end", seq: 23, time: workDay + 61 * 1000, data: { turn: 2 } }
+  ];
+  const folded = foldSessionEvents(events, { offsetMin: TZ });
+  assert.deepEqual(folded.days, { "2026-11-17": 7 }, "继承重放必须被跳过");
+  assert.equal(folded.inheritedCut, 20);
+  // 重放段里的回合也不参与最长任务用时
+  assert.deepEqual(folded.longestTurnMsByYear, { "2026": 61 * 1000 });
+});
+
+test("foldSessionEvents 无继承种子时行为不变", () => {
+  const events = [
+    { type: "assistant/message", seq: 1, time: at("2026-11-04T02:00:00Z"), data: { usage: { totalTokens: 55 } } },
+    { type: "session/end-seed", seq: 2, time: at("2026-11-04T02:00:01Z"), data: {} }
+  ];
+  const folded = foldSessionEvents(events, { offsetMin: TZ });
+  assert.deepEqual(folded.days, { "2026-11-04": 55 });
+  assert.equal(folded.inheritedCut, -1);
+});
+
+test("rebuildRequired：version < 2 的账本需要重扫，新版不需要", () => {
+  assert.equal(rebuildRequired({ version: 1, sessions: { a: {} } }), true);
+  assert.equal(rebuildRequired({ version: 2, sessions: { a: {} } }), false);
+  assert.equal(rebuildRequired({ sessions: { a: {} } }), true, "缺 version 视为旧账本");
+  assert.equal(rebuildRequired(null), false);
+  assert.equal(rebuildRequired({ version: 1 }), false, "没有 sessions 时不强行重扫");
+});
+
+test("mergeLedger 遇到 stale 条目即使 revision 未变也重读", async () => {
+  const previous = {
+    version: 1,
+    updatedAt: 1,
+    sessions: {
+      a: { revision: "r1", stale: true, days: { "2026-11-16": 999 }, longestTurnMsByYear: {} }
+    }
+  };
+  let reads = 0;
+  const { ledger } = await mergeLedger(
+    previous,
+    [{ header: { id: "a" }, revision: "r1" }],
+    async () => {
+      reads += 1;
+      return { days: { "2026-11-17": 7 }, longestTurnMsByYear: {} };
+    },
+    { now: 99 }
+  );
+  assert.equal(reads, 1, "stale 条目必须重读");
+  assert.deepEqual(ledger.sessions.a.days, { "2026-11-17": 7 }, "旧值必须被替换");
+  assert.equal(ledger.version, LEDGER_VERSION);
+});
+
+test("mergeLedger 重扫时已消失的会话仍保留（不丢已删除会话历史）", async () => {
+  const previous = {
+    version: 1,
+    updatedAt: 1,
+    sessions: {
+      gone: { revision: "r1", stale: true, days: { "2026-11-01": 500 }, longestTurnMsByYear: {} }
+    }
+  };
+  const { ledger, stats } = await mergeLedger(previous, [], async () => ({ days: {}, longestTurnMsByYear: {} }), {
+    now: 99
+  });
+  assert.equal(ledger.sessions.gone.retained, true);
+  assert.equal(ledger.sessions.gone.days["2026-11-01"], 500);
+  assert.equal(stats.retained, 1);
 });
 
 test("mergeLedger revision 未变时复用账本，不重读会话", async () => {
@@ -221,7 +316,7 @@ test("aggregateLedger 合并按日与按年数据并给出年份列表", () => {
 
 test("emptyLedger 给出可直接合并的空账本", async () => {
   const ledger = emptyLedger(7);
-  assert.deepEqual(ledger, { version: 1, updatedAt: 7, skipped: 0, sessions: {} });
+  assert.deepEqual(ledger, { version: 2, updatedAt: 7, skipped: 0, sessions: {} });
   const { ledger: merged } = await mergeLedger(
     ledger,
     [{ header: { id: "x" }, revision: "r1" }],

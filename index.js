@@ -76,10 +76,12 @@ import {
   percentGridMax
 } from "./lib/aggregate.js";
 import {
+  LEDGER_VERSION,
   aggregateLedger,
   emptyLedger,
   foldSessionEvents,
-  mergeLedger
+  mergeLedger,
+  rebuildRequired
 } from "./lib/insights.js";
 
 const name = "@ycet/dsh-account-usage";
@@ -1025,11 +1027,18 @@ async function loadInsightsLedger() {
   try {
     const raw = JSON.parse(await readFile(insightsFilePath(), "utf8"));
     if (raw !== null && typeof raw === "object" && raw.sessions !== null && typeof raw.sessions === "object") {
+      // 旧版账本（version < LEDGER_VERSION）把子代理继承的父会话历史重复计过账，
+      // 这些条目必须重读。做法是给每条打 stale 标记，让 mergeLedger 忽略 revision
+      // 直接重扫；同时保留条目本身，已删除会话的历史累计不会因此丢失。
+      const stale = rebuildRequired(raw);
+      const sessions = stale
+        ? Object.fromEntries(Object.entries(raw.sessions).map(([id, entry]) => [id, { ...entry, stale: true }]))
+        : raw.sessions;
       ledger = {
-        version: 1,
+        version: LEDGER_VERSION,
         updatedAt: typeof raw.updatedAt === "number" ? raw.updatedAt : 0,
         skipped: typeof raw.skipped === "number" ? raw.skipped : 0,
-        sessions: raw.sessions
+        sessions
       };
     }
   } catch {

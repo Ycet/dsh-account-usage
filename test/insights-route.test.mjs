@@ -3,7 +3,7 @@
 // 验证扫描落盘、账本聚合，以及「会话被删除后消耗仍然保留」。
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -127,7 +127,7 @@ test("insights 路由：扫描会话日志、落盘账本并返回按日聚合",
     assert.equal(done.longestTurnMsByYear[year], 61 * 1000);
 
     const ledger = JSON.parse(await readFile(join(dir, "usage-ledger.v1.json"), "utf8"));
-    assert.equal(ledger.version, 1);
+    assert.equal(ledger.version, 2);
     assert.deepEqual(Object.keys(ledger.sessions).sort(), ["s1", "s2"]);
   });
 });
@@ -152,6 +152,70 @@ test("insights 路由：会话被删除后账本保留，累计值不下降", as
     const afterTotal = Object.values(after.days).reduce((sum, value) => sum + value, 0);
     assert.equal(afterTotal, 1000, "已删除会话的消耗必须保留");
     assert.equal(after.sessions.retained, 1);
+  });
+});
+
+/** 子代理会话：先重放父会话历史，再写一条 inherited 的 end-seed，最后才是自己的新增。 */
+function seededSubagentEvents(replayIso, replayTokens, ownIso, ownTokens) {
+  const replayTime = Date.parse(replayIso);
+  const ownTime = Date.parse(ownIso);
+  return [
+    { type: "assistant/message", seq: 1, time: replayTime, data: { usage: { totalTokens: replayTokens } } },
+    { type: "session/end-seed", seq: 2, time: replayTime + 1000, data: { inherited: true } },
+    { type: "assistant/message", seq: 3, time: ownTime, data: { usage: { totalTokens: ownTokens } } }
+  ];
+}
+
+test("insights 路由：子代理继承的父会话重放不计入 token", async () => {
+  await withTempDataDir(async () => {
+    const persistence = makePersistence({
+      parent: { header: { id: "parent" }, revision: "r1", events: eventsWithUsage("2026-11-16T02:00:00Z", 900) },
+      child: {
+        header: { id: "child", origin: "subagent" },
+        revision: "r1",
+        events: seededSubagentEvents("2026-11-16T02:00:00Z", 900, "2026-11-17T02:00:00Z", 7)
+      }
+    });
+    const { ctx, routes } = makeCtx(persistence);
+    await freshApply(ctx);
+    const done = await waitForScan(routes);
+    const total = Object.values(done.days).reduce((sum, value) => sum + value, 0);
+    assert.equal(total, 907, "只算父会话 900 + 子会话新增 7，重放的 900 不能重复计入");
+    assert.equal(done.days["2026-11-17"], 7);
+  });
+});
+
+test("insights 路由：旧版账本（version 1）会被重算，同时保留已删除会话", async () => {
+  await withTempDataDir(async (dir) => {
+    // 预置一份 version 1 的账本：live 的旧值是虚高的（含继承重放），gone 的日志已经不在。
+    await writeFile(
+      join(dir, "usage-ledger.v1.json"),
+      JSON.stringify({
+        version: 1,
+        updatedAt: 1,
+        skipped: 0,
+        sessions: {
+          live: { revision: "r1", days: { "2026-11-16": 999 }, longestTurnMsByYear: {}, firstTime: null, lastTime: null },
+          gone: { revision: "r1", days: { "2026-11-01": 500 }, longestTurnMsByYear: {}, firstTime: null, lastTime: null }
+        }
+      }),
+      "utf8"
+    );
+
+    const persistence = makePersistence({
+      live: { header: { id: "live" }, revision: "r1", events: eventsWithUsage("2026-11-17T02:00:00Z", 7) }
+    });
+    const { ctx, routes } = makeCtx(persistence);
+    await freshApply(ctx);
+    const done = await waitForScan(routes);
+
+    assert.equal(done.days["2026-11-16"], undefined, "旧版虚高值必须被丢弃");
+    assert.equal(done.days["2026-11-17"], 7, "会话必须按新口径重读");
+    assert.equal(done.days["2026-11-01"], 500, "已删除会话的旧累计必须保留");
+    assert.equal(done.sessions.retained, 1);
+
+    const ledger = JSON.parse(await readFile(join(dir, "usage-ledger.v1.json"), "utf8"));
+    assert.equal(ledger.version, 2);
   });
 });
 
