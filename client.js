@@ -977,23 +977,32 @@ window.__ModuleLoader__.load({
     }
 
     /**
-     * 数值 → 0（无填充）…4（最深）。
+     * 每日模式的固定分级边界（token 数）：100 万 / 1000 万 / 1 亿 / 5 亿。
+     * 固定十进制数量级的好处：颜色含义永远稳定（不随当年数据漂移）、
+     * 与 tooltip 的「万 / 亿」格式天然对齐。每周与累计两个模式仍用动态分位：
+     * 累计值单调递增，固定边界会让整年变成渐变条。
+     */
+    const DAILY_LEVEL_BOUNDS = [1e6, 1e7, 1e8, 5e8];
+
+    /**
+     * 数值 → 0（无填充）…5（最深）。
      * 只要 value > 0 就至少落在第 1 档——颜色分级只用来区分「多与少」，
      * 「有没有」由 0 Token 这一档单独表达。
+     * thresholds 传 [1e6, 1e7, 1e8, 5e8] 时即每日固定分级；每周/累计传动态分位。
      */
     function levelOfValue(value, thresholds) {
       if (typeof value !== "number" || !(value > 0)) return 0;
       const list = Array.isArray(thresholds) ? thresholds : [];
       let level = 1;
-      // 越过第 i+1 条边界就升一档：越过 b0 为 2 档、b1 为 3 档、b2 为 4 档。
+      // 越过第 i+1 条边界就升一档：越过 b0 为 2 档、b1 为 3 档、b2 为 4 档、b3 为 5 档。
       for (let i = 0; i < list.length; i += 1) {
         if (value >= list[i]) level = i + 2;
       }
-      return Math.min(level, 4);
+      return Math.min(level, 5);
     }
 
     /**
-     * 热力图单格色阶：把三种模式统一成「取值 → 0…4」。
+     * 热力图单格色阶：把三种模式统一成「取值 → 0…5」。
      * 每周与累计总量都采用「自下而上填充」：一列从最底格往上连续着色，
      * 填满几格 = 那一周有几天用过（Codex / 官方平台的做法），一眼看出用了几天。
      * - daily：按当天用量着色，只有 0 Token 留白；
@@ -1002,7 +1011,7 @@ window.__ModuleLoader__.load({
      * - cumulative：整列同色（取截至该周末的累计值），同样从底部起填「当周有用量的天数」格。
      */
     function heatLevelOf(mode, key, weekIndex, context) {
-      const { days, weeklyTotals, weekCumulative, thresholds, activeDays } = context;
+      const { days, weeklyTotals, weekCumulative, thresholds, activeDays, dailyThresholds } = context;
       const raw = days !== null && typeof days === "object" ? days[key] : undefined;
       const own = typeof raw === "number" && raw > 0 ? raw : 0;
       if (mode === "weekly" || mode === "cumulative") {
@@ -1014,7 +1023,8 @@ window.__ModuleLoader__.load({
         const value = Array.isArray(series) ? series[weekIndex] ?? 0 : 0;
         return levelOfValue(typeof value === "number" ? value : 0, thresholds);
       }
-      return levelOfValue(own, thresholds);
+      // 每日模式：固定十进制数量级分级（100万/1000万/1亿/5亿），颜色含义不随数据漂移。
+      return levelOfValue(own, dailyThresholds ?? thresholds);
     }
 
     /** 去掉小数末尾多余的 0：19.10 → 19.1，20.00 → 20。 */
@@ -2080,19 +2090,25 @@ window.__ModuleLoader__.load({
       ".dsau-heat-cell{aspect-ratio:1;border-radius:3px}",
       ".dsau-heat-cell[data-hidden=\"1\"]{background:transparent}",
       // 四级色阶取自参考图实测：浅蓝 → 亮青蓝，逐档加深。
-      // 浅色：level1 #bee2f4 / level2 #8bd0f0 / level3 #58beef / level4 #06aeec。
-      ".dsau-heat-cell[data-level=\"1\"],.dsau-heat-legend-swatch[data-level=\"1\"]{background:#bee2f4}",
-      ".dsau-heat-cell[data-level=\"2\"],.dsau-heat-legend-swatch[data-level=\"2\"]{background:#8bd0f0}",
-      ".dsau-heat-cell[data-level=\"3\"],.dsau-heat-legend-swatch[data-level=\"3\"]{background:#58beef}",
-      ".dsau-heat-cell[data-level=\"4\"],.dsau-heat-legend-swatch[data-level=\"4\"]{background:#06aeec}",
+      // 浅色：level1 #6fe6ff / level2 #4ed1ff / level3 #1cbcfd / level4 #00a7eb / level5 #0092d9。
+      // 整体比旧阶（#94dcff…#0071ad）更亮更明快：OKLCH L 0.88→0.61、C 0.135→0.170（旧 0.087→0.126），
+      // 相邻 WCAG 对比度 1.21–1.26，靠高饱和度拉开观感差距。
+      ".dsau-heat-cell[data-level=\"1\"],.dsau-heat-legend-swatch[data-level=\"1\"]{background:#6fe6ff}",
+      ".dsau-heat-cell[data-level=\"2\"],.dsau-heat-legend-swatch[data-level=\"2\"]{background:#4ed1ff}",
+      ".dsau-heat-cell[data-level=\"3\"],.dsau-heat-legend-swatch[data-level=\"3\"]{background:#1cbcfd}",
+      ".dsau-heat-cell[data-level=\"4\"],.dsau-heat-legend-swatch[data-level=\"4\"]{background:#00a7eb}",
+      // 第 5 档（≥5 亿极值档）：继续降明度，保证最深档一眼可辨。
+      ".dsau-heat-cell[data-level=\"5\"],.dsau-heat-legend-swatch[data-level=\"5\"]{background:#0092d9}",
       // 深色主题：空格子用中性深灰，四级色阶保持同一色相但由暗到亮，
       // 让「越亮 = 用量越高」的方向感与浅色主题一致。
       "body[data-ds-dark-theme] .dsau-heat-cell,body[data-ds-dark-theme] .dsau-heat-legend-swatch{background:#3a3b3d}",
       "body[data-ds-dark-theme] .dsau-heat-cell[data-hidden=\"1\"]{background:transparent}",
-      "body[data-ds-dark-theme] .dsau-heat-cell[data-level=\"1\"],body[data-ds-dark-theme] .dsau-heat-legend-swatch[data-level=\"1\"]{background:#16414f}",
-      "body[data-ds-dark-theme] .dsau-heat-cell[data-level=\"2\"],body[data-ds-dark-theme] .dsau-heat-legend-swatch[data-level=\"2\"]{background:#1c6076}",
-      "body[data-ds-dark-theme] .dsau-heat-cell[data-level=\"3\"],body[data-ds-dark-theme] .dsau-heat-legend-swatch[data-level=\"3\"]{background:#0787b4}",
-      "body[data-ds-dark-theme] .dsau-heat-cell[data-level=\"4\"],body[data-ds-dark-theme] .dsau-heat-legend-swatch[data-level=\"4\"]{background:#06aeec}",
+      "body[data-ds-dark-theme] .dsau-heat-cell[data-level=\"1\"],body[data-ds-dark-theme] .dsau-heat-legend-swatch[data-level=\"1\"]{background:#16445a}",
+      "body[data-ds-dark-theme] .dsau-heat-cell[data-level=\"2\"],body[data-ds-dark-theme] .dsau-heat-legend-swatch[data-level=\"2\"]{background:#1e6180}",
+      "body[data-ds-dark-theme] .dsau-heat-cell[data-level=\"3\"],body[data-ds-dark-theme] .dsau-heat-legend-swatch[data-level=\"3\"]{background:#277fa8}",
+      "body[data-ds-dark-theme] .dsau-heat-cell[data-level=\"4\"],body[data-ds-dark-theme] .dsau-heat-legend-swatch[data-level=\"4\"]{background:#339fd1}",
+      // 深色第 5 档：L 0.77 提亮到近似天蓝，保持「档位越高越亮」且相邻对比度 ≥1.45。
+      "body[data-ds-dark-theme] .dsau-heat-cell[data-level=\"5\"],body[data-ds-dark-theme] .dsau-heat-legend-swatch[data-level=\"5\"]{background:#46c0fa}",
       // 图例：少 [灰][四档蓝] 多，右对齐在网格下方。
       ".dsau-heat-legend{display:flex;align-items:center;justify-content:flex-end;gap:4px;margin-top:2px;font-size:12px;line-height:18px;color:var(--dsw-alias-label-tertiary)}",
       ".dsau-heat-legend-swatch{width:14px;height:14px;border-radius:3px;flex:none}",
@@ -3811,9 +3827,9 @@ window.__ModuleLoader__.load({
         },
         [mode, weeklyTotals, weekCumulative, days]
       );
-      // 色阶阈值只由「真正会着色的值」决定：每周模式用周合计、累计模式用周末累计值、每天模式用当日值。
+      // 色阶阈值只由「真正会着色的值」决定：每周模式用周合计、累计模式用周末累计值。
+      // 每天模式不再参与动态分位——改用 DAILY_LEVEL_BOUNDS 固定分级，颜色含义跨年度稳定。
       const thresholds = React.useMemo(() => {
-        const inYear = weeks.flat().filter((cell) => cell.inYear);
         if (mode === "weekly") {
           // 只有「本周至少有一天有用量」的列才会着色，阈值也只看这些列的周合计。
           return quantileThresholds(activeDays.map((count, weekIndex) => (count > 0 ? weeklyTotals[weekIndex] ?? 0 : 0)));
@@ -3821,6 +3837,8 @@ window.__ModuleLoader__.load({
         if (mode === "cumulative") {
           return quantileThresholds(activeDays.map((count, weekIndex) => (count > 0 ? weekCumulative[weekIndex] ?? 0 : 0)));
         }
+        // daily：动态阈值不再被着色逻辑使用，但保留计算供 tooltip 等处兜底引用。
+        const inYear = weeks.flat().filter((cell) => cell.inYear);
         return quantileThresholds(inYear.map((cell) => (typeof days[cell.key] === "number" ? days[cell.key] : 0)));
       }, [mode, weeks, weeklyTotals, weekCumulative, activeDays, days]);
       // 行号查表：key → 该格在本列中的行号（0 = 周一 … 6 = 周日）。
@@ -3829,7 +3847,7 @@ window.__ModuleLoader__.load({
         for (const cells of weeks) cells.forEach((cell, index) => map.set(cell.key, index));
         return (key) => map.get(key) ?? null;
       }, [weeks]);
-      const levelContext = { days, weeklyTotals, weekCumulative, cumulative, thresholds, todayKey, activeDays, rowOf };
+      const levelContext = { days, weeklyTotals, weekCumulative, cumulative, thresholds, dailyThresholds: DAILY_LEVEL_BOUNDS, todayKey, activeDays, rowOf };
 
       const monthNames = String(t("heatmapMonths")).split(",");
       // 月份刻度：按「该月首日所在列」定位；列很窄时按最小列距抽稀，避免相邻月份标签挤在一起。
@@ -3976,10 +3994,11 @@ window.__ModuleLoader__.load({
                         )
                       )
                     ),
-                    // 图例：最左的灰色代表 0 Token，随后四档蓝依次代表用量由少到多。
+                    // 图例：最左的灰色代表 0 Token，随后五档蓝依次代表用量由少到多
+                    // （第 5 档 ≥5 亿为极值档，每周/累计模式下暂时不会出现）。
                     React.createElement("div", { className: "dsau-heat-legend" },
                       React.createElement("span", { className: "dsau-heat-legend-label" }, t("heatmapLess")),
-                      ["0", "1", "2", "3", "4"].map((level) =>
+                      ["0", "1", "2", "3", "4", "5"].map((level) =>
                         React.createElement("span", {
                           key: level,
                           className: "dsau-heat-legend-swatch",
@@ -4830,6 +4849,7 @@ window.__ModuleLoader__.load({
     exports.weekCumulativeOf = weekCumulativeOf;
     exports.weekLastKeyOf = weekLastKeyOf;
     exports.quantileThresholds = quantileThresholds;
+    exports.DAILY_LEVEL_BOUNDS = DAILY_LEVEL_BOUNDS;
     exports.levelOfValue = levelOfValue;
     exports.heatLevelOf = heatLevelOf;
     exports.clampTipPosition = clampTipPosition;

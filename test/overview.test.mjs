@@ -177,19 +177,35 @@ test("quantileThresholds 在数量级上分档，1M 与 1亿 落在不同档", (
   assert.equal(client.levelOfValue(300000000, thresholds), 4);
 });
 
-test("levelOfValue 只有 0 Token 无填充，任何正数至少 1 档", () => {
-  const thresholds = [10, 20, 30];
+test("levelOfValue 只有 0 Token 无填充，任何正数至少 1 档（支持 5 档边界）", () => {
+  const thresholds = [10, 20, 30, 40];
   assert.equal(client.levelOfValue(0, thresholds), 0);
   assert.equal(client.levelOfValue(-5, thresholds), 0);
   assert.equal(client.levelOfValue(null, thresholds), 0);
   // 关键回归：低于最小阈值的正数仍要有颜色
   assert.equal(client.levelOfValue(1, thresholds), 1);
   assert.equal(client.levelOfValue(5, thresholds), 1);
-  // 达到第 i 条边界即升到第 i+1 档：这样才能用到最深的第 4 档
+  // 达到第 i 条边界即升到第 i+1 档：这样才能用到最深的第 5 档
   assert.equal(client.levelOfValue(10, thresholds), 2);
   assert.equal(client.levelOfValue(25, thresholds), 3);
   assert.equal(client.levelOfValue(35, thresholds), 4);
-  assert.equal(client.levelOfValue(100, thresholds), 4);
+  assert.equal(client.levelOfValue(40, thresholds), 5);
+  assert.equal(client.levelOfValue(100, thresholds), 5);
+});
+
+test("DAILY_LEVEL_BOUNDS：每日维度按固定数量级分级（100万/1000万/1亿/5亿）", () => {
+  const B = client.DAILY_LEVEL_BOUNDS;
+  assert.deepEqual(B, [1e6, 1e7, 1e8, 5e8], "固定边界必须与 README 描述一致");
+  // 边界值本身升档：达到即进入下一档
+  assert.equal(client.levelOfValue(1, B), 1);
+  assert.equal(client.levelOfValue(999999, B), 1);
+  assert.equal(client.levelOfValue(1e6, B), 2);
+  assert.equal(client.levelOfValue(1e7, B), 3);
+  assert.equal(client.levelOfValue(1e8, B), 4);
+  assert.equal(client.levelOfValue(499999999, B), 4);
+  assert.equal(client.levelOfValue(5e8, B), 5);
+  // 与真实峰值对齐：7.5 亿应落在第 5 档
+  assert.equal(client.levelOfValue(749800000, B), 5);
 });
 
 test("heatLevelOf：每天按当日值；每周与累计总量都自下而上按「有用量的天数」填充", () => {
@@ -211,7 +227,7 @@ test("heatLevelOf：每天按当日值；每周与累计总量都自下而上按
   const rowMap = new Map();
   for (const cells of weeks) cells.forEach((cell, index) => rowMap.set(cell.key, index));
   const rowOf = (key) => rowMap.get(key) ?? null;
-  const context = { days, weeklyTotals, weekCumulative, cumulative, thresholds, todayKey, activeDays, rowOf };
+  const context = { days, weeklyTotals, weekCumulative, cumulative, thresholds, dailyThresholds: client.DAILY_LEVEL_BOUNDS, todayKey, activeDays, rowOf };
 
   assert.equal(activeDays[weekIndex], 3, "该周应统计到 3 个有用量的天");
 
@@ -233,13 +249,18 @@ test("heatLevelOf：每天按当日值；每周与累计总量都自下而上按
   assert.equal(client.heatLevelOf("cumulative", "2026-01-09", weekIndex, context), cumLevel);
   assert.equal(client.heatLevelOf("cumulative", "2026-01-05", weekIndex, context), 0, "顶部应留白");
 
-  // 每天：按当日用量分档，周三 > 周一
+  // 每天：按固定数量级分档，周三 > 周一
   assert.ok(
     client.heatLevelOf("daily", "2026-01-07", weekIndex, context) >=
       client.heatLevelOf("daily", "2026-01-05", weekIndex, context)
   );
   // 没有用量的日期在每天模式仍是 0
   assert.equal(client.heatLevelOf("daily", "2026-01-06", weekIndex, context), 0);
+  // 关键回归：每天模式必须用 DAILY_LEVEL_BOUNDS，而不是动态分位阈值——
+  // 这三天数值都低于 100 万，应全部落在第 1 档（动态分位会给出不同档位）。
+  for (const key of ["2026-01-05", "2026-01-07", "2026-01-09"]) {
+    assert.equal(client.heatLevelOf("daily", key, weekIndex, context), 1, `${key} 应为固定分级的第 1 档`);
+  }
 });
 
 test("formatTokenCount 中文用万/亿，英文用 K/M/B", () => {
@@ -423,5 +444,70 @@ test("weekLastKeyOf / weekCumulativeOf：取该列最后一个不晚于今天的
   const cumAll = client.weekCumulativeOf(weeks, cumulative, "2026-11-19");
   for (let i = 1; i < cumAll.length; i += 1) {
     assert.ok(cumAll[i] >= cumAll[i - 1], `第 ${i} 列的累计值不应小于前一列`);
+  }
+});
+
+test("第 5 档配色与 6 格图例（每日固定分级）的 CSS/渲染回归", async () => {
+  globalThis.__legend5Seeded = false;
+  // CSS：浅色与深色都必须有 data-level="5"/"6" 规则，图例色块与格子共用选择器
+  const cssText = String(client.OVERVIEW_CSS);
+  assert.match(
+    cssText,
+    /\.dsau-heat-cell\[data-level="5"\],\.dsau-heat-legend-swatch\[data-level="5"\]\{background:#0092d9\}/,
+    "浅色第 5 档应为 #0092d9"
+  );
+  assert.doesNotMatch(cssText, /data-level="6"/, "不应再有第 6 档规则（level6 无数据来源）");
+  assert.match(
+    cssText,
+    /body\[data-ds-dark-theme\] \.dsau-heat-cell\[data-level="5"\],body\[data-ds-dark-theme\] \.dsau-heat-legend-swatch\[data-level="5"\]\{background:#46c0fa\}/,
+    "深色第 5 档应为 #46c0fa"
+  );
+
+  // 渲染：图例应输出 6 个色块（0…5）
+  const seen = [];
+  const legendHooks = {
+    createElement: (type, props, ...children) => {
+      const node = { type, props: props ?? {}, children };
+      if (props && props.className === "dsau-heat-legend-swatch") seen.push(props["data-level"]);
+      return node;
+    },
+    Fragment: Symbol("F"),
+    // 首个 useState 是数据状态：种子成 done，避免 OverviewPanel 落到 loading 分支不出图例。
+    useState: (initial) => {
+      const v = typeof initial === "function" ? initial() : initial;
+      if (v && typeof v === "object" && v.kind === "loading" && !globalThis.__legend5Seeded) {
+        globalThis.__legend5Seeded = true;
+        return [{ kind: "done", value: { ok: true, scanning: false, years: [2026],
+          days: { "2026-01-05": 1000 }, longestTurnMsByYear: { 2026: 60000 },
+          sessions: { counted: 1, retained: 0 } } }, () => {}];
+      }
+      return [v, () => {}];
+    },
+    useRef: (initial) => ({ current: initial ?? null }),
+    useEffect: () => {},
+    useLayoutEffect: () => {},
+    useCallback: (fn) => fn,
+    useMemo: (fn) => fn()
+  };
+  const previousWindow = globalThis.window;
+  let descriptor;
+  globalThis.window = { __ModuleLoader__: { load(next) { descriptor = next; } } };
+  try {
+    const url = new URL("../client.js", import.meta.url);
+    url.searchParams.set("legend5", String(Date.now()) + Math.random());
+    await import(url.href);
+    const client2 = descriptor.factory((name) => {
+      if (name === "react") return legendHooks;
+      if (name === "react-dom/client") return { createRoot: () => ({ render() {}, unmount() {} }) };
+      if (name === "react-dom") return { render() {}, unmountComponentAtNode: () => true };
+      throw new Error("unexpected require: " + name);
+    });
+    const dict = { heatmapLess: "少", heatmapMore: "多", heatmapMonths: "1月,2月",
+      heatmapDaily: "每天", heatmapWeekly: "每周", heatmapCumulative: "累计总量" };
+    client2.OverviewPanel({ t: (k) => dict[k] ?? k });
+    assert.deepEqual(seen, ["0", "1", "2", "3", "4", "5"], "图例必须输出 6 个色块");
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
   }
 });
