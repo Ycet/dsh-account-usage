@@ -10,7 +10,7 @@ A DeepSeek Harness (DSH) web-GUI plugin: adds an "Account" page to the settings 
 > npm package: `@ycet/dsh-account-usage`. The unscoped [`dsh-account-usage`](https://www.npmjs.com/package/dsh-account-usage) on npm is an unrelated project by another author — do not mix the two.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.5.0-blue.svg?style=for-the-badge)](package.json)
+[![Version](https://img.shields.io/badge/version-0.5.1-blue.svg?style=for-the-badge)](package.json)
 [![npm](https://img.shields.io/npm/v/%40ycet%2Fdsh-account-usage?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@ycet/dsh-account-usage)
 [![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.6%2B-purple.svg?style=for-the-badge)](https://github.com/deepseek-ai/deepseek-harness)
 
@@ -95,7 +95,8 @@ Quota progress bars, reset times and reference limits for the three windows, plu
 | Feature | Description |
 |---------|-------------|
 | **Account overview** | Recharge balance, bonus balance, cumulative spending, current-month spending and tokens |
-| **Time-range switching** | Today / last 7 days / last 30 days / last 90 days / this month / last month / custom range |
+| **Time-range switching** | Today / last 7 days / last 30 days / this month / last month / custom range |
+| **Range cap up front** | Custom ranges are limited to 3 calendar months right inside the calendar: out-of-range days are disabled with a hover reason, so the old “clipped to the most recent months” notice never appears |
 | **Range calendar** | Open-platform-style two-month calendar: Sunday-first, dark circular endpoints, per-day light range fill, today marker, future dates disabled, single month on narrow screens, full keyboard support; applies as soon as both ends are picked or the calendar closes |
 | **Usage card (model + tools)** | "Spend" and "API requests" combine model usage with web search/fetch usage, with a small breakdown line ("model ¥x + tools ¥x"); degraded honestly when the tool endpoint is unavailable |
 | **Model usage details card** | Cost and token bar charts (SVG, hover for per-day detail) plus the per-model table, all on the model-only basis |
@@ -116,10 +117,13 @@ Quota progress bars, reset times and reference limits for the three windows, plu
 |---------|-------------|
 | **Merge into the official Account & balance page** | When the official page exists, plugin content is embedded below its native cards and no separate nav entry is added; switching sections hides it and switching back restores it |
 | **Fallback standalone page** | When DSH is signed out or the official account page does not exist, the plugin registers its own "Account" section so the token and usage stay reachable |
-| **Account-menu balance entry** | Shows "Balance: ¥x.xx" (top-up + granted) above "Settings" in the account menu; click to open the official Account & balance page, falling back to the plugin's own page when the official one is unavailable |
+| **Account-menu balance entry** | Shows "Balance: ¥x.xx" (top-up + granted) above "Settings" in the account menu; click to open the official Account & balance page **straight on the DeepSeek tab**, falling back to the plugin's own page (same DeepSeek landing) when the official one is unavailable |
 | **Sticky tabs** | The tab bar sticks to the top of the settings content area while scrolling |
 | **Auto refresh** | Polls for fresh data every 60 seconds while the page is mounted |
 | **Bilingual UI** | Full Chinese/English switching |
+
+> [!NOTE]
+> `0.5.1` moves the "at most 3 calendar months" cap **into the calendar itself**: once one end is picked, days beyond the limit are greyed out and unclickable with a hover reason, and the host-side "Range exceeds the per-query month cap; clipped to the most recent months" notice is gone. The "last 90 days" preset is removed (it spans 4 calendar months on 338 of 365 days); Today / last 7 days / last 30 days / this month / last month remain. The account-menu "Balance: ¥x.xx" entry now opens the Account & balance page **straight on the DeepSeek tab** (entering from the settings gear or nav still defaults to Overview). Client-side only: host routes and credentials are unchanged, so reinstall with the command above and refresh the page (a local `link` install only needs a refresh).
 
 > [!NOTE]
 > `0.5.0` replaces the native date inputs with an **open-platform-style two-month range calendar** (Sunday-first, dark circular endpoints, per-day light range fill, light circle for today / white dot when today is an endpoint, future dates disabled, single month on narrow screens, arrow-key + Enter/Esc support) and splits the DeepSeek page into three cards — Usage, Model usage details, and Web search & fetch. The Usage card now reports spend and API requests as **model + tools totals** with a breakdown line, the model table moved into Model usage details, the tool card gained a total tool cost stat, the tab bar sticks to the top while scrolling, a new leftmost default **Overview** tab adds five per-year usage stats plus a yearly token heatmap (from local session logs; the ledger only grows, so archived or deleted sessions still count), the token chart uses a three-step blue ramp for input (cache hit) / input (cache miss) / output with a "date + daily total" tooltip header plus three detail rows, and the preset dropdown is now custom-skinned (the native `<select>` border occasionally failed to repaint after switching options). Client-side only: host routes and credentials are unchanged, so reinstall with the command above and refresh the page (a local `link` install only needs a refresh).
@@ -147,16 +151,16 @@ Quota progress bars, reset times and reference limits for the three windows, plu
 
 ```sh
 # Option 1: install from npm (recommended; can be updated from the plugin page)
-dsh plugin --profile web add @ycet/dsh-account-usage@0.5.0
+dsh plugin --profile web add @ycet/dsh-account-usage@0.5.1
 
 # Option 2: install from a local source directory (development)
 dsh plugin --profile web add <absolute-path-to-plugin>
 
 # Option 3: install from GitHub (pinned to a release tag; requires git, no npm account)
-dsh plugin --profile web add "github:Ycet/dsh-account-usage#v0.5.0"
+dsh plugin --profile web add "github:Ycet/dsh-account-usage#v0.5.1"
 
 # Option 4: install from a Release asset (tarball; no git, no npm account)
-dsh plugin --profile web add "https://github.com/Ycet/dsh-account-usage/releases/download/v0.5.0/dsh-account-usage-0.5.0.tgz"
+dsh plugin --profile web add "https://github.com/Ycet/dsh-account-usage/releases/download/v0.5.1/dsh-account-usage-0.5.1.tgz"
 ```
 
 The package declares a `dsh.bundle` patch layer; `dsh plugin` merges the loader entry into the profile's bundle layer automatically — no manual editing of `cordis.patch.yml` required. Options 2–4 need no npm account; for the desktop app replace `--profile web` with `--profile desktop` (using the desktop-bundled CLI).
@@ -236,7 +240,7 @@ It is optional: without it the trend falls back to local sampling (labelled "loc
 
 - Open the official "Account & balance" page in settings; the plugin content appears below the native identity/balance cards. When signed out, the plugin's standalone "Account" page is shown instead;
 - Switch between the **Overview / deepseek / opencode go** tabs at the top of the embedded plugin content (Overview is the default);
-- The account menu (sidebar account avatar) gets a "Balance: ¥x.xx" entry above "Settings" (top-up + granted balance); clicking it opens Settings on the official "Account & balance" page (or the fallback page when the official one is unavailable);
+- The account menu (sidebar account avatar) gets a "Balance: ¥x.xx" entry above "Settings" (top-up + granted balance); clicking it opens Settings on the official "Account & balance" page and **lands directly on the DeepSeek tab** (or the fallback page, also on the DeepSeek tab, when the official one is unavailable). Entering the account page from the settings gear or the nav still defaults to Overview;
 - Data auto-refreshes every 60 seconds while the page is mounted; "Open config file" locates your local DSH credentials file.
 
 ### On the Overview tab
@@ -251,7 +255,8 @@ It is optional: without it the trend falls back to local sampling (labelled "loc
 
 ### On the DeepSeek tab
 
-- Pick a time range (Today / last 7 days / last 30 days / last 90 days / this month / last month), or open the read-only range box and pick start/end in the open-platform-style two-month calendar — **picking both ends closes the calendar and applies the range**, and closing it by Esc or an outside click also applies whatever range is staged (an unfinished single-end pick is discarded); hovering previews the range after the first click;
+- Pick a time range (Today / last 7 days / last 30 days / this month / last month), or open the read-only range box and pick start/end in the open-platform-style two-month calendar — **picking both ends closes the calendar and applies the range**, and closing it by Esc or an outside click also applies whatever range is staged (an unfinished single-end pick is discarded); hovering previews the range after the first click;
+- A custom range spans **at most 3 calendar months**: once one end is picked, days beyond that cap are greyed out and unclickable, and hovering explains why;
 - The Usage card's spend and API requests are the model + tools (web search/fetch) total, with a small breakdown line;
 - Hover over the bar charts for daily details; the token chart stacks input (cache hit) / input (cache miss) / output; the per-model table shows requests, tokens and cost for the selected range;
 - The "Web Search & Fetch" module starts with the total tool cost, then shows daily `tool-search` / `tool-fetch` call counts, call-type cost and per-tool area charts for the selected range; ranges over 31 days are split and merged automatically.

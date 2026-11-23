@@ -110,12 +110,12 @@ window.__ModuleLoader__.load({
       rangeToday: "今天",
       range7d: "近7天",
       range30d: "近30天",
-      range90d: "近90天",
       rangeThisMonth: "本月",
       rangeLastMonth: "上月",
       rangeCustom: "自定义",
       rangeCustomRow: "自定义区间",
-      rangeClipped: "区间超过单次可查询的月份上限，已自动裁剪至最近月份",
+      // 越界日期的原生 title 提示（0.5.1：区间上限前置到日历）。
+      rangeLimitTooltip: "最多可选 {n} 个自然月",
       // 区间日历（0.5.0）：月名与星期按当前界面语言取字典，不依赖浏览器 locale。
       rangeSelectDates: "选择日期",
       rangeMonthNames: "1月,2月,3月,4月,5月,6月,7月,8月,9月,10月,11月,12月",
@@ -282,12 +282,11 @@ window.__ModuleLoader__.load({
       rangeToday: "Today",
       range7d: "7 days",
       range30d: "30 days",
-      range90d: "90 days",
       rangeThisMonth: "This month",
       rangeLastMonth: "Last month",
       rangeCustom: "Custom",
       rangeCustomRow: "Custom range",
-      rangeClipped: "Range exceeds the per-query month cap; clipped to the most recent months",
+      rangeLimitTooltip: "Up to {n} calendar months",
       rangeSelectDates: "Select dates",
       rangeMonthNames: "January,February,March,April,May,June,July,August,September,October,November,December",
       rangeMonthTitle: "{month} {year}",
@@ -1087,14 +1086,67 @@ window.__ModuleLoader__.load({
         from: `${lastMonthEnd.getFullYear()}-${String(lastMonthEnd.getMonth() + 1).padStart(2, "0")}-01`,
         to: fmtDate(lastMonthEnd)
       };
+      // 不再提供「近 90 天」：90 天实测有 338/365 会跨 4 个自然月，
+      // 与 MAX_RANGE_MONTHS=3 的上限冲突，选择时会被日历置灰逻辑挡住。
       return [
         { id: "today", from: today, to: today },
         { id: "7d", from: addDays(today, -6), to: today },
         { id: "30d", from: addDays(today, -29), to: today },
-        { id: "90d", from: addDays(today, -89), to: today },
         { id: "thisMonth", from: thisMonth.from, to: thisMonth.to },
         { id: "lastMonth", from: lastMonth.from, to: lastMonth.to }
       ];
+    }
+
+    /**
+     * 单次查询允许的最大自然月数（与宿主 index.js 的 MAX_MONTHS 默认值一致）。
+     * 宿主侧仍保留 DSH_ACCOUNT_USAGE_MAX_MONTHS 环境变量作为服务端防御；
+     * 前端无法得知它被改成多少，因此这里硬编码 3，保证正常操作永不触发宿主裁剪。
+     */
+    const MAX_RANGE_MONTHS = 3;
+
+    /** `YYYY-MM-DD` → 连续的年月序号；非法输入返回 null。 */
+    function monthIndexKey(key) {
+      if (!isDateKey(key)) return null;
+      return Number(key.slice(0, 4)) * 12 + (Number(key.slice(5, 7)) - 1);
+    }
+
+    /**
+     * 区间覆盖的自然月数量（含首尾），口径与宿主 lib/aggregate.js 的 monthsBetween 一致。
+     * 例：2026-09-01~2026-11-20 → 3；2026-08-31~2026-11-20 → 4。非法输入返回 0。
+     */
+    function monthSpanOf(fromKey, toKey) {
+      const a = monthIndexKey(fromKey);
+      const b = monthIndexKey(toKey);
+      if (a === null || b === null) return 0;
+      return Math.abs(a - b) + 1;
+    }
+
+    /**
+     * 该日期与锚点组成的区间是否仍在 maxMonths 个自然月内（跨度对称：
+     * 往前选与往后选用同一判据）。任一日期非法时返回 true（放行，交给别处校验）。
+     */
+    function withinMonthLimit(key, anchorKey, maxMonths) {
+      const span = monthSpanOf(key, anchorKey);
+      if (span === 0) return true;
+      return span <= (Number.isFinite(maxMonths) ? maxMonths : MAX_RANGE_MONTHS);
+    }
+
+    /**
+     * 静默收紧：保持 to 不动、把 from 后移，直到自然月数 ≤ maxMonths。
+     * 收紧后 from 落在「to 所在月往前推 maxMonths-1 个月」的 1 号。
+     * 已满足或输入非法时原样返回。
+     */
+    function clampRangeToMonths(fromKey, toKey, maxMonths) {
+      const limit = Number.isFinite(maxMonths) ? maxMonths : MAX_RANGE_MONTHS;
+      if (!isDateKey(fromKey) || !isDateKey(toKey)) return { from: fromKey, to: toKey };
+      const normalized = normalizeRange(fromKey, toKey);
+      if (normalized === null) return { from: fromKey, to: toKey };
+      if (monthSpanOf(normalized.from, normalized.to) <= limit) return normalized;
+      const endIndex = monthIndexKey(normalized.to);
+      const startIndex = endIndex - (Math.max(1, Math.floor(limit)) - 1);
+      const year = Math.floor(startIndex / 12);
+      const month = (startIndex % 12) + 1;
+      return { from: `${year}-${String(month).padStart(2, "0")}-01`, to: normalized.to };
     }
 
     async function fetchJson(path) {
@@ -1948,7 +2000,6 @@ window.__ModuleLoader__.load({
       today: "rangeToday",
       "7d": "range7d",
       "30d": "range30d",
-      "90d": "range90d",
       thisMonth: "rangeThisMonth",
       lastMonth: "rangeLastMonth"
     };
@@ -2000,6 +2051,8 @@ window.__ModuleLoader__.load({
       ".dsau-cal-day[data-today=\"1\"]{background:color-mix(in srgb, var(--dsw-alias-label-primary) 10%, transparent)}",
       ".dsau-cal-day[data-today=\"1\"][data-hover=\"1\"]{background:color-mix(in srgb, var(--dsw-alias-label-primary) 14%, transparent)}",
       ".dsau-cal-day[data-disabled=\"1\"]{color:var(--dsw-alias-label-caption);color:color-mix(in srgb, var(--dsw-alias-label-primary) 22%, transparent);cursor:default}",
+      // 越界（超出 3 个自然月）与未来日期同为不可选，但指针给出「不能选」的语义。
+      ".dsau-cal-day[data-limit=\"1\"]{cursor:not-allowed}",
       ".dsau-cal-day[data-edge=\"1\"]{background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-label-primary-foreground)}",
       ".dsau-cal-day:focus-visible{outline:none;box-shadow:0 0 0 2px var(--dsw-alias-state-business-primary)}",
       ".dsau-cal-dot{position:absolute;right:2px;bottom:2px;width:4px;height:4px;border-radius:50%;background:var(--dsw-alias-label-primary-foreground)}"
@@ -2151,12 +2204,18 @@ window.__ModuleLoader__.load({
       const weekdays = weekdayLabels(t);
       const from = staged !== null && typeof staged === "object" && isDateKey(staged.from) ? staged.from : null;
       const to = staged !== null && typeof staged === "object" && isDateKey(staged.to) ? staged.to : null;
+      // 只选了一端时，另一端受「最多 3 个自然月」约束：超出方向的日期置灰。
+      // 两端都选满时不再限制（区间已确定，hover 预览用不上）。
+      const limitAnchor = from !== null && to === null ? from : null;
+      const limitTip = t("rangeLimitTooltip").replace("{n}", String(MAX_RANGE_MONTHS));
       const rows = grid.weeks.map((week, weekIndex) =>
         React.createElement("div", { key: weekIndex, className: "dsau-cal-week" },
           week.map((cell, cellIndex) => {
             if (cell === null) return React.createElement("div", { key: cellIndex, className: "dsau-cal-cell" });
             const key = cell.key;
-            const disabled = isFutureDate(key, todayKey);
+            const isFuture = isFutureDate(key, todayKey);
+            const overLimit = limitAnchor !== null && !withinMonthLimit(key, limitAnchor, MAX_RANGE_MONTHS);
+            const disabled = isFuture || overLimit;
             const isEdge = key === from || key === to;
             const band = bandKind(preview.from, preview.to, key);
             const isToday = key === todayKey;
@@ -2175,6 +2234,9 @@ window.__ModuleLoader__.load({
                 "data-hover": hovered ? "1" : "0",
                 "data-today": isToday ? "1" : "0",
                 "data-disabled": disabled ? "1" : "0",
+                // 越界与「未来日期」视觉上同为禁用，但悬停能拿到原因说明。
+                "data-limit": overLimit ? "1" : undefined,
+                title: overLimit ? limitTip : undefined,
                 "data-focus-key": key,
                 tabIndex: focusedKey === key ? 0 : -1,
                 "aria-label": key,
@@ -2426,6 +2488,8 @@ window.__ModuleLoader__.load({
         }
         const normalized = normalizeRange(from, key);
         if (normalized === null) return;
+        // 兜底：键盘 Enter / 焦点路径可能绕过按钮的 disabled，这里再校验一次上限。
+        if (!withinMonthLimit(key, from, MAX_RANGE_MONTHS)) return;
         setStaged(normalized);
         setOpen(false);
         setHoverKey(null);
@@ -2673,8 +2737,10 @@ window.__ModuleLoader__.load({
       const [summary, setSummary] = React.useState({ kind: "loading" });
       const [usage, setUsage] = React.useState({ kind: "loading" });
       const [range, setRange] = React.useState(() => {
-        const p = presets()[4]; // 本月（默认）
-        return { from: p.from, to: p.to };
+        // 按 id 查找而不是按下标：预设列表会随版本调整，下标会漂移。
+        const list = presets();
+        const p = list.find((item) => item.id === "thisMonth") ?? list[list.length - 1];
+        return clampRangeToMonths(p.from, p.to, MAX_RANGE_MONTHS);
       });
       // 会话令牌模块折叠状态：默认折叠；探测到令牌未配置时自动展开
       const [tokenCollapsed, setTokenCollapsed] = React.useState(true);
@@ -2742,7 +2808,9 @@ window.__ModuleLoader__.load({
 
       const applyRange = React.useCallback(
         (r) => {
-          setRange(r);
+          // 静默收紧：任何来源（预设、回填、宿主裁剪后的回显）超过 3 个自然月时，
+          // 保持 to 不动、把 from 后移到上限内，避免把越界区间发去宿主被裁剪。
+          setRange(r === null || typeof r !== "object" ? r : clampRangeToMonths(r.from, r.to, MAX_RANGE_MONTHS));
         },
         []
       );
@@ -2819,9 +2887,6 @@ window.__ModuleLoader__.load({
               : usage.value.ok !== true
                 ? React.createElement("p", { style: styles.error }, errorText(usage.value, t))
                 : React.createElement(React.Fragment, null,
-                  usage.value.range?.clipped
-                    ? React.createElement("p", { style: styles.hint }, t("rangeClipped"))
-                    : null,
                   React.createElement("div", { style: styles.cardsGrid },
                     React.createElement(StatGridItem, {
                       label: t("totalsCost"),
@@ -3950,9 +4015,56 @@ window.__ModuleLoader__.load({
       );
     }
 
+    // ---- 标签页跳转通道（0.5.1） -------------------------------------------
+    // 账户菜单的「余额」入口是 DOM 事件监听器，AccountPage 在 React 树里，
+    // 两者没有共同的 props 通路。这里用模块级一次性标记 + 订阅打通：
+    // 写入后保留到被消费，AccountPage 挂载时消费一次，用户之后可自由切标签。
+    let pendingAccountTab = null;
+    const accountTabListeners = new Set();
+
+    /**
+     * 请求账号页切到指定标签。
+     * 面板已挂载时由订阅者当场切过去；此时清掉标记，避免下次重新挂载时
+     * 把早就用过的请求再消费一遍（跳转只应生效一次）。
+     */
+    function requestAccountTab(tab) {
+      if (typeof tab !== "string" || tab === "") return;
+      pendingAccountTab = tab;
+      const listeners = Array.from(accountTabListeners);
+      if (listeners.length === 0) return;
+      for (const listener of listeners) {
+        try {
+          listener(tab);
+        } catch {
+          /* 单个订阅者失败不影响其余 */
+        }
+      }
+      pendingAccountTab = null;
+    }
+
+    /** 取出并清空待处理的标签请求；没有则返回 null。 */
+    function consumeAccountTabRequest() {
+      const tab = pendingAccountTab;
+      pendingAccountTab = null;
+      return tab;
+    }
+
+    /** 订阅后续的标签请求（面板已挂载、停在别的标签时用）。返回取消函数。 */
+    function subscribeAccountTabRequest(listener) {
+      if (typeof listener !== "function") return () => {};
+      accountTabListeners.add(listener);
+      return () => {
+        accountTabListeners.delete(listener);
+      };
+    }
+
     function AccountPage(props) {
       const { t, credApi, embedded } = props;
-      const [tab, setTab] = React.useState("overview");
+      // 挂载时消费一次性请求：从账户菜单余额入口进来会直接落在 DeepSeek 页；
+      // 从设置齿轮 / 导航进入（没有待处理请求）时仍是默认的「概览」。
+      const [tab, setTab] = React.useState(() => consumeAccountTabRequest() ?? "overview");
+      // 设置面板本来就开着、停在概览页时再点余额，靠订阅切过去。
+      React.useEffect(() => subscribeAccountTabRequest((next) => setTab(next)), []);
       // 两个面板常驻挂载（CSS 隐藏未激活项）：切换标签零等待，
       // 数据在后台按各自 60s 周期保持新鲜。
       // 嵌入官方账户页时隐藏独立页标题，并跟随官方内容宽度。
@@ -4368,6 +4480,9 @@ window.__ModuleLoader__.load({
         row.addEventListener("click", (event) => {
           event.preventDefault();
           event.stopPropagation();
+          // 先登记标签请求再打开设置：AccountPage 挂载时会消费它，
+          // 因此余额入口总是落在 DeepSeek 标签页（官方嵌入页与兜底分区都走同一组件）。
+          requestAccountTab("deepseek");
           openAccountSection(row.closest('[role="menu"]'));
         });
         return row;
@@ -4702,6 +4817,14 @@ window.__ModuleLoader__.load({
     exports.weekTotalsOf = weekTotalsOf;
     exports.thinMonthAnchors = thinMonthAnchors;
     exports.splitWeekColumns = splitWeekColumns;
+    exports.MAX_RANGE_MONTHS = MAX_RANGE_MONTHS;
+    exports.monthIndexKey = monthIndexKey;
+    exports.monthSpanOf = monthSpanOf;
+    exports.withinMonthLimit = withinMonthLimit;
+    exports.clampRangeToMonths = clampRangeToMonths;
+    exports.requestAccountTab = requestAccountTab;
+    exports.consumeAccountTabRequest = consumeAccountTabRequest;
+    exports.subscribeAccountTabRequest = subscribeAccountTabRequest;
     exports.cumulativeByDay = cumulativeByDay;
     exports.weekActiveDaysOf = weekActiveDaysOf;
     exports.weekCumulativeOf = weekCumulativeOf;

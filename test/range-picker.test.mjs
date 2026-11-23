@@ -495,3 +495,115 @@ test("Token 图 tooltip 一行 = 色块 + 名称 + 数值", async () => {
   assert.equal(spans[2].children[0], "6,400");
   assert.equal(spans[2].props.style.marginLeft, "auto");
 });
+
+test("monthSpanOf 按自然月计数（口径与宿主 monthsBetween 一致）", async () => {
+  const client = await loadClientBundle();
+  assert.equal(client.MAX_RANGE_MONTHS, 3);
+  // 同月、跨月、恰好 3 个月、跨年
+  assert.equal(client.monthSpanOf("2026-11-05", "2026-11-20"), 1);
+  assert.equal(client.monthSpanOf("2026-09-01", "2026-11-20"), 3);
+  assert.equal(client.monthSpanOf("2026-08-31", "2026-11-20"), 4);
+  assert.equal(client.monthSpanOf("2025-12-15", "2026-02-01"), 3);
+  // 顺序无关
+  assert.equal(client.monthSpanOf("2026-11-20", "2026-09-01"), 3);
+  // 非法输入返回 0（不抛错）
+  assert.equal(client.monthSpanOf("", "2026-11-20"), 0);
+  assert.equal(client.monthSpanOf("2026-11-20", null), 0);
+});
+
+test("withinMonthLimit 只限制超出方向，3 个自然月边界精确", async () => {
+  const client = await loadClientBundle();
+  const anchor = "2026-09-05";
+  // 往后：11/30 是本年第 3 个月的最后一天，12/01 越界
+  assert.equal(client.withinMonthLimit("2026-11-30", anchor, 3), true);
+  assert.equal(client.withinMonthLimit("2026-12-01", anchor, 3), false);
+  // 往前：7/01 是第 3 个月的第一天，6/30 越界
+  assert.equal(client.withinMonthLimit("2026-07-01", anchor, 3), true);
+  assert.equal(client.withinMonthLimit("2026-06-30", anchor, 3), false);
+  // 同一天恒成立
+  assert.equal(client.withinMonthLimit(anchor, anchor, 3), true);
+  // 非法输入放行（交给别处校验），不误禁用
+  assert.equal(client.withinMonthLimit("bad", anchor, 3), true);
+});
+
+test("clampRangeToMonths 保持 to 不动、把 from 后移到上限内", async () => {
+  const client = await loadClientBundle();
+  const clamped = client.clampRangeToMonths("2026-08-01", "2026-11-20", 3);
+  assert.equal(clamped.to, "2026-11-20", "终点不应被改动");
+  assert.equal(clamped.from, "2026-09-01", "起点应后移到第 3 个月月初");
+  assert.equal(client.monthSpanOf(clamped.from, clamped.to), 3);
+  // 已满足上限时原样返回
+  const ok = client.clampRangeToMonths("2026-09-10", "2026-11-20", 3);
+  assert.deepEqual(ok, { from: "2026-09-10", to: "2026-11-20" });
+  // 起点晚于终点时会被 normalizeRange 摆正后再判断
+  const swapped = client.clampRangeToMonths("2026-11-20", "2026-08-01", 3);
+  assert.equal(swapped.from, "2026-09-01");
+  assert.equal(swapped.to, "2026-11-20");
+  // 非法输入原样返回，不抛错
+  assert.deepEqual(client.clampRangeToMonths("bad", "2026-11-20", 3), { from: "bad", to: "2026-11-20" });
+});
+
+test("区间上限的样式与文案：越界规则已就位、裁剪提示已移除", async () => {
+  const client = await loadClientBundle();
+  assert.equal(client.MAX_RANGE_MONTHS, 3);
+  // 越界日期的指针语义来自 CALENDAR_CSS；裁剪提示条已从界面移除
+  assert.ok(client.CALENDAR_CSS.includes('.dsau-cal-day[data-limit=\"1\"]'), "应有越界日期样式");
+  assert.equal(client.OVERVIEW_CSS.includes("rangeClipped"), false);
+  assert.equal(client.CALENDAR_CSS.includes("rangeClipped"), false);
+});
+
+test("越界日期带 data-limit 与原生 title，且不可点击", async () => {
+  const client = await loadClientBundle();
+  const t = (key) =>
+    ({
+      rangeLimitTooltip: "最多可选 {n} 个自然月",
+      rangeWeekdays: "日,一,二,三,四,五,六",
+      rangeMonthTitle: "{year}年{month}",
+      rangeMonthNames: "1月,2月,3月,4月,5月,6月,7月,8月,9月,10月,11月,12月"
+    })[key] ?? key;
+  const grid = client.buildMonthGrid(2026, 12);
+  const tree = client.CalendarMonth({
+    grid,
+    staged: { from: "2026-09-05", to: null },
+    hoverKey: null,
+    focusedKey: null,
+    todayKey: "2026-12-31",
+    onPick: () => {},
+    onHover: () => {},
+    t
+  });
+  const buttons = collect(tree, "button");
+  const over = buttons.filter((node) => node.props["data-limit"] === "1");
+  assert.ok(over.length > 0, "应有被限制的日期");
+  assert.equal(over[0].props.title, "最多可选 3 个自然月");
+  assert.equal(over[0].props["aria-disabled"], "true");
+  assert.equal(over[0].props.onClick, undefined, "越界日期不应可点击");
+  // 12 月的所有日期都越界（9 月锚点 + 3 个月 = 到 11 月为止）
+  assert.equal(over.length, 31);
+});
+
+test("requestAccountTab / consumeAccountTabRequest 是一次性通道", async () => {
+  const client = await loadClientBundle();
+  // 1) 面板尚未挂载（无订阅者）：请求保留为待消费标记
+  assert.equal(client.consumeAccountTabRequest(), null);
+  client.requestAccountTab("deepseek");
+  assert.equal(client.consumeAccountTabRequest(), "deepseek");
+  assert.equal(client.consumeAccountTabRequest(), null, "消费一次即清空");
+  // 2) 面板已挂载（有订阅者）：当场送达，且不残留标记，
+  //    否则重新挂载时会把用过的请求再消费一遍，跳转就变成了两次
+  const live = [];
+  const off = client.subscribeAccountTabRequest((tab) => live.push(tab));
+  client.requestAccountTab("deepseek");
+  assert.deepEqual(live, ["deepseek"]);
+  assert.equal(client.consumeAccountTabRequest(), null, "已送达的请求不应残留");
+  // 3) 退订后重新回到「待消费」语义
+  off();
+  client.requestAccountTab("opencode");
+  assert.deepEqual(live, ["deepseek"], "退订后不再收到");
+  assert.equal(client.consumeAccountTabRequest(), "opencode");
+  // 4) 非法输入被忽略，不影响已有标记
+  client.requestAccountTab("deepseek");
+  client.requestAccountTab("");
+  assert.equal(client.consumeAccountTabRequest(), "deepseek");
+  assert.equal(client.consumeAccountTabRequest(), null);
+});
