@@ -10,7 +10,7 @@ A DeepSeek Harness (DSH) web-GUI plugin: adds an "Account" page to the settings 
 > npm package: `@ycet/dsh-account-usage`. The unscoped [`dsh-account-usage`](https://www.npmjs.com/package/dsh-account-usage) on npm is an unrelated project by another author — do not mix the two.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.5.2-blue.svg?style=for-the-badge)](package.json)
+[![Version](https://img.shields.io/badge/version-0.6.0-blue.svg?style=for-the-badge)](package.json)
 [![npm](https://img.shields.io/npm/v/%40ycet%2Fdsh-account-usage?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@ycet/dsh-account-usage)
 [![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.6%2B-purple.svg?style=for-the-badge)](https://github.com/deepseek-ai/deepseek-harness)
 
@@ -42,9 +42,9 @@ The plugin embeds into the official "Account & balance" page and is split into t
 
 ### Overview
 
-The default tab: five per-year usage stats (total tokens, peak day, longest task, longest/current streak) plus the yearly token activity heatmap.
+The default tab: eight usage stats in two rows (total / this month / this week / today tokens, plus peak day, longest task, longest streak and current streak), the yearly token activity heatmap, and a monthly trend chart (Jan–Dec tokens and active sessions on twin axes).
 
-<img src="assets/images/overview.png" alt="Overview tab: five per-year stats and the token activity heatmap" width="860">
+<img src="assets/images/overview.png" alt="Overview tab: eight usage stats, the token activity heatmap and the monthly trend chart" width="860">
 
 ### DeepSeek platform
 
@@ -70,7 +70,7 @@ Quota progress bars, reset times and reference limits for the three windows, plu
 
 | Tab | Main content | Data source |
 |-----|--------------|-------------|
-| **Overview** | Five per-year stats and the yearly token activity heatmap (daily / weekly / cumulative, Monday-first) | Local session logs (scanned and cached by the host) |
+| **Overview** | Eight usage stats in two rows, the yearly token activity heatmap (daily / weekly / cumulative, Monday-first) and a monthly trend chart (tokens + active sessions) | Local session logs (scanned and cached by the host) |
 | **deepseek** | Session token, account balance, usage totals, model usage details, web search & fetch | Private endpoints of the DeepSeek platform |
 | **opencode go** | Quota window progress, usage trend and forecast, models used this period | Official OpenCode usage endpoint + optional Console cookie |
 
@@ -82,13 +82,15 @@ Quota progress bars, reset times and reference limits for the three windows, plu
 
 | Feature | Description |
 |---------|-------------|
-| **Yearly usage stats** | Total tokens, peak day (with date), longest task, longest streak and current streak, switched by a year dropdown |
+| **Usage stats (two rows, eight items)** | Row 1: total tokens (follows the year dropdown), this month / this week (Monday-first) / today tokens (always the real current date). Row 2: peak day (with date), longest task, longest streak, current streak (follow the year dropdown) |
+| **Active sessions** | The daily / weekly count of sessions that consumed tokens (subagents included); weekly counts are de-duplicated per session. Shown as the third tooltip line on the heatmap; the `Cumulative` mode keeps its original two lines |
+| **Monthly trend chart** | Follows the year dropdown: Jan–Dec tokens (left axis, area + line) and **de-duplicated monthly** active sessions (right axis, line + dots), with all twelve months labelled. Future months break off, and an empty axis is kept when there is no data |
 | **Append-only ledger** | Stats come from local session logs; archived or deleted sessions still keep and contribute their historical usage |
 | **Token activity heatmap** | Year grid laid out in two rows (Jan–Jul / Aug–Dec) of ~16px rounded cells, with `Daily` / `Weekly` / `Cumulative` modes |
 | **Monday-first weeks + bottom-up fill** | One column is one week, with **Monday as the first day** (top = Monday, bottom = Sunday); weekly and cumulative both fill each column from the bottom, so the number of colored cells equals the days used that week, one shade per column |
 | **Fixed daily buckets + adaptive weekly/cumulative** | The `Daily` mode uses fixed decimal bounds (1M / 10M / 100M / 500M — six levels in total) so colours never drift with the year's data; `Weekly` and `Cumulative` still bucket dynamically on a log scale (P25/P50/P75). Only 0-token days stay empty and any cell with usage gets at least the first level |
 | **Colour ramp and legend** | 0-token days are neutral grey and active days deepen across five blue levels (level 5 marks the ≥500M extremes; it never appears in weekly/cumulative modes); a six-swatch “Less → More” legend sits under the grid, switching to a dark base with a dim-to-bright ramp in dark theme |
-| **Hover detail** | Shows the date / week / cumulative caption plus the token count with unit (万/亿 in Chinese, K/M/B in English) |
+| **Hover detail** | Shows the date / week / cumulative caption plus the token count with unit (万/亿 in Chinese, K/M/B in English); daily and weekly modes add a third `N active sessions` line |
 
 ### DeepSeek platform capabilities
 
@@ -123,6 +125,9 @@ Quota progress bars, reset times and reference limits for the three windows, plu
 | **Bilingual UI** | Full Chinese/English switching |
 
 > [!NOTE]
+> `0.6.0` adds three things to the Overview tab. First, the **stats card now has two rows of four**: row 1 is total tokens (follows the year dropdown) plus this month / this week (Monday-first) / today tokens (these three always use the real current date and do not change when you switch to a past year), while row 2 keeps the original peak day, longest task, longest streak and current streak. Second, the **heatmap tooltip gains a third line, "N active sessions"**, counting sessions that consumed tokens that day (subagents included); the `Weekly` mode de-duplicates per session so one session active on several days counts once, and the `Cumulative` mode keeps its original two lines. Third, a new **Monthly trend card sits below the heatmap**: it follows the year dropdown and plots Jan–Dec tokens (left axis, area + line) against active sessions (right axis, line + dots), breaking off at future months, showing the month plus both values on hover, and keeping an empty axis when there is no data. The session counts are computed by the host while aggregating the ledger (counted directly per day, de-duplicated by session id per week/month), so **the ledger format is unchanged and no rescan is needed** — open the Overview tab after upgrading. On an older host without these fields the third line and the right axis hide themselves. Local reads only; no new network calls.
+
+> [!NOTE]
 > `0.5.2` fixes the Overview token accounting: **a subagent session replays its parent's entire history into its own log, and that replay was being counted a second time**, inflating daily usage noticeably (on this machine 2026-11-17 showed 1.14B instead of 404.6M — about 92% too high for the day, and roughly 33.7% too high overall). Folding a session's events now recognises the `session/end-seed` event (`data.inherited === true`) and skips every replayed event before it, so the numbers match the real consumption in the DSH session log. The ledger format is bumped to version 2 and old entries are recomputed on the next scan; history from sessions whose logs are already gone is preserved as-is. Open the Overview tab and hit refresh once (or wait for the first automatic scan) to see corrected figures.
 
 > [!NOTE]
@@ -154,16 +159,16 @@ Quota progress bars, reset times and reference limits for the three windows, plu
 
 ```sh
 # Option 1: install from npm (recommended; can be updated from the plugin page)
-dsh plugin --profile web add @ycet/dsh-account-usage@0.5.2
+dsh plugin --profile web add @ycet/dsh-account-usage@0.6.0
 
 # Option 2: install from a local source directory (development)
 dsh plugin --profile web add <absolute-path-to-plugin>
 
 # Option 3: install from GitHub (pinned to a release tag; requires git, no npm account)
-dsh plugin --profile web add "github:Ycet/dsh-account-usage#v0.5.2"
+dsh plugin --profile web add "github:Ycet/dsh-account-usage#v0.6.0"
 
 # Option 4: install from a Release asset (tarball; no git, no npm account)
-dsh plugin --profile web add "https://github.com/Ycet/dsh-account-usage/releases/download/v0.5.2/dsh-account-usage-0.5.2.tgz"
+dsh plugin --profile web add "https://github.com/Ycet/dsh-account-usage/releases/download/v0.6.0/dsh-account-usage-0.6.0.tgz"
 ```
 
 The package declares a `dsh.bundle` patch layer; `dsh plugin` merges the loader entry into the profile's bundle layer automatically — no manual editing of `cordis.patch.yml` required. Options 2–4 need no npm account; for the desktop app replace `--profile web` with `--profile desktop` (using the desktop-bundled CLI).
@@ -248,11 +253,13 @@ It is optional: without it the trend falls back to local sampling (labelled "loc
 
 ### On the Overview tab
 
-- The year dropdown drives both the five stats and the heatmap;
+- The year dropdown drives total tokens, the second row of stats, the heatmap and the monthly trend chart; this month / this week / today tokens always use the real current date and ignore the dropdown;
 - The heatmap is laid out by calendar year with **Monday as the first day of each week** (top = Monday, bottom = Sunday); to keep the cells large enough, the year is split into **two rows (Jan–Jul / Aug–Dec)**; three modes are available:
   - `Daily` — shades by that day's usage;
   - `Weekly` — one shade per column, filled bottom-up with as many cells as days used that week;
   - `Cumulative` — shaded by the running total at that week's last day, with the same bottom-up fill and future dates left empty;
+- Hovering a day or week shows the date (or week), the token count and "N active sessions"; the `Cumulative` mode keeps only the first two lines;
+- The Monthly trend chart under the heatmap follows the year dropdown and plots Jan–Dec with all twelve months labelled: a blue line with a light-blue area for tokens (left axis) and an orange line with dots for **de-duplicated monthly** active sessions (right axis — one session active on several days of a month counts once); future months break off, and hovering shows the month plus both values;
 - Four levels are bucketed on a log scale (P25/P50/P75 boundaries) so only 0-token days remain empty;
 - The host scans local session logs in the background on first visit (shows "Scanning…") and the numbers refresh automatically when it finishes; the refresh button forces a rescan.
 

@@ -12,6 +12,8 @@ import {
   localDateKeyOf,
   localYearOf,
   mergeLedger,
+  mondayKeyOf,
+  monthKeyOf,
   rebuildRequired,
   usageTokens
 } from "../lib/insights.js";
@@ -324,4 +326,62 @@ test("emptyLedger 给出可直接合并的空账本", async () => {
     { now: 8 }
   );
   assert.equal(aggregateLedger(merged).days["2026-11-04"], 1);
+});
+
+// ---- 0.6.0：每日 / 每周 / 每月活跃会话数 ---------------------------------------
+
+test("mondayKeyOf 以周一为一周起点，跨年也能正确回退", () => {
+  // 2026-11-02 是周一，同周任何一天都应回到它。
+  assert.equal(mondayKeyOf("2026-11-02"), "2026-11-02");
+  assert.equal(mondayKeyOf("2026-11-04"), "2026-11-02");
+  assert.equal(mondayKeyOf("2026-11-08"), "2026-11-02");
+  // 周日 2026-11-01 属于上一周（10-26 起）。
+  assert.equal(mondayKeyOf("2026-11-01"), "2026-10-26");
+  // 2026-01-01 是周四，它所在周的周一是 2025-12-29（跨年）。
+  assert.equal(mondayKeyOf("2026-01-01"), "2025-12-29");
+  assert.equal(mondayKeyOf("bad"), null);
+  assert.equal(mondayKeyOf(null), null);
+});
+
+test("monthKeyOf 取到月份前缀，非法输入返回 null", () => {
+  assert.equal(monthKeyOf("2026-11-04"), "2026-11");
+  assert.equal(monthKeyOf("2026-01-31"), "2026-01");
+  assert.equal(monthKeyOf("2026-11"), null);
+  assert.equal(monthKeyOf(undefined), null);
+});
+
+test("aggregateLedger 输出每日计数、每周/每月去重会话数", () => {
+  const ledger = {
+    version: 2,
+    updatedAt: 1,
+    sessions: {
+      // a：11-02、11-04 两天（同周），12-01 一天
+      a: { days: { "2026-11-02": 10, "2026-11-04": 20, "2026-12-01": 30 } },
+      // b：11-02、12-01 各一天；与 a 在 11-02 与 12-01 重叠
+      b: { days: { "2026-11-02": 5, "2026-12-01": 7 } },
+      // c：11-30（与 a/b 的 11-02、11-04 不同周）
+      c: { days: { "2026-11-30": 1 } },
+      // d：全是 0，不应计入任何会话数
+      d: { days: { "2026-11-05": 0 } }
+    }
+  };
+  const aggregated = aggregateLedger(ledger);
+  assert.deepEqual(aggregated.sessionsByDay, {
+    "2026-11-02": 2,
+    "2026-11-04": 1,
+    "2026-11-30": 1,
+    "2026-12-01": 2
+  });
+  // 每周：11-02 那周有 a、b 两个会话；11-30 那周跨到 12-01，
+  // 覆盖 a、b（12-01）与 c（11-30）三个会话。
+  assert.deepEqual(aggregated.sessionsByWeek, { "2026-11-02": 2, "2026-11-30": 3 });
+  // 每月：11 月有 a、b、c 三个；12 月有 a、b 两个。
+  assert.deepEqual(aggregated.sessionsByMonth, { "2026-11": 3, "2026-12": 2 });
+});
+
+test("aggregateLedger 无会话时三个会话数对象都是空对象而不是 undefined", () => {
+  const aggregated = aggregateLedger(emptyLedger(0));
+  assert.deepEqual(aggregated.sessionsByDay, {});
+  assert.deepEqual(aggregated.sessionsByWeek, {});
+  assert.deepEqual(aggregated.sessionsByMonth, {});
 });

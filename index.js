@@ -1137,7 +1137,11 @@ async function handleInsights(ctx, req, res) {
     years: aggregated.years,
     days: aggregated.days,
     longestTurnMsByYear: aggregated.longestTurnMsByYear,
-    sessions: aggregated.sessions
+    sessions: aggregated.sessions,
+    // 活跃会话数（0.6.0）：新增字段纯加法，旧版客户端会忽略。
+    sessionsByDay: aggregated.sessionsByDay,
+    sessionsByWeek: aggregated.sessionsByWeek,
+    sessionsByMonth: aggregated.sessionsByMonth
   });
 }
 

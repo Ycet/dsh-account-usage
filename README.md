@@ -10,7 +10,7 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 > npm 包名：`@ycet/dsh-account-usage`。npm 上同名的 [`dsh-account-usage`](https://www.npmjs.com/package/dsh-account-usage) 是另一个作者的独立项目，与本插件无关，请勿混装。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.5.2-blue.svg?style=for-the-badge)](package.json)
+[![Version](https://img.shields.io/badge/version-0.6.0-blue.svg?style=for-the-badge)](package.json)
 [![npm](https://img.shields.io/npm/v/%40ycet%2Fdsh-account-usage?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@ycet/dsh-account-usage)
 [![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.6%2B-purple.svg?style=for-the-badge)](https://github.com/deepseek-ai/deepseek-harness)
 
@@ -42,9 +42,9 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 
 ### 概览
 
-默认打开的标签页：五项年度使用统计（累计 Token、使用峰值、最长任务用时、最长/当前连续天数）与年度 Token 活动热力图。
+默认打开的标签页：两行八项使用统计（累计 / 本月 / 本周 / 今日 Token，使用峰值、最长任务用时、最长 / 当前连续天数）、年度 Token 活动热力图，以及年度月度趋势图（1–12 月 Token 用量与活跃会话数双轴折线）。
 
-<img src="assets/images/overview.png" alt="概览标签页：五项年度统计与 Token 活动热力图" width="860">
+<img src="assets/images/overview.png" alt="概览标签页：八项使用统计、Token 活动热力图与月度趋势图" width="860">
 
 ### DeepSeek 平台
 
@@ -70,7 +70,7 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 
 | 标签页 | 主要内容 | 数据来源 |
 |--------|----------|----------|
-| **概览** | 五项年度统计、年度 Token 活动热力图（每天 / 每周 / 累计总量，周一起始） | 本机会话日志（宿主后台扫描并缓存） |
+| **概览** | 两行八项使用统计、年度 Token 活动热力图（每天 / 每周 / 累计总量，周一起始）、年度月度趋势图（Token + 活跃会话数） | 本机会话日志（宿主后台扫描并缓存） |
 | **deepseek** | 会话令牌、账户余额、用量合计、模型用量明细、网页搜索与抓取 | DeepSeek 开放平台私有接口 |
 | **opencode go** | 配额窗口进度、额度消耗趋势与期末预测、本周期模型用量 | OpenCode 官方用量接口 + 可选 Console Cookie |
 
@@ -82,13 +82,15 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 
 | 功能 | 说明 |
 |------|------|
-| **年度使用统计** | 累计 Token 数、Token 使用峰值（含峰值日期）、最长任务用时、最长连续天数、当前连续天数，按年度下拉切换 |
+| **使用统计（两行八项）** | 第一行：累计 Token 数（随年度下拉）、本月 / 本周（周一起始）/ 今日 Token 数（始终按真实当天）；第二行：Token 使用峰值（含峰值日期）、最长任务用时、最长连续天数、当前连续天数（按年度下拉） |
+| **活跃会话数** | 每日 / 每周统计「当天有 Token 消耗的会话数」（含子代理），每周按会话去重；在热力图悬停提示的第三行展示，「累计总量」模式保持原有两行 |
+| **月度趋势图** | 跟随年度下拉，1–12 月的 Token 用量（左轴，面积 + 折线）与**当月去重**的活跃会话数（右轴，折线 + 圆点），横轴 12 个月份全部标注；未来月份断开不画，无数据时保留空坐标轴 |
 | **账本只增不减** | 统计来自本机会话日志；已归档或已删除的会话，其历史消耗仍然保留并计入 |
 | **Token 活动热力图** | 年度格子图（上半年 / 下半年分两行排布，格子约 16px 圆角方块），支持 `每天` / `每周` / `累计总量` 三种模式 |
 | **周一起始 + 自下而上填充** | 一格一列即一周，**以周一为每周第一天**（列顶=周一、列底=周日）；每周与累计总量都从列底往上填，填几格 = 那一周有几天用过，同一列同色 |
 | **每日固定分级 + 周/累计动态分档** | `每天` 模式按固定数量级分级（100万 / 1000万 / 1亿 / 5亿 四条边界，共 6 档），颜色含义不随年度数据漂移；`每周` 与 `累计总量` 仍按当年数据在对数空间取分位（P25/P50/P75）动态分档。只有 0 Token 无填充，任何有用量的格子至少第一档 |
 | **配色与图例** | 0 Token 为中性浅灰，有用量的日子按五档蓝逐级加深（第 5 档为 ≥5 亿的极值档，每周/累计模式下暂不会出现）；网格下方给出「少 → 多」六格图例，深色主题自动切换为深色底 + 由暗到亮 |
-| **悬停明细** | 显示「日期 / 所在周 / 累计至某日」与带单位的 Token 数（中英各自使用万/亿或 K/M/B） |
+| **悬停明细** | 显示「日期 / 所在周 / 累计至某日」与带单位的 Token 数（中英各自使用万/亿或 K/M/B）；每天与每周模式追加第三行「活跃会话 N」 |
 
 ### DeepSeek 平台能力
 
@@ -121,6 +123,9 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 | **标签栏吸附** | 标签栏在设置页向下滚动时吸附在内容区顶部，不随内容滑出 |
 | **自动刷新** | 页面挂载期间每 60 秒自动轮询最新数据 |
 | **双语言界面** | 完整的中英文切换支持 |
+
+> [!NOTE]
+> `0.6.0` 给「概览」页加了三块内容。第一，**统计卡改为两行八项**：第一行是累计 Token 数（随年度下拉）、本月 / 本周（以周一为一周起始）/ 今日 Token 数（这三项始终按真实当天计算，切到往年也不跟着变），第二行保留原来的 Token 使用峰值、最长任务用时、最长连续天数、当前连续天数。第二，**热力图悬停提示新增第三行「活跃会话 N」**，口径是当天有 Token 消耗的会话数（含子代理），`每周` 模式按会话去重、同一会话多天只算一次，`累计总量` 模式保持原来的两行不变。第三，**热力图下方新增「月度趋势」卡片**：跟随年度下拉展示 1–12 月的 Token 用量（左轴，面积 + 折线）与活跃会话数（右轴，折线 + 圆点），未来月份断开不画，悬停给出月份 + 两项数值，无数据时保留空坐标轴。活跃会话数由宿主在账本聚合时计算（每日直接计数，每周 / 每月按会话 id 去重），**账本结构不变、无需重扫**，升级后打开概览页即可看到；旧版宿主没有这几个字段时，第三行与右轴会自动隐藏。纯本地读取，不新增网络请求。
 
 > [!NOTE]
 > `0.5.2` 修正概览页的 token 统计口径：**子代理会话启动时会把父会话历史整段重放进自己的日志，这段重放过去被重复计了一次账**，导致按日用量明显虚高（本机 2026-11-17 曾显示 1.14B，实际 404.6M，全天虚高约 92%；账本总量虚高约 33.7%）。现在折叠会话事件时会识别 `session/end-seed`（`data.inherited === true`）并跳过其之前的全部重放事件，数字与 DSH 会话日志的实际消耗一致。账本结构版本升到 2，首次扫描会自动重算旧条目；已删除会话的历史累计不受影响，仍按原值保留。升级后打开概览页并点一次刷新（或等待首次自动扫描）即可看到修正后的数字。
@@ -156,16 +161,16 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 
 ```sh
 # 方式一：从 npm 安装（推荐，支持插件页一键更新）
-dsh plugin --profile web add @ycet/dsh-account-usage@0.5.2
+dsh plugin --profile web add @ycet/dsh-account-usage@0.6.0
 
 # 方式二：从本地源码安装（开发）
 dsh plugin --profile web add <absolute-path-to-plugin>
 
 # 方式三：从 GitHub 安装（锁定版本 tag，需本机有 git，无需 npm 账号）
-dsh plugin --profile web add "github:Ycet/dsh-account-usage#v0.5.2"
+dsh plugin --profile web add "github:Ycet/dsh-account-usage#v0.6.0"
 
 # 方式四：从 Release 资产安装（tarball，无需 git、无需 npm 账号）
-dsh plugin --profile web add "https://github.com/Ycet/dsh-account-usage/releases/download/v0.5.2/dsh-account-usage-0.5.2.tgz"
+dsh plugin --profile web add "https://github.com/Ycet/dsh-account-usage/releases/download/v0.6.0/dsh-account-usage-0.6.0.tgz"
 ```
 
 包声明了 `dsh.bundle` 补丁层，`dsh plugin` 会自动把加载项合入 profile 的 bundle 层，无需手动编辑 `cordis.patch.yml`。方式二～四均无需 npm 账号；桌面端把 `--profile web` 换成 `--profile desktop`（使用桌面端自带 CLI）。
@@ -250,11 +255,13 @@ DEEPSEEK_PLATFORM_TOKEN: <令牌>
 
 ### 在概览页
 
-- 年度下拉切换统计年度，五项统计与热力图同步；
+- 年度下拉切换统计年度，累计 Token、第二行四项与热力图、月度趋势图同步；本月 / 本周 / 今日 Token 始终按真实当天计算，不随年度变化；
 - 热力图按自然年排列，**每周以周一为第一天**（列顶为周一、列底为周日）；为让格子足够大，全年分**上半年 / 下半年两行**排布；右上角可切三种模式：
   - `每天`——按当天用量着色；
   - `每周`——整列同色，自下而上填「当周有用量的天数」格；
   - `累计总量`——按截至该周末的累计值着色，同样自下而上填格，未来日期不上色；
+- 悬停任意一天 / 一周，提示框显示日期（或所在周）、Token 数与「活跃会话 N」；`累计总量` 模式只有前两行；
+- 热力图下方的「月度趋势」跟随年度下拉绘制 1–12 月（横轴 12 个月份全部标注）：蓝线 + 浅蓝面积为 Token 用量（左轴），橙色折线 + 圆点为**当月去重**的活跃会话数（右轴，同一会话一个月内多天活跃只算 1 个）；未来月份断开不画，悬停显示「月份 + Token 数 + 活跃会话数」；
 - 颜色分档按对数量级计算，只有 0 Token 的日期无填充；
 - 首次进入时宿主会在后台扫描本机会话日志（显示「统计中…」），完成后数值自动刷新；也可点「刷新」强制重扫。
 

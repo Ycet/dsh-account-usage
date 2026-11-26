@@ -62,6 +62,9 @@ window.__ModuleLoader__.load({
       overviewUnsupported: "当前 DSH 版本不支持使用统计",
       statsTitle: "用户使用情况",
       statTotalTokens: "累计 Token 数",
+      statMonthTokens: "本月 Token 数",
+      statWeekTokens: "本周 Token 数",
+      statTodayTokens: "今日 Token 数",
       statPeakTokens: "Token 使用峰值",
       statLongestTask: "最长任务用时",
       statLongestStreak: "最长连续天数",
@@ -75,8 +78,12 @@ window.__ModuleLoader__.load({
       heatmapWeekTip: "{date} 起的一周",
       heatmapCumulativeTip: "累计至 {date}",
       heatmapValueUnit: "个 Token",
+      heatmapSessionsTip: "活跃会话 {n}",
       heatmapLess: "少",
       heatmapMore: "多",
+      monthTrendTitle: "月度趋势",
+      monthTrendTokens: "Token 用量",
+      monthTrendSessions: "活跃会话数",
       numberScale: "wan",
       durationDay: "天",
       durationHour: "小时",
@@ -234,6 +241,9 @@ window.__ModuleLoader__.load({
       overviewUnsupported: "This DSH version does not support usage insights",
       statsTitle: "Usage summary",
       statTotalTokens: "Total tokens",
+      statMonthTokens: "This month",
+      statWeekTokens: "This week",
+      statTodayTokens: "Today",
       statPeakTokens: "Peak tokens",
       statLongestTask: "Longest task",
       statLongestStreak: "Longest streak",
@@ -247,8 +257,12 @@ window.__ModuleLoader__.load({
       heatmapWeekTip: "Week of {date}",
       heatmapCumulativeTip: "Cumulative to {date}",
       heatmapValueUnit: "tokens",
+      heatmapSessionsTip: "{n} active sessions",
       heatmapLess: "Less",
       heatmapMore: "More",
+      monthTrendTitle: "Monthly trend",
+      monthTrendTokens: "Tokens",
+      monthTrendSessions: "Active sessions",
       numberScale: "short",
       durationDay: "d",
       durationHour: "h",
@@ -811,13 +825,10 @@ window.__ModuleLoader__.load({
     }
 
     /**
-     * 年度热力图网格：按周分列（周日起始），首尾补齐成整周。
-     * @returns {{ year:number, weeks: Array<Array<{ key:string, inYear:boolean, day:number }>> }}
-     */
-    /**
      * 构造整年网格：**以周一为一周起点**（与「每周」统计口径一致），
      * 前后用上一年的末尾与下一年的开头补满整周。
      * 每列 = 一周，列内行号 0 = 周一 … 6 = 周日。
+     * @returns {{ year:number, weeks: Array<Array<{ key:string, inYear:boolean, day:number }>> }}
      */
     function buildYearWeeks(year) {
       const first = new Date(year, 0, 1);
@@ -839,6 +850,199 @@ window.__ModuleLoader__.load({
         weeks.push(cells);
       }
       return { year, weeks };
+    }
+
+    // ---- 区间统计与月度趋势纯函数（0.6.0） -----------------------------------
+
+    /**
+     * 某日所在周的**周一** key（周一为一周起始，与「本周 Token 数」口径一致）。
+     * 注意与日历用的 `startOfWeekKey` 区分：后者是周日起始，供区间日历表头使用。
+     */
+    function mondayOfKey(key) {
+      if (!isDateKey(key)) return null;
+      const d = new Date(key + "T00:00:00");
+      // getDay()：0=周日 … 6=周六；换算成「距离本周周一的天数」= (d + 6) % 7。
+      return addDays(key, -((d.getDay() + 6) % 7));
+    }
+
+    /** 某日所在月的 1 号 key（`YYYY-MM-01`）。 */
+    function monthStartKeyOf(key) {
+      return isDateKey(key) ? `${key.slice(0, 8)}01` : null;
+    }
+
+    /**
+     * 闭区间 token 求和（含首尾）。非法区间或非正数一律跳过。
+     * 只遍历真实存在的天，区间按自然日推进，跨月/跨年都正确。
+     */
+    function sumRangeTokens(days, fromKey, toKey) {
+      if (!isDateKey(fromKey) || !isDateKey(toKey) || fromKey > toKey) return 0;
+      let total = 0;
+      for (let key = fromKey; key <= toKey; key = addDays(key, 1)) {
+        const value = days !== null && typeof days === "object" ? days[key] : undefined;
+        if (typeof value === "number" && value > 0) total += value;
+      }
+      return total;
+    }
+
+    /** 本月（自然月 1 日至今）token 合计。 */
+    function sumMonthTokens(days, todayKey) {
+      const start = monthStartKeyOf(todayKey);
+      return start === null ? 0 : sumRangeTokens(days, start, todayKey);
+    }
+
+    /** 本周（本周一至今，周一为一周起始）token 合计。 */
+    function sumWeekTokens(days, todayKey) {
+      const start = mondayOfKey(todayKey);
+      return start === null ? 0 : sumRangeTokens(days, start, todayKey);
+    }
+
+    /** 今日 token 合计。 */
+    function sumTodayTokens(days, todayKey) {
+      if (!isDateKey(todayKey)) return 0;
+      const value = days !== null && typeof days === "object" ? days[todayKey] : undefined;
+      return typeof value === "number" && value > 0 ? value : 0;
+    }
+
+    /**
+     * 某年的 12 个月 token 序列：`[{ month:1..12, tokens:number }]`。
+     * 只统计属于该年的日期键（`YYYY-MM-*`），跨年数据不会串进来。
+     */
+    function monthlyTokenSeries(days, year) {
+      const buckets = new Array(12).fill(0);
+      const prefix = `${year}-`;
+      if (days !== null && typeof days === "object") {
+        for (const [key, value] of Object.entries(days)) {
+          if (!key.startsWith(prefix) || key.length !== 10) continue;
+          const month = Number(key.slice(5, 7));
+          if (!Number.isInteger(month) || month < 1 || month > 12) continue;
+          if (typeof value !== "number" || !(value > 0)) continue;
+          buckets[month - 1] += value;
+        }
+      }
+      return buckets.map((tokens, index) => ({ month: index + 1, tokens }));
+    }
+
+    /**
+     * 某年的 12 个月活跃会话数序列。
+     * host 未返回 `sessionsByMonth`（旧宿主）时 `available` 为 false，前端据此隐藏会话线。
+     */
+    function monthlySessionSeries(sessionsByMonth, year) {
+      const source = sessionsByMonth !== null && typeof sessionsByMonth === "object" ? sessionsByMonth : null;
+      const prefix = `${year}-`;
+      const buckets = new Array(12).fill(0);
+      if (source !== null) {
+        for (const [key, value] of Object.entries(source)) {
+          if (!key.startsWith(prefix) || key.length !== 7) continue;
+          const month = Number(key.slice(5, 7));
+          if (!Number.isInteger(month) || month < 1 || month > 12) continue;
+          if (typeof value !== "number" || !(value > 0)) continue;
+          buckets[month - 1] = value;
+        }
+      }
+      return buckets.map((sessions, index) => ({
+        month: index + 1,
+        sessions,
+        available: source !== null
+      }));
+    }
+
+    /** 某日活跃会话数；字段缺失（旧宿主）返回 null，供 tooltip 决定是否渲染第三行。 */
+    function sessionCountOfDay(sessionsByDay, key) {
+      if (sessionsByDay === null || typeof sessionsByDay !== "object") return null;
+      const value = sessionsByDay[key];
+      return typeof value === "number" && value >= 0 ? value : null;
+    }
+
+    /**
+     * 某周（热力图一列）的活跃会话数。
+     * 该列周一就是 host 侧 `sessionsByWeek` 的键；这里用列内第一天取键，
+     * 与 buildYearWeeks 的周一起始保持一致（跨年列也不会错）。
+     */
+    function sessionCountOfWeek(sessionsByWeek, weeks, weekIndex) {
+      if (sessionsByWeek === null || typeof sessionsByWeek !== "object") return null;
+      const cells = Array.isArray(weeks) ? weeks[weekIndex] : null;
+      if (!Array.isArray(cells) || cells.length === 0) return null;
+      const value = sessionsByWeek[cells[0].key];
+      return typeof value === "number" && value >= 0 ? value : null;
+    }
+
+    /** 该月是否还没到来（当前年且月份大于当月）。往年/当年已过月份返回 false。 */
+    function isFutureMonth(year, month, todayKey) {
+      if (!isDateKey(todayKey)) return false;
+      const todayYear = Number(todayKey.slice(0, 4));
+      const todayMonth = Number(todayKey.slice(5, 7));
+      if (year !== todayYear) return false;
+      return month > todayMonth;
+    }
+
+    /**
+     * 刻度上限取整：0 → 1；否则向上取到 1 / 2 / 5 × 10^n。
+     * 供左轴 token 使用（读数整齐）；右轴会话数另有整数取整规则，见 buildMonthlyTrendGeometry。
+     */
+    function niceAxisMax(value) {
+      if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return 1;
+      const exponent = Math.floor(Math.log10(value));
+      const base = Math.pow(10, exponent);
+      const scaled = value / base;
+      const step = scaled <= 1 ? 1 : scaled <= 2 ? 2 : scaled <= 5 ? 5 : 10;
+      return step * base;
+    }
+
+    /**
+     * 月度趋势图的几何计算（纯函数，便于单测锁定断点与双轴换算）。
+     * 未来月份不生成点、不连线：分段时遇到未来月就结束当前段。
+     * @returns {{ xOf:Function, yToken:Function, ySession:Function, tokenSegments:number[][], sessionSegments:number[][] }}
+     */
+    function buildMonthlyTrendGeometry(options) {
+      const opts = options !== null && typeof options === "object" ? options : {};
+      const width = Number(opts.width) || 640;
+      const height = Number(opts.height) || 210;
+      const padL = Number(opts.padL) || 46;
+      const padR = Number(opts.padR) || 46;
+      const padT = Number(opts.padT) || 14;
+      const padB = Number(opts.padB) || 26;
+      const year = Number(opts.year) || new Date().getFullYear();
+      const todayKey = typeof opts.todayKey === "string" ? opts.todayKey : null;
+      const tokenMax = niceAxisMax(opts.tokenMax);
+      // 右轴是「会话个数」，必须为整数刻度：上限取 4 的倍数，四等分后每格都是整数。
+      const sessionMax = Math.max(4, Math.ceil((Number(opts.sessionMax) || 0) / 4) * 4);
+      const innerW = width - padL - padR;
+      const innerH = height - padT - padB;
+      const slot = innerW / 12;
+      // 月份落在每列中心，避免首尾贴边。
+      const xOf = (month) => padL + (month - 0.5) * slot;
+      const yToken = (value) => {
+        const v = typeof value === "number" && value > 0 ? value : 0;
+        return padT + innerH * (1 - Math.min(v, tokenMax) / tokenMax);
+      };
+      const ySession = (value) => {
+        const v = typeof value === "number" && value > 0 ? value : 0;
+        return padT + innerH * (1 - Math.min(v, sessionMax) / sessionMax);
+      };
+      // 分段：连续「不是未来月」的月份归为一段；未来月既不出点也不连线。
+      const segmentsOf = (pick) => {
+        const segments = [];
+        let current = [];
+        for (let month = 1; month <= 12; month += 1) {
+          if (isFutureMonth(year, month, todayKey)) {
+            if (current.length > 0) segments.push(current);
+            current = [];
+            continue;
+          }
+          current.push({ month, value: pick(month) });
+        }
+        if (current.length > 0) segments.push(current);
+        return segments;
+      };
+      return {
+        xOf,
+        yToken,
+        ySession,
+        tokenMax,
+        sessionMax,
+        tokenSegments: segmentsOf((month) => Number(opts.tokenOf?.(month)) || 0),
+        sessionSegments: segmentsOf((month) => Number(opts.sessionOf?.(month)) || 0)
+      };
     }
 
     /**
@@ -2072,13 +2276,20 @@ window.__ModuleLoader__.load({
     const OVERVIEW_STYLE_ID = "dsh-account-usage/overview.css";
 
     const OVERVIEW_CSS = [
-      ".dsau-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:start;row-gap:6px}",
-      ".dsau-stat{display:flex;flex-direction:column;align-items:center;gap:1px;padding:0 6px;min-width:0;text-align:center;justify-content:flex-start}",
+      // 统计卡（0.6.0）：4 列 × 2 行。列间隔 0，靠左边框画竖线；
+      // 行间隔 0，靠第 5 格起的上边框画行间细分隔线（两行视觉权重一致）。
+      ".dsau-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:start;row-gap:0}",
+      ".dsau-stat{display:flex;flex-direction:column;align-items:center;gap:1px;padding:10px 6px;min-width:0;text-align:center;justify-content:flex-start}",
       ".dsau-stat+.dsau-stat{border-left:1px solid var(--dsw-alias-border-l1)}",
+      // 每行第 1 格不画左边框（否则行首会多一条竖线）。
+      ".dsau-stat:nth-child(4n+1){border-left:none}",
+      // 第二行起加行间分隔线，由 4 个格子首尾相连成一条。
+      ".dsau-stat:nth-child(n+5){border-top:1px solid var(--dsw-alias-border-l1)}",
       ".dsau-stat-value{margin:0;font-size:16px;font-weight:600;line-height:24px;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;white-space:nowrap}",
       ".dsau-stat-label{margin:0;font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary);max-width:100%;overflow-wrap:break-word}",
       ".dsau-stat-hint{margin:0;font-size:11px;line-height:16px;color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums;white-space:nowrap}",
-      "@media (max-width:560px){.dsau-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 0}.dsau-stat+.dsau-stat{border-left:none}}",
+      // 窄屏（<560px）每行 2 项：竖线按 2 列重置，行分隔线改从第 3 格开始。
+      "@media (max-width:560px){.dsau-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.dsau-stat:nth-child(4n+1){border-left:1px solid var(--dsw-alias-border-l1)}.dsau-stat:nth-child(2n+1){border-left:none}.dsau-stat:nth-child(n+5){border-top:none}.dsau-stat:nth-child(n+3){border-top:1px solid var(--dsw-alias-border-l1)}}",
       ".dsau-heat{position:relative;display:flex;flex-direction:column;gap:10px}",
       // 单元格为圆角小方块，行列间距一致（参考官方样式的 16px 方块 + 4px 间隔比例）。
       ".dsau-heat-block{display:flex;flex-direction:column;gap:4px}",
@@ -2121,7 +2332,15 @@ window.__ModuleLoader__.load({
       ".dsau-heat-mode{border:none;background:transparent;padding:0 2px;font:inherit;font-size:13px;line-height:20px;color:var(--dsw-alias-label-tertiary);cursor:pointer}",
       ".dsau-heat-mode:hover{color:var(--dsw-alias-label-secondary)}",
       ".dsau-heat-mode[data-active=\"1\"]{color:var(--dsw-alias-label-primary);font-weight:600}",
-      ".dsau-heat-mode:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px;border-radius:2px}"
+      ".dsau-heat-mode:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px;border-radius:2px}",
+      // 月度趋势（0.6.0）：图例 + SVG 双轴折线图。图例仅作说明，不可点击切换。
+      ".dsau-trend{position:relative;display:flex;flex-direction:column;gap:8px}",
+      ".dsau-trend-legend{display:flex;align-items:center;gap:16px;font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary)}",
+      ".dsau-trend-legend-item{display:inline-flex;align-items:center;gap:6px}",
+      ".dsau-trend-legend-mark{width:14px;height:3px;border-radius:2px;flex:none}",
+      // 图例 / 提示色直接复用主题语义色，与 SVG 里的线、面同源，深色主题自动跟随。
+      ".dsau-trend-legend-mark[data-series=\"tokens\"]{background:var(--dsw-alias-state-business-primary)}",
+      ".dsau-trend-legend-mark[data-series=\"sessions\"]{background:var(--dsw-alias-state-warn-primary)}"
     ].join("\n");
 
     /**
@@ -3726,6 +3945,251 @@ window.__ModuleLoader__.load({
 
     const OVERVIEW_MODES = ["daily", "weekly", "cumulative"];
 
+    // 月度趋势图的画布尺寸：与 buildMonthlyTrendGeometry 的默认内边距保持一致。
+    const MONTH_TREND_W = 640;
+    const MONTH_TREND_H = 210;
+    const MONTH_TREND_PAD_L = 46;
+    const MONTH_TREND_PAD_R = 46;
+    const MONTH_TREND_PAD_T = 14;
+    const MONTH_TREND_PAD_B = 26;
+
+    /**
+     * 月度趋势（0.6.0）：当前所选年度 1–12 月的 token 用量与活跃会话数。
+     * 单图双 Y 轴：左轴 token（面积 + 折线），右轴活跃会话数（折线 + 圆点）。
+     * 未来月份不画点也不连线；无数据时保留空坐标轴（需求确认项 19）。
+     */
+    function MonthlyTrend({ year, todayKey, tokens, sessions, sessionAvailable, t }) {
+      const [hovered, setHovered] = React.useState(null);
+      const wrapRef = React.useRef(null);
+      const scale = t("numberScale");
+      const monthNames = String(t("heatmapMonths")).split(",");
+
+      const tokenMax = tokens.reduce((max, item) => Math.max(max, item.tokens), 0);
+      const sessionMax = sessions.reduce((max, item) => Math.max(max, item.sessions), 0);
+      // 会话数轴零值或只有一档时，几何函数会把上限兜到 4，四等分刻度为 0/1/2/3/4。
+      const geometry = buildMonthlyTrendGeometry({
+        width: MONTH_TREND_W,
+        height: MONTH_TREND_H,
+        padL: MONTH_TREND_PAD_L,
+        padR: MONTH_TREND_PAD_R,
+        padT: MONTH_TREND_PAD_T,
+        padB: MONTH_TREND_PAD_B,
+        year,
+        todayKey,
+        tokenMax,
+        sessionMax,
+        tokenOf: (month) => tokens[month - 1]?.tokens ?? 0,
+        sessionOf: (month) => sessions[month - 1]?.sessions ?? 0
+      });
+      const baseY = geometry.yToken(0);
+
+      // 网格：4 条水平线，左侧标 token、右侧标会话数。
+      const gridShapes = [];
+      for (let step = 0; step <= 4; step += 1) {
+        const ratio = step / 4;
+        const y = MONTH_TREND_PAD_T + (MONTH_TREND_H - MONTH_TREND_PAD_T - MONTH_TREND_PAD_B) * (1 - ratio);
+        gridShapes.push(
+          React.createElement("line", {
+            key: `grid-${step}`,
+            x1: MONTH_TREND_PAD_L,
+            x2: MONTH_TREND_W - MONTH_TREND_PAD_R,
+            y1: y,
+            y2: y,
+            stroke: "var(--dsw-alias-border-l2)",
+            strokeWidth: 1,
+            opacity: step === 0 ? 1 : 0.6
+          }),
+          React.createElement("text", {
+            key: `grid-l-${step}`,
+            x: MONTH_TREND_PAD_L - 6,
+            y: y + 3.5,
+            textAnchor: "end",
+            style: { fill: "var(--dsw-alias-label-tertiary)", fontSize: 10 }
+          }, ratio === 0 ? "0" : formatTokenCount(geometry.tokenMax * ratio, scale)),
+          // 旧宿主没有会话字段时整条右轴都不画，避免出现一条没有对应折线的刻度。
+          sessionAvailable
+            ? React.createElement("text", {
+              key: `grid-r-${step}`,
+              x: MONTH_TREND_W - MONTH_TREND_PAD_R + 6,
+              y: y + 3.5,
+              textAnchor: "start",
+              style: { fill: "var(--dsw-alias-label-tertiary)", fontSize: 10 }
+            }, String(Math.round(geometry.sessionMax * ratio)))
+            : null
+        );
+      }
+
+      // token：面积 + 折线（分段绘制，未来月断开）。
+      const tokenShapes = [];
+      geometry.tokenSegments.forEach((segment, index) => {
+        if (segment.length === 0) return;
+        const line = segment
+          .map((point, i) => `${i === 0 ? "M" : "L"} ${geometry.xOf(point.month).toFixed(1)} ${geometry.yToken(point.value).toFixed(1)}`)
+          .join(" ");
+        const first = segment[0];
+        const last = segment[segment.length - 1];
+        if (segment.length > 1) {
+          tokenShapes.push(React.createElement("path", {
+            key: `token-area-${index}`,
+            d: `${line} L ${geometry.xOf(last.month).toFixed(1)} ${baseY.toFixed(1)} L ${geometry.xOf(first.month).toFixed(1)} ${baseY.toFixed(1)} Z`,
+            fill: "var(--dsw-alias-state-business-primary)",
+            opacity: 0.12,
+            stroke: "none"
+          }));
+        }
+        tokenShapes.push(React.createElement("path", {
+          key: `token-line-${index}`,
+          d: line,
+          fill: "none",
+          stroke: "var(--dsw-alias-state-business-primary)",
+          strokeWidth: 2,
+          strokeLinecap: "round",
+          strokeLinejoin: "round"
+        }));
+        // 单点段（例如只有 1 月有数据）用圆点占位，否则线画不出来。
+        if (segment.length === 1) {
+          tokenShapes.push(React.createElement("circle", {
+            key: `token-dot-${index}`,
+            cx: geometry.xOf(first.month),
+            cy: geometry.yToken(first.value),
+            r: 2.5,
+            fill: "var(--dsw-alias-state-business-primary)"
+          }));
+        }
+      });
+
+      // 活跃会话：只画线 + 圆点，不填充面积。
+      const sessionShapes = [];
+      if (sessionAvailable) {
+        geometry.sessionSegments.forEach((segment, index) => {
+          if (segment.length === 0) return;
+          const line = segment
+            .map((point, i) => `${i === 0 ? "M" : "L"} ${geometry.xOf(point.month).toFixed(1)} ${geometry.ySession(point.value).toFixed(1)}`)
+            .join(" ");
+          if (segment.length > 1) {
+            sessionShapes.push(React.createElement("path", {
+              key: `session-line-${index}`,
+              d: line,
+              fill: "none",
+              stroke: "var(--dsw-alias-state-warn-primary)",
+              strokeWidth: 2,
+              strokeDasharray: "1 0",
+              strokeLinecap: "round",
+              strokeLinejoin: "round"
+            }));
+          }
+          sessionShapes.push(...segment.map((point) =>
+            React.createElement("circle", {
+              key: `session-dot-${index}-${point.month}`,
+              cx: geometry.xOf(point.month),
+              cy: geometry.ySession(point.value),
+              r: segment.length > 1 ? 2.6 : 3,
+              fill: "var(--dsw-alias-bg-layer-3)",
+              stroke: "var(--dsw-alias-state-warn-primary)",
+              strokeWidth: 2
+            })
+          ));
+        });
+      }
+
+      // 横轴：1–12 月全部标出（含尚未到来的月份，未来月只是不画点）。
+      // 12 列每列约 46 个单位宽，10px 字号下一个月份标签约 18 单位，不会重叠；
+      // 图表用 viewBox 等比缩放，窄屏时标签跟着整体缩小，相对间距不变。
+      const axisLabels = monthNames.map((name, index) =>
+        React.createElement("text", {
+          key: `axis-${index + 1}`,
+          x: geometry.xOf(index + 1),
+          y: MONTH_TREND_H - 8,
+          textAnchor: "middle",
+          style: { fill: "var(--dsw-alias-label-tertiary)", fontSize: 10 }
+        }, name)
+      );
+
+      // 悬浮热区：每个月一条竖带；未来月份不响应。
+      const hitAreas = [];
+      for (let month = 1; month <= 12; month += 1) {
+        if (isFutureMonth(year, month, todayKey)) continue;
+        const slot = (MONTH_TREND_W - MONTH_TREND_PAD_L - MONTH_TREND_PAD_R) / 12;
+        hitAreas.push(React.createElement("rect", {
+          key: `hit-${month}`,
+          x: MONTH_TREND_PAD_L + (month - 1) * slot,
+          y: MONTH_TREND_PAD_T,
+          width: slot,
+          height: MONTH_TREND_H - MONTH_TREND_PAD_T - MONTH_TREND_PAD_B,
+          fill: "transparent",
+          pointerEvents: "all",
+          onMouseEnter: () => setHovered(month),
+          onMouseLeave: () => setHovered(null)
+        }));
+      }
+
+      let tooltip = null;
+      if (hovered !== null) {
+        const tokenValue = tokens[hovered - 1]?.tokens ?? 0;
+        const sessionValue = sessions[hovered - 1]?.sessions ?? 0;
+        // 复用全局 ChartTooltip：与其它图表同一套夹紧 / 翻转定位，避免贴边溢出。
+        tooltip = React.createElement(ChartTooltip, {
+          anchorX: geometry.xOf(hovered),
+          anchorIndex: hovered - 1,
+          count: 12,
+          wrapRef,
+          chartWidth: MONTH_TREND_W,
+          chartHeight: MONTH_TREND_H
+        },
+          React.createElement("p", { style: styles.tooltipTitle }, monthNames[hovered - 1] ?? String(hovered)),
+          React.createElement("p", { style: styles.tooltipRow },
+            `${t("monthTrendTokens")}: ${formatTokenCount(tokenValue, scale)}`
+          ),
+          sessionAvailable
+            ? React.createElement("p", { style: styles.tooltipRow },
+              `${t("monthTrendSessions")}: ${sessionValue}`
+            )
+            : null
+        );
+      }
+
+      return React.createElement("div", { className: "dsau-trend" },
+        React.createElement("div", { className: "dsau-trend-legend" },
+          React.createElement("span", { className: "dsau-trend-legend-item" },
+            React.createElement("span", { className: "dsau-trend-legend-mark", "data-series": "tokens" }),
+            t("monthTrendTokens")
+          ),
+          sessionAvailable
+            ? React.createElement("span", { className: "dsau-trend-legend-item" },
+              React.createElement("span", { className: "dsau-trend-legend-mark", "data-series": "sessions" }),
+              t("monthTrendSessions")
+            )
+            : null
+        ),
+        React.createElement("div", { ref: wrapRef, style: styles.chartWrap },
+          React.createElement("svg", {
+            width: "100%",
+            viewBox: `0 0 ${MONTH_TREND_W} ${MONTH_TREND_H}`,
+            role: "img",
+            "aria-label": t("monthTrendTitle"),
+            style: { display: "block" },
+            onMouseLeave: () => setHovered(null)
+          },
+            gridShapes,
+            tokenShapes,
+            sessionShapes,
+            hovered === null ? null : React.createElement("line", {
+              x1: geometry.xOf(hovered),
+              x2: geometry.xOf(hovered),
+              y1: MONTH_TREND_PAD_T,
+              y2: baseY,
+              stroke: "var(--dsw-alias-label-tertiary)",
+              strokeWidth: 1,
+              opacity: 0.35
+            }),
+            axisLabels,
+            hitAreas
+          ),
+          tooltip
+        )
+      );
+    }
+
     function OverviewPanel({ t }) {
       const [state, setState] = React.useState({ kind: "loading" });
       const [year, setYear] = React.useState(() => new Date().getFullYear());
@@ -3802,6 +4266,31 @@ window.__ModuleLoader__.load({
         value !== null && value.longestTurnMsByYear !== null && typeof value.longestTurnMsByYear === "object"
           ? value.longestTurnMsByYear[String(activeYear)]
           : undefined;
+      // 0.6.0：本月 / 本周（周一起始）/ 今日的 token 合计，一律按真实当前日期计算，
+      // 不随上方年度下拉变化——用户关心的是「现在」用了多少。
+      const realTodayKey = todayDate();
+      const monthTokens = sumMonthTokens(days, realTodayKey);
+      const weekTokens = sumWeekTokens(days, realTodayKey);
+      const todayTokens = sumTodayTokens(days, realTodayKey);
+      // 活跃会话数（host 0.6.0 起返回）：按天/按周；旧宿主缺字段时为 null，前端隐藏对应展示。
+      const sessionsByDay =
+        value !== null && value.sessionsByDay !== null && typeof value.sessionsByDay === "object"
+          ? value.sessionsByDay
+          : null;
+      const sessionsByWeek =
+        value !== null && value.sessionsByWeek !== null && typeof value.sessionsByWeek === "object"
+          ? value.sessionsByWeek
+          : null;
+      const sessionsByMonth =
+        value !== null && value.sessionsByMonth !== null && typeof value.sessionsByMonth === "object"
+          ? value.sessionsByMonth
+          : null;
+      // 月度趋势的输入序列：token 由账本按天聚合，会话数由 host 去重后按月给出。
+      const monthTokenSeries = React.useMemo(() => monthlyTokenSeries(days, activeYear), [days, activeYear]);
+      const monthSessionSeries = React.useMemo(
+        () => monthlySessionSeries(sessionsByMonth, activeYear),
+        [sessionsByMonth, activeYear]
+      );
 
       const grid = React.useMemo(() => buildYearWeeks(activeYear), [activeYear]);
       const weeks = grid.weeks;
@@ -3879,7 +4368,13 @@ window.__ModuleLoader__.load({
             : mode === "cumulative"
               ? t("heatmapCumulativeTip").replace("{date}", fmtSlashDate(lastKey ?? cell.key))
               : t("heatmapDayTip").replace("{date}", fmtSlashDate(cell.key));
-        setTip({ anchorX: rect.left + rect.width / 2, anchorY: rect.top, caption, value: tokens });
+        // 0.6.0：第三行是活跃会话数。只有「每天 / 每周」两种模式展示；
+        // 累计总量沿用原有两行不变，且旧宿主缺字段时同样只显示两行。
+        let sessions = null;
+        if (mode === "daily") sessions = sessionCountOfDay(sessionsByDay, cell.key);
+        else if (mode === "weekly") sessions = sessionCountOfWeek(sessionsByWeek, weeks, weekIndex);
+        const sessionsText = sessions === null ? null : t("heatmapSessionsTip").replace("{n}", String(sessions));
+        setTip({ anchorX: rect.left + rect.width / 2, anchorY: rect.top, caption, value: tokens, sessions: sessionsText });
       };
 
       const modeLabels = {
@@ -3913,10 +4408,24 @@ window.__ModuleLoader__.load({
                 // 只在后台扫描期间提示「统计中…」，平时不占用首屏空间。
                 scanning ? React.createElement("p", { style: styles.hint }, t("overviewScanning")) : null,
                 React.createElement(ModuleCard, { title: t("statsTitle") },
+                  // 两行 4 + 4（0.6.0）：第一行是 token 量（累计随年度下拉，月/周/日为当前），
+                  // 第二行沿用原五项里的后四项，保持按所选年度统计。
                   React.createElement("div", { className: "dsau-stats" },
                     React.createElement(OverviewStat, {
                       label: t("statTotalTokens"),
                       value: formatTokenCount(totalTokens, scale)
+                    }),
+                    React.createElement(OverviewStat, {
+                      label: t("statMonthTokens"),
+                      value: formatTokenCount(monthTokens, scale)
+                    }),
+                    React.createElement(OverviewStat, {
+                      label: t("statWeekTokens"),
+                      value: formatTokenCount(weekTokens, scale)
+                    }),
+                    React.createElement(OverviewStat, {
+                      label: t("statTodayTokens"),
+                      value: formatTokenCount(todayTokens, scale)
                     }),
                     React.createElement(OverviewStat, {
                       label: t("statPeakTokens"),
@@ -4017,8 +4526,23 @@ window.__ModuleLoader__.load({
                           top: tipBox === null ? Math.round(tip.anchorY - 6) : tipBox.top
                         }
                       }, React.createElement("span", { className: "dsau-heat-tip-caption" }, tip.caption),
-                        React.createElement("span", { className: "dsau-heat-tip-value" }, tip.value))
+                        React.createElement("span", { className: "dsau-heat-tip-value" }, tip.value),
+                        // 0.6.0：每天/每周模式追加第三行；累计模式与旧宿主没有这一行。
+                        tip.sessions === null || tip.sessions === undefined
+                          ? null
+                          : React.createElement("span", { className: "dsau-heat-tip-caption" }, tip.sessions))
                   )
+                ),
+                // 月度趋势（0.6.0）：跟随上方年度下拉，展示 1–12 月的 token 与活跃会话数。
+                React.createElement(ModuleCard, { title: t("monthTrendTitle") },
+                  React.createElement(MonthlyTrend, {
+                    year: activeYear,
+                    todayKey,
+                    tokens: monthTokenSeries,
+                    sessions: monthSessionSeries,
+                    sessionAvailable: sessionsByMonth !== null,
+                    t
+                  })
                 )
               );
 
@@ -4858,6 +5382,21 @@ window.__ModuleLoader__.load({
     exports.formatTokenCount = formatTokenCount;
     exports.formatDurationMs = formatDurationMs;
     exports.OverviewPanel = OverviewPanel;
+    // 0.6.0：统计区间、会话数与月度趋势的纯函数 / 组件，供单测直接覆盖。
+    exports.MonthlyTrend = MonthlyTrend;
+    exports.mondayOfKey = mondayOfKey;
+    exports.monthStartKeyOf = monthStartKeyOf;
+    exports.sumRangeTokens = sumRangeTokens;
+    exports.sumMonthTokens = sumMonthTokens;
+    exports.sumWeekTokens = sumWeekTokens;
+    exports.sumTodayTokens = sumTodayTokens;
+    exports.monthlyTokenSeries = monthlyTokenSeries;
+    exports.monthlySessionSeries = monthlySessionSeries;
+    exports.sessionCountOfDay = sessionCountOfDay;
+    exports.sessionCountOfWeek = sessionCountOfWeek;
+    exports.isFutureMonth = isFutureMonth;
+    exports.niceAxisMax = niceAxisMax;
+    exports.buildMonthlyTrendGeometry = buildMonthlyTrendGeometry;
     exports.CalendarMonth = CalendarMonth;
     exports.CalendarPanel = CalendarPanel;
     exports.DeepSeekPanel = DeepSeekPanel;

@@ -511,3 +511,629 @@ test("第 5 档配色与 6 格图例（每日固定分级）的 CSS/渲染回归
     else globalThis.window = previousWindow;
   }
 });
+
+// ---- 0.6.0：区间统计、活跃会话数与月度趋势 -------------------------------------
+
+test("mondayOfKey / monthStartKeyOf：周一起始与月初键", () => {
+  assert.equal(client.mondayOfKey("2026-11-04"), "2026-11-02");
+  assert.equal(client.mondayOfKey("2026-11-02"), "2026-11-02");
+  assert.equal(client.mondayOfKey("2026-11-08"), "2026-11-02", "周日属于本周");
+  assert.equal(client.mondayOfKey("2026-01-01"), "2025-12-29", "跨年回退到上一年周一");
+  assert.equal(client.mondayOfKey("x"), null);
+  assert.equal(client.monthStartKeyOf("2026-11-24"), "2026-11-01");
+  assert.equal(client.monthStartKeyOf("x"), null);
+});
+
+test("sumMonthTokens / sumWeekTokens / sumTodayTokens 按当前日期闭区间求和", () => {
+  const days = {
+    "2026-10-31": 1000, // 上月，不计入本月/本周
+    "2026-11-01": 10, // 周一 2026-11-02 之前，不计入本周
+    "2026-11-02": 20,
+    "2026-11-04": 30,
+    "2026-11-08": 40,
+    "2026-11-09": 50,
+    "2026-11-10": 60,
+    "2026-12-01": 999
+  };
+  // 以 2026-11-10（周二）为今天
+  assert.equal(client.sumTodayTokens(days, "2026-11-10"), 60);
+  // 本周 = 11-09(周一) + 11-10
+  assert.equal(client.sumWeekTokens(days, "2026-11-10"), 110);
+  // 本月 = 11 月全部（11-01 起）
+  assert.equal(client.sumMonthTokens(days, "2026-11-10"), 10 + 20 + 30 + 40 + 50 + 60);
+  // 非法输入一律 0
+  assert.equal(client.sumMonthTokens(days, null), 0);
+  assert.equal(client.sumWeekTokens(days, "bad"), 0);
+  assert.equal(client.sumTodayTokens(days, "bad"), 0);
+  assert.equal(client.sumRangeTokens(days, "2026-11-09", "2026-11-02"), 0, "反向区间为 0");
+});
+
+test("monthlyTokenSeries / monthlySessionSeries 只统计目标年份并补满 12 个月", () => {
+  const tokens = client.monthlyTokenSeries(
+    { "2026-01-05": 100, "2026-01-20": 50, "2026-11-04": 7, "2025-12-31": 999 },
+    2026
+  );
+  assert.equal(tokens.length, 12);
+  assert.equal(tokens[0].tokens, 150);
+  assert.equal(tokens[10].tokens, 7);
+  assert.equal(tokens[1].tokens, 0);
+
+  const sessions = client.monthlySessionSeries({ "2026-01": 3, "2026-11": 2, "2025-12": 9 }, 2026);
+  assert.equal(sessions.length, 12);
+  assert.equal(sessions[0].sessions, 3);
+  assert.equal(sessions[0].available, true);
+  assert.equal(sessions[10].sessions, 2);
+  // 旧宿主没有按月字段 → available 全为 false，前端据此隐藏会话线。
+  const missing = client.monthlySessionSeries(null, 2026);
+  assert.equal(missing.length, 12);
+  assert.equal(missing.every((item) => item.available === false && item.sessions === 0), true);
+});
+
+test("sessionCountOfDay / sessionCountOfWeek 缺失字段时返回 null", () => {
+  assert.equal(client.sessionCountOfDay({ "2026-11-04": 3 }, "2026-11-04"), 3);
+  assert.equal(client.sessionCountOfDay({ "2026-11-04": 0 }, "2026-11-04"), 0);
+  assert.equal(client.sessionCountOfDay({}, "2026-11-04"), null);
+  assert.equal(client.sessionCountOfDay(null, "2026-11-04"), null);
+
+  const weeks = [[{ key: "2026-11-02" }, { key: "2026-11-03" }], [{ key: "2026-11-09" }]];
+  assert.equal(client.sessionCountOfWeek({ "2026-11-02": 4 }, weeks, 0), 4);
+  assert.equal(client.sessionCountOfWeek({ "2026-11-02": 4 }, weeks, 1), null);
+  assert.equal(client.sessionCountOfWeek(null, weeks, 0), null);
+  assert.equal(client.sessionCountOfWeek({}, [], 9), null);
+});
+
+test("isFutureMonth 只对当年未来月份为 true", () => {
+  assert.equal(client.isFutureMonth(2026, 12, "2026-11-10"), true);
+  assert.equal(client.isFutureMonth(2026, 11, "2026-11-10"), false);
+  assert.equal(client.isFutureMonth(2025, 12, "2026-11-10"), false, "往年没有未来月");
+  assert.equal(client.isFutureMonth(2026, 1, "bad"), false);
+});
+
+test("niceAxisMax 向上取到 1/2/5 × 10^n", () => {
+  assert.equal(client.niceAxisMax(0), 1);
+  assert.equal(client.niceAxisMax(1), 1);
+  assert.equal(client.niceAxisMax(3), 5);
+  assert.equal(client.niceAxisMax(7), 10);
+  assert.equal(client.niceAxisMax(12), 20);
+  assert.equal(client.niceAxisMax(430000000), 500000000);
+});
+
+test("buildMonthlyTrendGeometry 未来月份断开，双轴各自换算", () => {
+  const geometry = client.buildMonthlyTrendGeometry({
+    width: 640,
+    height: 210,
+    padL: 46,
+    padR: 46,
+    padT: 14,
+    padB: 26,
+    year: 2026,
+    todayKey: "2026-11-10",
+    tokenMax: 1000,
+    sessionMax: 8,
+    tokenOf: (month) => month * 10,
+    sessionOf: (month) => month
+  });
+  // 1–11 月是一整段，12 月是未来月被排除
+  assert.equal(geometry.tokenSegments.length, 1);
+  assert.deepEqual(geometry.tokenSegments[0].map((p) => p.month), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+  assert.deepEqual(geometry.sessionSegments[0].map((p) => p.month), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+  // 左轴 token 经过 niceAxisMax 取整；右轴会话数是整数刻度（4 的倍数）。
+  assert.equal(geometry.tokenMax, 1000);
+  assert.equal(geometry.sessionMax, 8);
+  // 零值落在基线上，满值落在顶部
+  assert.equal(geometry.yToken(0), 14 + (210 - 14 - 26));
+  assert.equal(geometry.yToken(1000), 14);
+  assert.equal(geometry.ySession(8), 14);
+  // X 轴：1 月落在第一列中心，12 月落在末列中心，且都在绘图区内
+  assert.equal(geometry.xOf(1), 46 + (640 - 92) / 24);
+  assert.equal(geometry.xOf(12), 46 + (640 - 92) / 12 * 11.5);
+  assert.ok(geometry.xOf(12) < 640 - 46);
+});
+
+test("buildMonthlyTrendGeometry 当年全部月份时不会产生空段", () => {
+  // 若一年里所有月份都已过去（往年的年份），应只有一段且包含 12 项。
+  const geometry = client.buildMonthlyTrendGeometry({
+    year: 2025,
+    todayKey: "2026-11-10",
+    tokenMax: 10,
+    sessionMax: 2
+  });
+  assert.equal(geometry.tokenSegments.length, 1);
+  assert.equal(geometry.tokenSegments[0].length, 12);
+});
+
+test("MonthlyTrend 渲染图例、双轴刻度与 12 个月横轴", () => {
+  const tokens = client.monthlyTokenSeries({ "2026-01-05": 1000, "2026-11-04": 500 }, 2026);
+  const sessions = client.monthlySessionSeries({ "2026-01": 2, "2026-11": 1 }, 2026);
+  const tree = render(client.MonthlyTrend({
+    year: 2026,
+    todayKey: "2026-11-10",
+    tokens,
+    sessions,
+    sessionAvailable: true,
+    t: (key) => ({
+      numberScale: "wan",
+      heatmapMonths: "1月,2月,3月,4月,5月,6月,7月,8月,9月,10月,11月,12月",
+      monthTrendTitle: "月度趋势",
+      monthTrendTokens: "Token 用量",
+      monthTrendSessions: "活跃会话数"
+    })[key] ?? key
+  }));
+  const texts = [];
+  const walk = (node) => {
+    if (node === null || node === undefined) return;
+    if (Array.isArray(node)) return node.forEach(walk);
+    if (typeof node === "string" || typeof node === "number") return texts.push(String(node));
+    if (typeof node === "object" && Array.isArray(node.children)) node.children.forEach(walk);
+    if (typeof node === "object" && node.children !== undefined && !Array.isArray(node.children)) walk(node.children);
+  };
+  walk(tree);
+  assert.ok(texts.includes("Token 用量"), "应有 token 图例");
+  assert.ok(texts.includes("活跃会话数"), "应有会话图例");
+  // 横轴必须把 1–12 月全部标出来（未来月份只是不画点，刻度仍要在）。
+  const monthLabels = ["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
+  for (const label of monthLabels) {
+    assert.ok(texts.includes(label), `横轴应包含 ${label}`);
+  }
+  const svg = collect(tree, "svg")[0];
+  assert.ok(svg, "应渲染 svg");
+  // 未来月份（12 月）不画点：会话圆点最多 11 个（1–11 月各一个）。
+  const circles = collect(tree, "circle");
+  assert.ok(circles.length <= 11, `会话点应 ≤11 个，实际 ${circles.length}`);
+});
+
+test("MonthlyTrend 在旧宿主（sessionAvailable=false）时隐藏会话图例", () => {
+  const tree = render(client.MonthlyTrend({
+    year: 2026,
+    todayKey: "2026-11-10",
+    tokens: client.monthlyTokenSeries({}, 2026),
+    sessions: client.monthlySessionSeries(null, 2026),
+    sessionAvailable: false,
+    t: (key) => ({
+      numberScale: "wan",
+      heatmapMonths: "1月,2月,3月,4月,5月,6月,7月,8月,9月,10月,11月,12月",
+      monthTrendTokens: "Token 用量",
+      monthTrendSessions: "活跃会话数"
+    })[key] ?? key
+  }));
+  const texts = [];
+  const walk = (node) => {
+    if (node === null || node === undefined) return;
+    if (Array.isArray(node)) return node.forEach(walk);
+    if (typeof node === "string" || typeof node === "number") return texts.push(String(node));
+    if (typeof node === "object" && Array.isArray(node.children)) node.children.forEach(walk);
+  };
+  walk(tree);
+  assert.ok(texts.includes("Token 用量"));
+  assert.equal(texts.includes("活跃会话数"), false, "缺字段时不应出现会话图例");
+});
+
+test("统计卡两行布局的 CSS 回归（4 列 + 行分隔线 + 窄屏 2 列）", () => {
+  const cssText = String(client.OVERVIEW_CSS);
+  assert.match(cssText, /\.dsau-stats\{display:grid;grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/, "桌面应为 4 列");
+  assert.match(cssText, /\.dsau-stat:nth-child\(n\+5\)\{border-top:1px solid var\(--dsw-alias-border-l1\)\}/, "第二行应有行间分隔线");
+  assert.match(cssText, /\.dsau-stat:nth-child\(4n\+1\)\{border-left:none\}/, "每行首格不应有左边框");
+  assert.match(cssText, /@media \(max-width:560px\)\{\.dsau-stats\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)\}/, "窄屏应为 2 列");
+  assert.match(cssText, /\.dsau-stat:nth-child\(2n\+1\)\{border-left:none\}/, "窄屏每行首格不画竖线");
+});
+
+test("OverviewPanel 统计卡渲染 8 项（两行 4+4），并输出月度趋势卡片", async () => {
+  const labels = [];
+  const hooks = {
+    createElement: (type, props, ...children) => {
+      const node = { type, props: props ?? {}, children };
+      // 统计格标签：className 为 dsau-stat-label 的文本节点父级
+      if (props && props.className === "dsau-stat-label") labels.push(children[0]);
+      return node;
+    },
+    Fragment: Symbol("F"),
+    useState: (initial) => {
+      const v = typeof initial === "function" ? initial() : initial;
+      if (v && typeof v === "object" && v.kind === "loading" && !globalThis.__statsSeed) {
+        globalThis.__statsSeed = true;
+        return [{
+          kind: "done",
+          value: {
+            ok: true,
+            scanning: false,
+            years: [2026],
+            days: { "2026-11-04": 1000, "2026-11-05": 2000 },
+            longestTurnMsByYear: { 2026: 60000 },
+            sessions: { counted: 2, retained: 0 },
+            sessionsByDay: { "2026-11-04": 1, "2026-11-05": 2 },
+            sessionsByWeek: { "2026-11-02": 2 },
+            sessionsByMonth: { "2026-11": 2 }
+          }
+        }, () => {}];
+      }
+      return [v, () => {}];
+    },
+    useRef: (initial) => ({ current: initial ?? null }),
+    useEffect: () => {},
+    useLayoutEffect: () => {},
+    useCallback: (fn) => fn,
+    useMemo: (fn) => fn()
+  };
+  const previousWindow = globalThis.window;
+  let descriptor;
+  globalThis.window = { __ModuleLoader__: { load(next) { descriptor = next; } } };
+  try {
+    const url = new URL("../client.js", import.meta.url);
+    url.searchParams.set("stats8", String(Date.now()) + Math.random());
+    await import(url.href);
+    const client2 = descriptor.factory((name) => {
+      if (name === "react") return hooks;
+      if (name === "react-dom/client") return { createRoot: () => ({ render() {}, unmount() {} }) };
+      if (name === "react-dom") return { render() {}, unmountComponentAtNode: () => true };
+      throw new Error("unexpected require: " + name);
+    });
+    const dict = {
+      statsTitle: "用户使用情况", statTotalTokens: "累计 Token 数", statMonthTokens: "本月 Token 数",
+      statWeekTokens: "本周 Token 数", statTodayTokens: "今日 Token 数", statPeakTokens: "Token 使用峰值",
+      statLongestTask: "最长任务用时", statLongestStreak: "最长连续天数", statCurrentStreak: "当前连续天数",
+      heatmapTitle: "Token 活动", monthTrendTitle: "月度趋势", overviewYear: "年度", numberScale: "wan",
+      durationDay: "天", durationHour: "小时", durationMinute: "分", durationSecond: "秒",
+      daysCount: "{n} 天", noValue: "—", heatmapMonths: "1月,2月,3月,4月,5月,6月,7月,8月,9月,10月,11月,12月",
+      monthTrendTokens: "Token 用量", monthTrendSessions: "活跃会话数", loading: "加载中"
+    };
+    // 展开函数组件（OverviewStat / MonthlyTrend 等）后统计标签。
+    render(client2.OverviewPanel({ t: (k) => dict[k] ?? k }));
+    assert.equal(labels.length, 8, `应渲染 8 个统计格，实际 ${labels.length}`);
+    assert.deepEqual(labels, [
+      "累计 Token 数", "本月 Token 数", "本周 Token 数", "今日 Token 数",
+      "Token 使用峰值", "最长任务用时", "最长连续天数", "当前连续天数"
+    ]);
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+/** 用自定义 hooks 重新加载 client.js（用于给 useState 播种悬浮态等）。 */
+async function loadClientWithHooks(hooks, tag) {
+  const previousWindow = globalThis.window;
+  let descriptor;
+  globalThis.window = { __ModuleLoader__: { load(next) { descriptor = next; } } };
+  try {
+    const url = new URL("../client.js", import.meta.url);
+    url.searchParams.set(tag, String(Date.now()) + Math.random());
+    await import(url.href);
+    return descriptor.factory((name) => {
+      if (name === "react") return hooks;
+      if (name === "react-dom/client") return { createRoot: () => ({ render() {}, unmount() {} }) };
+      if (name === "react-dom") return { render() {}, unmountComponentAtNode: () => true };
+      throw new Error("unexpected require: " + name);
+    });
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+}
+
+function textOf(node, out = []) {
+  if (node === null || node === undefined) return out;
+  if (Array.isArray(node)) {
+    for (const item of node) textOf(item, out);
+    return out;
+  }
+  if (typeof node === "string" || typeof node === "number") {
+    out.push(String(node));
+    return out;
+  }
+  if (typeof node === "object" && Array.isArray(node.children)) textOf(node.children, out);
+  return out;
+}
+
+test("MonthlyTrend 悬浮时提示框给出「月份 + Token + 活跃会话数」", async () => {
+  const hooks = {
+    createElement: (type, props, ...children) => ({ type, props: props ?? {}, children }),
+    Fragment: Symbol("F"),
+    // 第一次 useState 是 hovered：直接播种为 11 月。
+    useState: (initial) => {
+      const v = typeof initial === "function" ? initial() : initial;
+      if (v === null && !globalThis.__hoverSeeded) {
+        globalThis.__hoverSeeded = true;
+        return [11, () => {}];
+      }
+      return [v, () => {}];
+    },
+    useRef: (initial) => ({ current: initial ?? null }),
+    useEffect: () => {},
+    useLayoutEffect: () => {},
+    useCallback: (fn) => fn,
+    useMemo: (fn) => fn()
+  };
+  try {
+    const client2 = await loadClientWithHooks(hooks, "trendTip");
+    const tree = render(client2.MonthlyTrend({
+      year: 2026,
+      todayKey: "2026-11-25",
+      tokens: client2.monthlyTokenSeries({ "2026-11-04": 12340000 }, 2026),
+      sessions: client2.monthlySessionSeries({ "2026-11": 7 }, 2026),
+      sessionAvailable: true,
+      t: (key) => ({
+        numberScale: "wan",
+        heatmapMonths: "1月,2月,3月,4月,5月,6月,7月,8月,9月,10月,11月,12月",
+        monthTrendTokens: "Token 用量",
+        monthTrendSessions: "活跃会话数"
+      })[key] ?? key
+    }));
+    const texts = textOf(tree);
+    assert.ok(texts.includes("11月"), "提示框应带月份");
+    assert.ok(texts.some((item) => item.includes("Token 用量") && item.includes("1234万")), "应带当月 Token 数");
+    assert.ok(texts.some((item) => item.includes("活跃会话数") && item.includes("7")), "应带当月活跃会话数");
+  } finally {
+    delete globalThis.__hoverSeeded;
+  }
+});
+
+test("热力图悬浮：每天/每周带第三行会话数，累计总量只有两行", async () => {
+  const dict = {
+    numberScale: "wan",
+    heatmapMonths: "1月,2月,3月,4月,5月,6月,7月,8月,9月,10月,11月,12月",
+    heatmapDayTip: "{date}",
+    heatmapWeekTip: "{date} 起的一周",
+    heatmapCumulativeTip: "累计至 {date}",
+    heatmapValueUnit: "个 Token",
+    heatmapSessionsTip: "活跃会话 {n}",
+    heatmapDaily: "每天",
+    heatmapWeekly: "每周",
+    heatmapCumulative: "累计总量",
+    statsTitle: "用户使用情况",
+    statTotalTokens: "累计 Token 数",
+    statMonthTokens: "本月 Token 数",
+    statWeekTokens: "本周 Token 数",
+    statTodayTokens: "今日 Token 数",
+    statPeakTokens: "Token 使用峰值",
+    statLongestTask: "最长任务用时",
+    statLongestStreak: "最长连续天数",
+    statCurrentStreak: "当前连续天数",
+    heatmapTitle: "Token 活动",
+    monthTrendTitle: "月度趋势",
+    monthTrendTokens: "Token 用量",
+    monthTrendSessions: "活跃会话数",
+    overviewYear: "年度",
+    daysCount: "{n} 天"
+  };
+  const run = async (mode) => {
+    const tips = [];
+    const hooks = {
+      createElement: (type, props, ...children) => {
+        const node = { type, props: props ?? {}, children };
+        if (props && props.className === "dsau-heat-tip") tips.push(node);
+        return node;
+      },
+      Fragment: Symbol("F"),
+      // useState 顺序：state → year → mode → tip → tipBox。第 4 个播种成悬浮态。
+      useState: (initial) => {
+        const v = typeof initial === "function" ? initial() : initial;
+        const key = `__seed_${mode}_${tips.length}`;
+        globalThis.__calls = (globalThis.__calls ?? 0) + 1;
+        if (globalThis.__calls === 1) {
+          return [{
+            kind: "done",
+            value: {
+              ok: true, scanning: false, years: [2026],
+              days: { "2026-11-04": 1000 },
+              longestTurnMsByYear: { 2026: 60000 },
+              sessions: { counted: 2, retained: 0 },
+              sessionsByDay: { "2026-11-04": 2 },
+              sessionsByWeek: { "2026-11-02": 2 },
+              sessionsByMonth: { "2026-11": 2 }
+            }
+          }, () => {}];
+        }
+        if (globalThis.__calls === 3) return [mode, () => {}];
+        if (globalThis.__calls === 4) {
+          return [{
+            anchorX: 100, anchorY: 100,
+            caption: "2026/11/04",
+            value: "1000 个 Token",
+            sessions: mode === "cumulative" ? null : "活跃会话 2"
+          }, () => {}];
+        }
+        return [v, () => {}];
+      },
+      useRef: (initial) => ({ current: initial ?? null }),
+      useEffect: () => {},
+      useLayoutEffect: () => {},
+      useCallback: (fn) => fn,
+      useMemo: (fn) => fn()
+    };
+    globalThis.__calls = 0;
+    try {
+      const client2 = await loadClientWithHooks(hooks, `heatTip-${mode}`);
+      render(client2.OverviewPanel({ t: (key) => dict[key] ?? key }));
+      const texts = tips.flatMap((node) => textOf(node));
+      return texts;
+    } finally {
+      delete globalThis.__calls;
+    }
+  };
+
+  const daily = await run("daily");
+  assert.ok(daily.includes("活跃会话 2"), "每天模式应显示会话数行");
+  const weekly = await run("weekly");
+  assert.ok(weekly.includes("活跃会话 2"), "每周模式应显示会话数行");
+  const cumulative = await run("cumulative");
+  assert.equal(cumulative.includes("活跃会话 2"), false, "累计总量模式不应显示会话数行");
+  // 累计模式仍输出「描述 + 数值」两行（测试里 caption 是播种值，只校验行数与内容）。
+  assert.equal(cumulative.length, 2, `累计模式应只有两行，实际 ${JSON.stringify(cumulative)}`);
+  assert.ok(cumulative.includes("1000 个 Token"), "累计模式仍保留 Token 数值行");
+});
+
+test("热力图 showTip：按模式写入第三个字段（每天/每周有值，累计为 null）", async () => {
+  const dict = {
+    numberScale: "wan",
+    heatmapMonths: "1月,2月,3月,4月,5月,6月,7月,8月,9月,10月,11月,12月",
+    heatmapDayTip: "{date}",
+    heatmapWeekTip: "{date} 起的一周",
+    heatmapCumulativeTip: "累计至 {date}",
+    heatmapValueUnit: "个 Token",
+    heatmapSessionsTip: "活跃会话 {n}",
+    heatmapDaily: "每天", heatmapWeekly: "每周", heatmapCumulative: "累计总量",
+    statsTitle: "用户使用情况", heatmapTitle: "Token 活动", monthTrendTitle: "月度趋势",
+    monthTrendTokens: "Token 用量", monthTrendSessions: "活跃会话数", overviewYear: "年度"
+  };
+  const run = async (mode) => {
+    const tips = [];
+    let setTip = null;
+    const hooks = {
+      createElement: (type, props, ...children) => ({ type, props: props ?? {}, children }),
+      Fragment: Symbol("F"),
+      useState: (initial) => {
+        const v = typeof initial === "function" ? initial() : initial;
+        globalThis.__calls = (globalThis.__calls ?? 0) + 1;
+        const index = globalThis.__calls;
+        if (index === 1) {
+          return [{
+            kind: "done",
+            value: {
+              ok: true, scanning: false, years: [2026],
+              days: { "2026-11-04": 1000, "2026-11-05": 500 },
+              longestTurnMsByYear: { 2026: 60000 },
+              sessions: { counted: 2, retained: 0 },
+              sessionsByDay: { "2026-11-04": 2, "2026-11-05": 1 },
+              sessionsByWeek: { "2026-11-02": 3 },
+              sessionsByMonth: { "2026-11": 2 }
+            }
+          }, () => {}];
+        }
+        if (index === 3) return [mode, () => {}];
+        if (index === 4) {
+          setTip = (value) => tips.push(value);
+          return [null, setTip];
+        }
+        return [v, () => {}];
+      },
+      useRef: (initial) => ({ current: initial ?? null }),
+      useEffect: () => {},
+      useLayoutEffect: () => {},
+      useCallback: (fn) => fn,
+      useMemo: (fn) => fn()
+    };
+    globalThis.__calls = 0;
+    try {
+      const client2 = await loadClientWithHooks(hooks, `heatTipSet-${mode}`);
+      const tree = render(client2.OverviewPanel({ t: (key) => dict[key] ?? key }));
+      // 找到 2026-11-04 那一格并触发悬浮
+      // 选一个确实有会话数据的日子（11-04），否则 daily 模式拿到 null 也属正常。
+      const cell = collect(tree, "div").find((node) => node.props
+        && node.props.onMouseEnter
+        && (node.props.key === "2026-11-04" || node.props.key === "2026-11-05"));
+      assert.ok(cell, "应能取到一个可悬浮的热力格");
+      cell.props.onMouseEnter({
+        currentTarget: {
+          getBoundingClientRect: () => ({ left: 10, top: 20, width: 16, height: 16 })
+        }
+      });
+      return tips[tips.length - 1];
+    } finally {
+      delete globalThis.__calls;
+    }
+  };
+
+  const daily = await run("daily");
+  assert.match(String(daily.sessions), /^活跃会话 \d+$/, "每天模式应写入会话数");
+  const weekly = await run("weekly");
+  assert.match(String(weekly.sessions), /^活跃会话 \d+$/, "每周模式应写入会话数");
+  const cumulative = await run("cumulative");
+  assert.equal(cumulative.sessions, null, "累计总量模式不应写会话数");
+  assert.ok(cumulative.caption.includes("累计至"), "累计模式仍是累计描述");
+});
+
+test("MonthlyTrend 提示框复用 ChartTooltip（贴边时会被夹紧而不是溢出）", async () => {
+  const hooks = {
+    createElement: (type, props, ...children) => ({ type, props: props ?? {}, children }),
+    Fragment: Symbol("F"),
+    // hovered 播种为 12 月之前的最右月份（11 月），验证走 ChartTooltip 分支。
+    useState: (initial) => {
+      const v = typeof initial === "function" ? initial() : initial;
+      if (v === null && !globalThis.__edgeSeeded) {
+        globalThis.__edgeSeeded = true;
+        return [11, () => {}];
+      }
+      return [v, () => {}];
+    },
+    useRef: (initial) => ({ current: initial ?? null }),
+    useEffect: () => {},
+    useLayoutEffect: () => {},
+    useCallback: (fn) => fn,
+    useMemo: (fn) => fn()
+  };
+  try {
+    const client2 = await loadClientWithHooks(hooks, "trendTipEdge");
+    const tree = render(client2.MonthlyTrend({
+      year: 2026,
+      todayKey: "2026-11-25",
+      tokens: client2.monthlyTokenSeries({ "2026-11-04": 12340000 }, 2026),
+      sessions: client2.monthlySessionSeries({ "2026-11": 7 }, 2026),
+      sessionAvailable: true,
+      t: (key) => ({
+        numberScale: "wan",
+        heatmapMonths: "1月,2月,3月,4月,5月,6月,7月,8月,9月,10月,11月,12月",
+        monthTrendTokens: "Token 用量",
+        monthTrendSessions: "活跃会话数"
+      })[key] ?? key
+    }));
+    // ChartTooltip 是函数组件，render 会展开成带 styles.tooltip 的 div；
+    // 用 chartWidth/chartHeight 探针确认它接到了锚点与画布尺寸。
+    const tips = collect(tree, "div").filter((node) => node.props && node.props.style
+      && node.props.style.position === "absolute" && node.props.style.zIndex === 6);
+    assert.equal(tips.length, 1, "应只渲染一个提示框");
+    assert.ok(Number.isFinite(tips[0].props.style.left), "提示框 left 应为有限值");
+    assert.ok(Number.isFinite(tips[0].props.style.top), "提示框 top 应为有限值");
+  } finally {
+    delete globalThis.__edgeSeeded;
+  }
+});
+
+test("MonthlyTrend 旧宿主时右轴刻度与图例一并隐藏，只留 token", async () => {
+  const tree = render(client.MonthlyTrend({
+    year: 2026,
+    todayKey: "2026-11-25",
+    tokens: client.monthlyTokenSeries({ "2026-11-04": 1000 }, 2026),
+    sessions: client.monthlySessionSeries(null, 2026),
+    sessionAvailable: false,
+    t: (key) => ({
+      numberScale: "wan",
+      heatmapMonths: "1月,2月,3月,4月,5月,6月,7月,8月,9月,10月,11月,12月",
+      monthTrendTokens: "Token 用量",
+      monthTrendSessions: "活跃会话数"
+    })[key] ?? key
+  }));
+  // 右侧刻度从 x = W - padR + 6 起画，旧宿主不应出现这些 text
+  const rightTicks = collect(tree, "text").filter((node) => node.props.textAnchor === "start");
+  assert.equal(rightTicks.length, 0, `旧宿主不应绘制右轴刻度，实际 ${rightTicks.length} 个`);
+  // 左轴仍是 5 档
+  const leftTicks = collect(tree, "text").filter((node) => node.props.textAnchor === "end");
+  assert.equal(leftTicks.length, 5, "左轴刻度应保持 5 档");
+});
+
+test("中英文词典新增的 monthTrend* 键都存在且不为空（防止键名冲突/漏配）", async () => {
+  const client2 = await loadClient();
+  let dictionaries = null;
+  client2.apply({
+    remote: undefined,
+    effect(callback) { callback(); },
+    locale: {
+      register(_ns, dicts) { dictionaries = dicts; },
+      bind() { return (key) => key; }
+    },
+    slots: { inject(_name, callback) { return callback(); }, register() { return () => {}; } }
+  });
+  assert.ok(dictionaries, "应注册文案字典");
+  for (const lang of ["zh", "en"]) {
+    const dict = dictionaries[lang];
+    assert.ok(dict, `应有 ${lang} 字典`);
+    for (const key of ["monthTrendTitle", "monthTrendTokens", "monthTrendSessions"]) {
+      assert.equal(typeof dict[key], "string", `${lang}.${key} 应为字符串`);
+      assert.ok(dict[key].length > 0, `${lang}.${key} 不应为空`);
+    }
+  }
+  // 月度趋势的标题必须与 OpenCode 的「用量趋势」区分开，否则后者会覆盖前者。
+  assert.notEqual(dictionaries.zh.monthTrendTitle, dictionaries.zh.trendTitle);
+  assert.notEqual(dictionaries.en.monthTrendTitle, dictionaries.en.trendTitle);
+  assert.equal(dictionaries.zh.monthTrendTitle, "月度趋势");
+  assert.equal(dictionaries.en.monthTrendTitle, "Monthly trend");
+});

@@ -228,3 +228,33 @@ test("insights 路由：服务缺失时返回 unsupported", async () => {
     assert.equal(body.code, "unsupported");
   });
 });
+
+// ---- 0.6.0：路由返回活跃会话数（每日计数 / 每周每月去重） -----------------------
+
+test("insights 路由：返回 sessionsByDay / sessionsByWeek / sessionsByMonth", async () => {
+  await withTempDataDir(async () => {
+    // 两个会话同一天活跃（11-04），另有一个会话在另一天（11-06，同一周）。
+    const persistence = makePersistence({
+      s1: { header: { id: "s1" }, revision: "r1", events: eventsWithUsage("2026-11-04T02:00:00Z", 1000) },
+      s2: { header: { id: "s2", origin: "subagent" }, revision: "r1", events: eventsWithUsage("2026-11-04T03:00:00Z", 500) },
+      s3: { header: { id: "s3" }, revision: "r1", events: eventsWithUsage("2026-11-06T02:00:00Z", 300) }
+    });
+    const { ctx, routes } = makeCtx(persistence);
+    await freshApply(ctx);
+
+    await callInsights(routes);
+    const done = await waitForScan(routes);
+
+    // 每日：11-04 有两个会话（含子代理），11-06 一个。
+    assert.equal(done.sessionsByDay["2026-11-04"], 2);
+    assert.equal(done.sessionsByDay["2026-11-06"], 1);
+    // 每周：11-04 与 11-06 同属 11-02 那一周，去重后共 3 个会话。
+    const weekKeys = Object.keys(done.sessionsByWeek);
+    assert.equal(weekKeys.length, 1, "两天同周应只产出一个周键");
+    assert.match(weekKeys[0], /^\d{4}-\d{2}-\d{2}$/);
+    assert.equal(done.sessionsByWeek[weekKeys[0]], 3);
+    // 每月：2026-11 去重后 3 个会话。
+    assert.equal(done.sessionsByMonth["2026-11"], 3);
+    assert.deepEqual(Object.keys(done.sessionsByMonth).sort(), ["2026-11"]);
+  });
+});
