@@ -10,7 +10,7 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 > npm 包名：`@ycet/dsh-account-usage`。npm 上同名的 [`dsh-account-usage`](https://www.npmjs.com/package/dsh-account-usage) 是另一个作者的独立项目，与本插件无关，请勿混装。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.6.0-blue.svg?style=for-the-badge)](package.json)
+[![Version](https://img.shields.io/badge/version-0.6.1-blue.svg?style=for-the-badge)](package.json)
 [![npm](https://img.shields.io/npm/v/%40ycet%2Fdsh-account-usage?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@ycet/dsh-account-usage)
 [![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.6%2B-purple.svg?style=for-the-badge)](https://github.com/deepseek-ai/deepseek-harness)
 
@@ -125,6 +125,9 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 | **双语言界面** | 完整的中英文切换支持 |
 
 > [!NOTE]
+> `0.6.1` 修正 opencode go 页的「本周期模型用量」：OpenCode Console 导出的官方日榜 CSV 固定是**近 30 天滚动窗口**，订阅周期刚重置时仍会带上上一周期尾段，导致模型占比、请求数与 Tokens 显示的是旧周期数据。现在先按「当前周期起点 → 今天（不晚于周期终点）」裁剪，再汇总模型与合计，与上方用量趋势曲线同口径；本周期尚无用量时该卡片隐藏。**仅宿主改动**，本地 `link` 安装也需完全退出并重开 DSH 才会生效（只刷新页面不够）。
+
+> [!NOTE]
 > `0.6.0` 给「概览」页加了三块内容。第一，**统计卡改为两行八项**：第一行是累计 Token 数（随年度下拉）、本月 / 本周（以周一为一周起始）/ 今日 Token 数（这三项始终按真实当天计算，切到往年也不跟着变），第二行保留原来的 Token 使用峰值、最长任务用时、最长连续天数、当前连续天数。第二，**热力图悬停提示新增第三行「活跃会话 N」**，口径是当天有 Token 消耗的会话数（含子代理），`每周` 模式按会话去重、同一会话多天只算一次，`累计总量` 模式保持原来的两行不变。第三，**热力图下方新增「月度趋势」卡片**：跟随年度下拉展示 1–12 月的 Token 用量（左轴，面积 + 折线）与活跃会话数（右轴，折线 + 圆点），未来月份断开不画，悬停给出月份 + 两项数值，无数据时保留空坐标轴。活跃会话数由宿主在账本聚合时计算（每日直接计数，每周 / 每月按会话 id 去重），**账本结构不变、无需重扫**，升级后打开概览页即可看到；旧版宿主没有这几个字段时，第三行与右轴会自动隐藏。纯本地读取，不新增网络请求。
 
 > [!NOTE]
@@ -161,16 +164,16 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 
 ```sh
 # 方式一：从 npm 安装（推荐，支持插件页一键更新）
-dsh plugin --profile web add @ycet/dsh-account-usage@0.6.0
+dsh plugin --profile web add @ycet/dsh-account-usage@0.6.1
 
 # 方式二：从本地源码安装（开发）
 dsh plugin --profile web add <absolute-path-to-plugin>
 
 # 方式三：从 GitHub 安装（锁定版本 tag，需本机有 git，无需 npm 账号）
-dsh plugin --profile web add "github:Ycet/dsh-account-usage#v0.6.0"
+dsh plugin --profile web add "github:Ycet/dsh-account-usage#v0.6.1"
 
 # 方式四：从 Release 资产安装（tarball，无需 git、无需 npm 账号）
-dsh plugin --profile web add "https://github.com/Ycet/dsh-account-usage/releases/download/v0.6.0/dsh-account-usage-0.6.0.tgz"
+dsh plugin --profile web add "https://github.com/Ycet/dsh-account-usage/releases/download/v0.6.1/dsh-account-usage-0.6.1.tgz"
 ```
 
 包声明了 `dsh.bundle` 补丁层，`dsh plugin` 会自动把加载项合入 profile 的 bundle 层，无需手动编辑 `cordis.patch.yml`。方式二～四均无需 npm 账号；桌面端把 `--profile web` 换成 `--profile desktop`（使用桌面端自带 CLI）。

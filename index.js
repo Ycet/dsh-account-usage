@@ -71,6 +71,7 @@ import {
   parseConsoleActivity,
   parseConsoleOrgIds,
   parseUsageCsv,
+  filterCsvRowsByDateRange,
   rollupCsvDaily,
   rollupCsvModels,
   percentGridMax
@@ -915,6 +916,7 @@ async function loadConsoleUsage(ctx, force = false) {
 /**
  * GET /api/account-usage/opencode-history
  * 当前订阅周期的按天已用额度序列 + 线性外推预测（+ 可选的官方日榜明细）。
+ * 官方日榜明细（模型占比 / 请求数 / Tokens）与曲线口径一致，只统计当前周期。
  * 浏览器契约：HTTP 200 + JSON；只有「连周期都算不出来」时才 ok:false。
  */
 async function handleOpencodeHistory(ctx, req, res) {
@@ -951,11 +953,18 @@ async function handleOpencodeHistory(ctx, req, res) {
     anchorPercent
   });
   const forecast = forecastSeries(series, { periodStart: period.start, periodEnd: period.end, todayKey });
-  const models =
-    consoleUsage.csv === null ? null : rollupCsvModels(consoleUsage.csv.rows).slice(0, 8);
+  // 控制台导出的 CSV 固定是近 30 天滚动窗口，周期刚重置时会带上上一周期尾段。
+  // 「本周期模型用量」必须只统计 [周期起点, min(周期终点, 今天)] 内的行，
+  // 否则刚重置时展示的仍是上一周期的模型占比、请求数与 Tokens。
+  const periodEndCap = period.end < todayKey ? period.end : todayKey;
+  const periodRows =
+    consoleUsage.csv === null
+      ? []
+      : filterCsvRowsByDateRange(consoleUsage.csv.rows, period.start, periodEndCap);
+  const models = consoleUsage.csv === null ? null : rollupCsvModels(periodRows).slice(0, 8);
   let totals = null;
-  if (consoleUsage.csv !== null && consoleUsage.csv.rows.length > 0) {
-    const daily = rollupCsvDaily(consoleUsage.csv.rows);
+  if (periodRows.length > 0) {
+    const daily = rollupCsvDaily(periodRows);
     let requests = 0;
     let tokens = 0;
     for (const rec of daily.values()) {

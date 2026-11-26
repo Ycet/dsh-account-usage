@@ -10,7 +10,7 @@ A DeepSeek Harness (DSH) web-GUI plugin: adds an "Account" page to the settings 
 > npm package: `@ycet/dsh-account-usage`. The unscoped [`dsh-account-usage`](https://www.npmjs.com/package/dsh-account-usage) on npm is an unrelated project by another author — do not mix the two.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.6.0-blue.svg?style=for-the-badge)](package.json)
+[![Version](https://img.shields.io/badge/version-0.6.1-blue.svg?style=for-the-badge)](package.json)
 [![npm](https://img.shields.io/npm/v/%40ycet%2Fdsh-account-usage?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@ycet/dsh-account-usage)
 [![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.6%2B-purple.svg?style=for-the-badge)](https://github.com/deepseek-ai/deepseek-harness)
 
@@ -125,6 +125,9 @@ Quota progress bars, reset times and reference limits for the three windows, plu
 | **Bilingual UI** | Full Chinese/English switching |
 
 > [!NOTE]
+> `0.6.1` fixes the "Models this period" card on the opencode go tab: the official daily CSV exported by OpenCode Console is a **rolling 30-day window**, so right after a subscription period resets it still contains the tail of the previous period — the model shares, request count and tokens shown were from the old period. The host now clips the CSV to "current period start → today (no later than period end)" before rolling up the models and totals, matching the usage-trend chart above; the card is hidden when the current period has no usage yet. **Host-side only** — even a local `link` install needs a full quit and reopen of DSH (refreshing the page is not enough).
+
+> [!NOTE]
 > `0.6.0` adds three things to the Overview tab. First, the **stats card now has two rows of four**: row 1 is total tokens (follows the year dropdown) plus this month / this week (Monday-first) / today tokens (these three always use the real current date and do not change when you switch to a past year), while row 2 keeps the original peak day, longest task, longest streak and current streak. Second, the **heatmap tooltip gains a third line, "N active sessions"**, counting sessions that consumed tokens that day (subagents included); the `Weekly` mode de-duplicates per session so one session active on several days counts once, and the `Cumulative` mode keeps its original two lines. Third, a new **Monthly trend card sits below the heatmap**: it follows the year dropdown and plots Jan–Dec tokens (left axis, area + line) against active sessions (right axis, line + dots), breaking off at future months, showing the month plus both values on hover, and keeping an empty axis when there is no data. The session counts are computed by the host while aggregating the ledger (counted directly per day, de-duplicated by session id per week/month), so **the ledger format is unchanged and no rescan is needed** — open the Overview tab after upgrading. On an older host without these fields the third line and the right axis hide themselves. Local reads only; no new network calls.
 
 > [!NOTE]
@@ -159,16 +162,16 @@ Quota progress bars, reset times and reference limits for the three windows, plu
 
 ```sh
 # Option 1: install from npm (recommended; can be updated from the plugin page)
-dsh plugin --profile web add @ycet/dsh-account-usage@0.6.0
+dsh plugin --profile web add @ycet/dsh-account-usage@0.6.1
 
 # Option 2: install from a local source directory (development)
 dsh plugin --profile web add <absolute-path-to-plugin>
 
 # Option 3: install from GitHub (pinned to a release tag; requires git, no npm account)
-dsh plugin --profile web add "github:Ycet/dsh-account-usage#v0.6.0"
+dsh plugin --profile web add "github:Ycet/dsh-account-usage#v0.6.1"
 
 # Option 4: install from a Release asset (tarball; no git, no npm account)
-dsh plugin --profile web add "https://github.com/Ycet/dsh-account-usage/releases/download/v0.6.0/dsh-account-usage-0.6.0.tgz"
+dsh plugin --profile web add "https://github.com/Ycet/dsh-account-usage/releases/download/v0.6.1/dsh-account-usage-0.6.1.tgz"
 ```
 
 The package declares a `dsh.bundle` patch layer; `dsh plugin` merges the loader entry into the profile's bundle layer automatically — no manual editing of `cordis.patch.yml` required. Options 2–4 need no npm account; for the desktop app replace `--profile web` with `--profile desktop` (using the desktop-bundled CLI).

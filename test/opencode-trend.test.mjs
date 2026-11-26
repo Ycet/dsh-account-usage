@@ -11,6 +11,7 @@ import {
   parseConsoleActivity,
   parseConsoleOrgIds,
   parseUsageCsv,
+  filterCsvRowsByDateRange,
   rollupCsvDaily,
   rollupCsvModels,
   microCentsToUsd,
@@ -76,6 +77,29 @@ test("parseUsageCsv 兼容 BOM 与多种缓存写入列", () => {
   const csv = "\uFEFFdate,model,cache_write_5m_tokens,cache_write_1h_tokens\n2026-11-02,a,7,3";
   const parsed = parseUsageCsv(csv);
   assert.equal(parsed.rows[0].cacheWrite, 10);
+});
+
+test("filterCsvRowsByDateRange 只保留本周期行（含首尾），非法入参返回空数组", () => {
+  const parsed = parseUsageCsv(
+    [
+      "date,model,provider,requests,input_tokens,output_tokens,cache_read_tokens,cache_write_tokens,cost_micro_cents",
+      "2026-10-19,legacy,opencode,9,9,9,0,0,1",
+      "2026-10-20,deepseek-v4.1-flash,opencode,1,1,1,0,0,1",
+      "2026-11-20,glm-5.3-flash,opencode,2,2,2,0,0,1",
+      "2026-11-21,future,opencode,3,3,3,0,0,1"
+    ].join("\n")
+  );
+  const rows = filterCsvRowsByDateRange(parsed.rows, "2026-10-20", "2026-11-20");
+  assert.deepEqual(
+    rows.map((row) => row.date),
+    ["2026-10-20", "2026-11-20"]
+  );
+  // 不修改原数组
+  assert.equal(parsed.rows.length, 4);
+  // 参数非法/区间倒置时安全返回空数组
+  assert.deepEqual(filterCsvRowsByDateRange(parsed.rows, null, "2026-11-20"), []);
+  assert.deepEqual(filterCsvRowsByDateRange(parsed.rows, "2026-11-20", "2026-10-20"), []);
+  assert.deepEqual(filterCsvRowsByDateRange(null, "2026-10-20", "2026-11-20"), []);
 });
 
 test("rollupCsvDaily / rollupCsvModels 汇总每日与按模型数据", () => {

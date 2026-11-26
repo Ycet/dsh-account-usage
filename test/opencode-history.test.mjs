@@ -14,6 +14,8 @@ const USAGE_OK = {
 
 const CSV_OK = [
   "date,model,provider,requests,input_tokens,output_tokens,cache_read_tokens,cache_write_tokens,cost_micro_cents",
+  // 上一周期尾段：导出固定是近 30 天窗口，刚重置时一定会带上，必须被过滤掉
+  "2026-10-19,legacy-model,opencode,9999,2000000000,0,0,0,1000000000",
   "2026-10-21,deepseek-v4.1-flash,opencode,588,100,50,20,5,3000000000",
   "2026-10-22,glm-5.3-flash,opencode,12,10,5,0,0,3000000000",
   "2026-11-10,deepseek-v4.1-flash,opencode,300,80,40,10,0,4500000000"
@@ -96,7 +98,10 @@ async function withTempDataDir(run) {
   }
 }
 
-test("未配置 Console Cookie：退回本地采样但仍返回完整周期序列", async () => {
+test("未配置 Console Cookie：退回本地采样但仍返回完整周期序列", async (t) => {
+  // 固定时钟到周期内（2026-11-14 本地中午）：fixture 周期是 10/20–11/20，
+  // 不冻结时间的话「今天」会随真实日期漂移，外推结果无法断言。
+  t.mock.timers.enable({ apis: ["Date"], now: new Date(2026, 10, 14, 12, 0, 0) });
   await withTempDataDir(async () => {
     // 首次导入时读一次环境变量，这里用查询字符串让采样目录生效
     const { apply } = await import("../index.js");
@@ -158,7 +163,9 @@ test("Console Cookie 被拒绝：降级为采样数据并标记 expired", async 
   });
 });
 
-test("官方日榜可用：按占比折算百分比并给出请求数、模型占比与合计", async () => {
+test("官方日榜可用：按占比折算百分比并给出请求数、模型占比与合计", async (t) => {
+  // 同样冻结到周期内，让「今天」落在 10/20–11/20 之间
+  t.mock.timers.enable({ apis: ["Date"], now: new Date(2026, 10, 14, 12, 0, 0) });
   await withTempDataDir(async () => {
     const { apply } = await import("../index.js");
     const { ctx, routes } = makeCtx({ consoleCookie: "session=good" });
@@ -197,9 +204,10 @@ test("官方日榜可用：按占比折算百分比并给出请求数、模型�
       // 末点锚定官方实时百分比
       const today = body.days.find((item) => item.date === body.now.date);
       assert.equal(today.cumulativePercent, 75);
-      // 模型占比与合计
+      // 模型占比与合计只统计当前周期：10-19 属于上一周期，不能混进来
       assert.equal(body.models.length, 2);
       assert.equal(body.models[0].model, "deepseek-v4.1-flash");
+      assert.equal(body.models.some((model) => model.model === "legacy-model"), false);
       assert.equal(body.totals.requests, 900);
       assert.ok(body.totals.tokens > 0);
       // 诊断只回传表头，不包含 Cookie
