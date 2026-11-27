@@ -172,7 +172,6 @@ window.__ModuleLoader__.load({
       rolling: "5 小时滚动",
       weekly: "每周",
       monthly: "每月",
-      limit: "限额参考",
       reset: "重置",
       countdownHour: "小时",
       countdownMinute: "分钟",
@@ -348,7 +347,6 @@ window.__ModuleLoader__.load({
       rolling: "5h rolling",
       weekly: "Weekly",
       monthly: "Monthly",
-      limit: "Limit (ref.)",
       reset: "resets",
       countdownHour: "h",
       countdownMinute: "min",
@@ -486,7 +484,6 @@ window.__ModuleLoader__.load({
       tabActive: { border: "none", background: "transparent", color: "var(--dsw-alias-label-primary)", font: "inherit", fontSize: 14, fontWeight: 600, padding: "8px 14px", cursor: "pointer", borderBottom: "2px solid var(--dsw-alias-state-business-primary)", marginBottom: -1 }
     };
 
-    const OPENCODE_LIMITS = { rolling: "$12", weekly: "$30", monthly: "$60" };
     /** 「跳转」目标：官方对应页面（新标签页打开）。 */
     const DEEPSEEK_USAGE_PAGE_URL = "https://platform.deepseek.com/usage";
     const OPENCODE_GO_PAGE_URL = "https://opencode.ai/console/";
@@ -499,6 +496,24 @@ window.__ModuleLoader__.load({
       const sym = currency === "CNY" ? "¥" : currency === "USD" ? "$" : "";
       const s = v !== 0 && Math.abs(v) < 0.01 ? v.toFixed(4) : v.toFixed(2);
       return sym + s;
+    }
+
+    /**
+     * 余额专用格式：与官方「账号与余额」页一致，正数截断到 2 位（4.589 → ¥4.58）。
+     * 正常路径使用宿主下发的 *Text 字段；这里只给旧宿主/异常数据兜底。
+     */
+    function fmtBalanceMoney(v, currency) {
+      if (typeof v !== "number" || !Number.isFinite(v)) return "—";
+      const sym = currency === "CNY" ? "¥" : currency === "USD" ? "$" : "";
+      if (v === 0) return sym + "0.00";
+      if (v < 0) {
+        if (v > -0.01) return "-" + sym + "0.01";
+        return "-" + sym + Math.abs(v).toFixed(2);
+      }
+      if (v < 0.01) return "<" + sym + "0.01";
+      // 用十进制字符串截断，避免 toFixed 在 6 位处先四舍五入（如 1.9999999 → 2.00）。
+      const [integer, fraction = ""] = String(v).split(".");
+      return sym + integer + "." + (fraction + "00").slice(0, 2);
     }
 
     function fmtCount(v) {
@@ -546,13 +561,15 @@ window.__ModuleLoader__.load({
 
     /** 账户菜单余额文案：`余额：¥3.29`；失败/无值显示 `余额：—`。 */
     function balanceTextOf(body, t) {
+      if (body === null || typeof body !== "object" || body.ok !== true) return t("menuBalance") + "—";
+      const balance = body.balance !== null && typeof body.balance === "object" ? body.balance : {};
+      // 宿主已按官方页规则算好合计文本时直接使用，避免客户端再做一次浮点加法/四舍五入。
+      if (typeof balance.totalText === "string" && balance.totalText !== "") {
+        return t("menuBalance") + balance.totalText;
+      }
       const total = balanceTotalOf(body);
       if (total === null) return t("menuBalance") + "—";
-      const currency =
-        body !== null && typeof body === "object" && body.balance !== null && typeof body.balance === "object"
-          ? body.balance.currency
-          : null;
-      return t("menuBalance") + fmtMoney(total, currency);
+      return t("menuBalance") + fmtBalanceMoney(total, balance.currency);
     }
 
     function fmtReset(resetsAt, t) {
@@ -2187,7 +2204,7 @@ window.__ModuleLoader__.load({
       );
     }
 
-    function WindowCard({ name, limit, windowData, countdown, t }) {
+    function WindowCard({ name, windowData, countdown, t }) {
       const percent = windowData && typeof windowData.percent === "number" ? windowData.percent : null;
       const pct = percent === null ? 0 : Math.max(0, Math.min(100, percent));
       const barColor = pct < 50
@@ -2197,8 +2214,7 @@ window.__ModuleLoader__.load({
           : "var(--dsw-alias-state-error-primary)";
       return React.createElement("div", { style: styles.card },
         React.createElement("div", { style: styles.row },
-          React.createElement("strong", { style: { fontSize: 14 } }, name),
-          React.createElement("span", { style: { color: "var(--dsw-alias-label-tertiary)" } }, `${t("limit")}: ${limit}`)
+          React.createElement("strong", { style: { fontSize: 14 } }, name)
         ),
         React.createElement("div", { style: styles.barTrack },
           React.createElement("div", { style: { ...styles.barFill, width: pct + "%", background: barColor } })
@@ -3107,8 +3123,18 @@ window.__ModuleLoader__.load({
               : summary.value.ok !== true
                 ? React.createElement("p", { style: styles.error }, errorText(summary.value, t))
                 : React.createElement("div", { style: styles.cardsGrid },
-                  React.createElement(StatGridItem, { label: t("summaryToppedUp"), value: fmtMoney(summary.value.balance?.toppedUp, currency) }),
-                  React.createElement(StatGridItem, { label: t("summaryGranted"), value: fmtMoney(summary.value.balance?.granted, currency) }),
+                  React.createElement(StatGridItem, {
+                    label: t("summaryToppedUp"),
+                    value: typeof summary.value.balance?.toppedUpText === "string"
+                      ? summary.value.balance.toppedUpText
+                      : fmtBalanceMoney(summary.value.balance?.toppedUp, currency)
+                  }),
+                  React.createElement(StatGridItem, {
+                    label: t("summaryGranted"),
+                    value: typeof summary.value.balance?.grantedText === "string"
+                      ? summary.value.balance.grantedText
+                      : fmtBalanceMoney(summary.value.balance?.granted, currency)
+                  }),
                   React.createElement(StatGridItem, { label: t("summaryCumulative"), value: fmtMoney(summary.value.cumulativeCost, currency) })
                 )
         ),
@@ -3906,21 +3932,18 @@ window.__ModuleLoader__.load({
         ),
         React.createElement(WindowCard, {
           name: t("rolling"),
-          limit: OPENCODE_LIMITS.rolling,
           windowData: state.value.usage?.rolling,
           countdown: fmtCountdown(state.value.usage?.rolling?.resetsAt, "rolling", t),
           t
         }),
         React.createElement(WindowCard, {
           name: t("weekly"),
-          limit: OPENCODE_LIMITS.weekly,
           windowData: state.value.usage?.weekly,
           countdown: fmtCountdown(state.value.usage?.weekly?.resetsAt, "weekly", t),
           t
         }),
         React.createElement(WindowCard, {
           name: t("monthly"),
-          limit: OPENCODE_LIMITS.monthly,
           windowData: state.value.usage?.monthly,
           countdown: fmtCountdown(state.value.usage?.monthly?.resetsAt, "monthly", t),
           t

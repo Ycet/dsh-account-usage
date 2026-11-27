@@ -55,6 +55,16 @@ test("balanceTextOf sums topped-up and granted balances", async () => {
     client.balanceTextOf({ ok: true, balance: { toppedUp: null, granted: 0.5, currency: "USD" } }, t),
     "余额：$0.50"
   );
+  // 官方页的余额是截断格式：4.589 → ¥4.58（不是 toFixed 的 ¥4.59）
+  assert.equal(
+    client.balanceTextOf({ ok: true, balance: { toppedUp: 4.589, granted: 0, currency: "CNY" } }, t),
+    "余额：¥4.58"
+  );
+  // 宿主下发的官方文本优先于客户端自行计算
+  assert.equal(
+    client.balanceTextOf({ ok: true, balance: { toppedUp: 4.58, granted: 0, totalText: "¥4.58", currency: "CNY" } }, t),
+    "余额：¥4.58"
+  );
   assert.equal(client.balanceTextOf({ ok: true, balance: { toppedUp: null, granted: null } }, t), "余额：—");
   assert.equal(client.balanceTextOf({ ok: false, balance: { toppedUp: 9 } }, t), "余额：—");
   assert.equal(client.balanceTextOf(null, t), "余额：—");

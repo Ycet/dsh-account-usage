@@ -4,9 +4,11 @@
  * 在 DSH web 服务器上注册三条精确 GET 路由，供设置页「账户」使用：
  *
  *   GET /api/account-usage/deepseek-summary
- *     解析 DeepSeek 平台会话（DEEPSEEK_PLATFORM_TOKEN）下的账户概要：
- *     充值余额 / 赠送余额 / 累计消费 / 本月消费 / 本月 tokens。
- *     数据源：platform.deepseek.com/api/v0/users/get_user_summary
+ *     账户概要：充值余额 / 赠送余额 / 累计消费 / 本月消费 / 本月 tokens。
+ *     余额优先读取 DSH 官方账户服务（与官方「账户与余额」页同源），并按官方
+ *     页规则截断到 2 位小数；官方服务不可用时回退到插件自己的平台会话
+ *     （DEEPSEEK_PLATFORM_TOKEN）数据。累计消费等仍取自平台。
+ *     平台数据源：platform.deepseek.com/api/v0/users/get_user_summary
  *     （并尽力附加 /users/get_user_info 以补全累计消费字段）。
  *
  *   GET /api/account-usage/deepseek-usage?from=YYYY-MM-DD&to=YYYY-MM-DD
@@ -51,6 +53,10 @@ import {
   parseDateParam,
   monthsBetween,
   parseSummary,
+  formatBalanceText,
+  sumDecimalStrings,
+  orNull,
+  toFinite,
   parseAmount,
   parseCost,
   mergeMonths,
@@ -428,21 +434,92 @@ async function loadToolUsage(ctx, fromKey, toKey) {
   };
 }
 
+/** 官方余额卡只展示一个钱包；优先人民币，找不到时取第一个。 */
+function officialBalanceOf(details) {
+  if (details === null || typeof details !== "object" || details.status !== "ready") return null;
+  const wallets = Array.isArray(details.value) ? details.value : [];
+  const bonuses = Array.isArray(details.bonusWallets) ? details.bonusWallets : [];
+  const wallet = wallets.find((item) => item?.currency === "CNY") ?? wallets[0];
+  if (wallet === undefined) return null;
+  const bonus = bonuses.find((item) => item?.currency === wallet.currency) ?? bonuses[0];
+  return {
+    toppedUpRaw: wallet.balance === null || wallet.balance === undefined ? null : String(wallet.balance),
+    // 官方没有赠送钱包时按 0 处理，避免插件余额卡显示「—」而官方显示 ¥0.00。
+    grantedRaw: bonus?.balance === null || bonus?.balance === undefined ? "0" : String(bonus.balance),
+    currency: typeof wallet.currency === "string" ? wallet.currency : "CNY"
+  };
+}
+
+/**
+ * 读取 DSH 官方账户服务里的余额快照（与官方「账号与余额」页同源）。
+ * deepseekAccount 是可选服务：旧宿主 / 精简 profile 没有时返回 null，调用方回退到
+ * 插件自己的平台会话数据。
+ */
+async function readOfficialBalance(ctx) {
+  let service;
+  try {
+    service = typeof ctx.get === "function" ? ctx.get("deepseekAccount") : undefined;
+  } catch {
+    return null;
+  }
+  if (service === null || typeof service !== "object" || typeof service.getBalance !== "function") return null;
+  let timer;
+  try {
+    // 官方账户服务有自己的网络请求；加一个上限，避免它拖住整个余额路由。
+    const timeout = new Promise((resolve) => {
+      timer = setTimeout(() => resolve(null), TIMEOUT_MS);
+      timer.unref?.();
+    });
+    const raw = await Promise.race([
+      service.getBalance({
+        // 与官方账号页使用同一客户端版本，避免服务端按未知版本拒绝请求。
+        version: "0.2.2-rc.5",
+        locale: "zh-CN",
+        timezoneOffsetSeconds: -new Date().getTimezoneOffset() * 60
+      }),
+      timeout
+    ]);
+    const details = raw !== null && typeof raw === "object" && "ok" in raw
+      ? (raw.ok === true ? raw.value : null)
+      : raw;
+    return officialBalanceOf(details);
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function handleSummary(ctx, res) {
-  const summary = await cachedPlatform(ctx, "/users/get_user_summary", {}, "summary");
-  if (!summary.ok) {
+  const [summary, official] = await Promise.all([
+    cachedPlatform(ctx, "/users/get_user_summary", {}, "summary"),
+    readOfficialBalance(ctx)
+  ]);
+  const parsed = summary.ok ? parseSummary(summary.bizData) : null;
+  const balance = official ?? (parsed === null ? null : {
+    toppedUpRaw: parsed.toppedUpRaw,
+    grantedRaw: parsed.grantedRaw,
+    currency: parsed.currency
+  });
+  if (balance === null) {
     sendJson(res, 200, { ok: false, code: summary.code, message: summary.message });
     return;
   }
-  const parsed = parseSummary(summary.bizData);
+  const currency = balance.currency ?? parsed?.currency ?? "CNY";
+  const totalRaw = sumDecimalStrings([balance.toppedUpRaw, balance.grantedRaw]);
   sendJson(res, 200, {
     ok: true,
     balance: {
-      toppedUp: parsed.toppedUp,
-      granted: parsed.granted,
-      currency: parsed.currency
+      toppedUp: orNull(toFinite(balance.toppedUpRaw)),
+      granted: orNull(toFinite(balance.grantedRaw)),
+      currency,
+      // 文本字段按官方页规则截断，客户端直接展示，避免各自 toFixed 产生 4.59/4.58。
+      toppedUpText: formatBalanceText(balance.toppedUpRaw, currency),
+      grantedText: formatBalanceText(balance.grantedRaw, currency),
+      totalText: formatBalanceText(totalRaw, currency)
     },
-    cumulativeCost: parsed.cumulativeCost
+    cumulativeCost: parsed?.cumulativeCost ?? null,
+    balanceSource: official === null ? "platform" : "official"
   });
 }
 

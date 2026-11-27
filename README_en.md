@@ -10,7 +10,7 @@ A DeepSeek Harness (DSH) web-GUI plugin: adds an "Account" page to the settings 
 > npm package: `@ycet/dsh-account-usage`. The unscoped [`dsh-account-usage`](https://www.npmjs.com/package/dsh-account-usage) on npm is an unrelated project by another author — do not mix the two.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.6.1-blue.svg?style=for-the-badge)](package.json)
+[![Version](https://img.shields.io/badge/version-0.6.2-blue.svg?style=for-the-badge)](package.json)
 [![npm](https://img.shields.io/npm/v/%40ycet%2Fdsh-account-usage?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@ycet/dsh-account-usage)
 [![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.6%2B-purple.svg?style=for-the-badge)](https://github.com/deepseek-ai/deepseek-harness)
 
@@ -60,7 +60,7 @@ Session token, account balance, usage totals (model + tools), model usage detail
 
 ### OpenCode Go
 
-Quota progress bars, reset times and reference limits for the three windows, plus the current period's usage trend and extrapolated forecast.
+Quota progress bars and reset times for the three windows, plus the current period's usage trend and extrapolated forecast.
 
 <img src="assets/images/opencode-go-01-quota.png" alt="OpenCode Go tab: 5-hour rolling / weekly / monthly quotas and the usage trend summary" width="860">
 
@@ -109,7 +109,7 @@ Quota progress bars, reset times and reference limits for the three windows, plu
 
 | Feature | Description |
 |---------|-------------|
-| **Quota windows** | Usage percentage, next reset time and reference limit for the 5-hour rolling / weekly / monthly windows |
+| **Quota windows** | Usage percentage and next reset time for the 5-hour rolling / weekly / monthly windows |
 | **Quota trend & forecast** | Per-day cumulative quota line for the current subscription period plus a linear forecast to the reset date; hover shows date, cumulative used, that day's increment and that day's requests; gaps are labelled, never interpolated |
 | **Models this period (cookie only)** | With an OpenCode Console cookie: the period's most-used models with shares, total requests and total tokens (from the official daily report) |
 
@@ -123,6 +123,9 @@ Quota progress bars, reset times and reference limits for the three windows, plu
 | **Sticky tabs** | The tab bar sticks to the top of the settings content area while scrolling |
 | **Auto refresh** | Polls for fresh data every 60 seconds while the page is mounted |
 | **Bilingual UI** | Full Chinese/English switching |
+
+> [!NOTE]
+> `0.6.2` unifies the DeepSeek balance display: the balance card on the Account page and the account-menu entry now read the balance snapshot from DSH's official account service (the same source as the official Settings → Account & balance page) and format it with the official **truncation** rule (4.589 → ¥4.58, not the rounded ¥4.59). If the official service is unavailable, the plugin falls back to its own platform-session data but keeps the same truncation rule. The "Limit (ref.): $12/$30/$60" text is removed from the three opencode go quota cards. **Both host and client changed** — a local `link` install needs a full quit and reopen of DSH plus a page refresh.
 
 > [!NOTE]
 > `0.6.1` fixes the "Models this period" card on the opencode go tab: the official daily CSV exported by OpenCode Console is a **rolling 30-day window**, so right after a subscription period resets it still contains the tail of the previous period — the model shares, request count and tokens shown were from the old period. The host now clips the CSV to "current period start → today (no later than period end)" before rolling up the models and totals, matching the usage-trend chart above; the card is hidden when the current period has no usage yet. **Host-side only** — even a local `link` install needs a full quit and reopen of DSH (refreshing the page is not enough).
@@ -162,16 +165,16 @@ Quota progress bars, reset times and reference limits for the three windows, plu
 
 ```sh
 # Option 1: install from npm (recommended; can be updated from the plugin page)
-dsh plugin --profile web add @ycet/dsh-account-usage@0.6.1
+dsh plugin --profile web add @ycet/dsh-account-usage@0.6.2
 
 # Option 2: install from a local source directory (development)
 dsh plugin --profile web add <absolute-path-to-plugin>
 
 # Option 3: install from GitHub (pinned to a release tag; requires git, no npm account)
-dsh plugin --profile web add "github:Ycet/dsh-account-usage#v0.6.1"
+dsh plugin --profile web add "github:Ycet/dsh-account-usage#v0.6.2"
 
 # Option 4: install from a Release asset (tarball; no git, no npm account)
-dsh plugin --profile web add "https://github.com/Ycet/dsh-account-usage/releases/download/v0.6.1/dsh-account-usage-0.6.1.tgz"
+dsh plugin --profile web add "https://github.com/Ycet/dsh-account-usage/releases/download/v0.6.2/dsh-account-usage-0.6.2.tgz"
 ```
 
 The package declares a `dsh.bundle` patch layer; `dsh plugin` merges the loader entry into the profile's bundle layer automatically — no manual editing of `cordis.patch.yml` required. Options 2–4 need no npm account; for the desktop app replace `--profile web` with `--profile desktop` (using the desktop-bundled CLI).
@@ -276,7 +279,7 @@ It is optional: without it the trend falls back to local sampling (labelled "loc
 
 ### On the OpenCode Go tab
 
-- View usage percentage, next reset time and reference limit for each quota window, with one-click "Go to opencode.ai" and "Refresh" buttons;
+- View usage percentage and next reset time for each quota window, with one-click "Go to opencode.ai" and "Refresh" buttons;
 - Below the three quota cards, "Usage trend (current period)" uses the current subscription period as its x-axis (derived by stepping one calendar month back from the monthly reset time): the green line is cumulative quota used, the dashed amber line is the forecast to the reset date, and the dashed grey line is the 100% limit; hover any day for date / used / that day / requests;
 - The summary row shows current used, daily pace and the projected end value; when the period just started (under one day) it says "Period just started" and makes no forecast;
 - With a Console cookie configured, a "Models this period" card (model shares, requests, tokens) appears below the trend card.
@@ -359,7 +362,7 @@ flowchart LR
 - The account-menu balance entry relies on the native DSH 0.2.x account menu DOM. If upstream redesigns that menu, the entry may be temporarily hidden, without affecting the account page or other features. It only reads the platform token already configured for this plugin and stores no balance data.
 - The merged content relies on the official "Account & balance" page DOM (the `<section>` inside `[data-slot="settings.section"]`). If upstream rewrites that page, the embedded content may stop appearing; the fallback page is not shown while the official page exists.
 - Within one settings session, switching sections preserves the embedded tab/time range; closing and reopening settings resets them to Overview / this month. The official page only exists when signed in to a DSH official account; signed-out users get the fallback page.
-- OpenCode Go limits ($12/$30/$60) are reference values for the plans; the endpoint does not return limits. Check opencode.ai when plans change.
+- OpenCode Go limits ($12/$30/$60) are plan reference values; the endpoint does not return limits. The plugin no longer shows fixed limit text; check opencode.ai when plans change.
 - Without a Console cookie the trend relies on local sampling: history only accumulates from the day the plugin starts recording (right after install, the current period only holds post-install data), and the percentage precision is limited to the official endpoint's whole percents (1%). Configure the cookie for the full period and daily request counts.
 - The Console API (`/console/api/*`) is an **undocumented internal API** that only accepts a browser session cookie and may break when upstream changes it. The plugin parses fields by alias, falls back to sampled data on failure, and exposes only status codes and the CSV header row in diagnostics (never the cookie or business data). Expired cookies must be re-pasted.
 - The official daily report buckets days in UTC while the plugin renders local dates, so a day may differ by one around midnight; the report also lags, so a just-finished request may only appear the next day.

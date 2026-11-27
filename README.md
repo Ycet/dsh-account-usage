@@ -10,7 +10,7 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 > npm 包名：`@ycet/dsh-account-usage`。npm 上同名的 [`dsh-account-usage`](https://www.npmjs.com/package/dsh-account-usage) 是另一个作者的独立项目，与本插件无关，请勿混装。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.6.1-blue.svg?style=for-the-badge)](package.json)
+[![Version](https://img.shields.io/badge/version-0.6.2-blue.svg?style=for-the-badge)](package.json)
 [![npm](https://img.shields.io/npm/v/%40ycet%2Fdsh-account-usage?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@ycet/dsh-account-usage)
 [![DSH](https://img.shields.io/badge/DSH-0.1.0--rc.6%2B-purple.svg?style=for-the-badge)](https://github.com/deepseek-ai/deepseek-harness)
 
@@ -60,7 +60,7 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 
 ### OpenCode Go
 
-三个配额窗口的用量进度条、重置时间与限额参考，以及当前订阅周期的额度消耗趋势与外推预测。
+三个配额窗口的用量进度条、重置时间，以及当前订阅周期的额度消耗趋势与外推预测。
 
 <img src="assets/images/opencode-go-01-quota.png" alt="OpenCode Go 标签页：5 小时滚动 / 每周 / 每月配额与用量趋势摘要" width="860">
 
@@ -109,7 +109,7 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 
 | 功能 | 说明 |
 |------|------|
-| **配额窗口** | 5 小时滚动 / 每周 / 每月三个窗口的用量百分比、下次重置时间与限额参考 |
+| **配额窗口** | 5 小时滚动 / 每周 / 每月三个窗口的用量百分比与下次重置时间 |
 | **额度消耗趋势与预测** | 当前订阅周期内按天的累计已用额度折线 + 到重置日的线性外推虚线；悬浮显示日期、累计已用、当日增量、当日请求数；缺口如实标注、不插值 |
 | **本周期模型用量（需 Cookie）** | 配置 OpenCode Console Cookie 后展示本周期最常用模型及占比、总请求数与总 Tokens（数据来自官方日榜） |
 
@@ -123,6 +123,9 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 | **标签栏吸附** | 标签栏在设置页向下滚动时吸附在内容区顶部，不随内容滑出 |
 | **自动刷新** | 页面挂载期间每 60 秒自动轮询最新数据 |
 | **双语言界面** | 完整的中英文切换支持 |
+
+> [!NOTE]
+> `0.6.2` 统一 DeepSeek 余额口径：「账户」页的余额卡与账户菜单改为读取 DSH 官方账户服务的余额快照（与官方「设置 → 账号与余额」同源），并按官方页规则**截断**到 2 位小数（4.589 → ¥4.58，而不是四舍五入的 ¥4.59）；官方服务不可用时回退到插件自己的平台会话数据，但仍使用同一截断规则。同时移除 opencode go 三个额度卡上的「限额参考：$12/$30/$60」文字。**宿主与客户端均有改动**，本地 `link` 安装需完全退出并重开 DSH，并刷新页面。
 
 > [!NOTE]
 > `0.6.1` 修正 opencode go 页的「本周期模型用量」：OpenCode Console 导出的官方日榜 CSV 固定是**近 30 天滚动窗口**，订阅周期刚重置时仍会带上上一周期尾段，导致模型占比、请求数与 Tokens 显示的是旧周期数据。现在先按「当前周期起点 → 今天（不晚于周期终点）」裁剪，再汇总模型与合计，与上方用量趋势曲线同口径；本周期尚无用量时该卡片隐藏。**仅宿主改动**，本地 `link` 安装也需完全退出并重开 DSH 才会生效（只刷新页面不够）。
@@ -164,16 +167,16 @@ DeepSeek Harness（DSH）网页界面插件：在设置面板新增「账户」�
 
 ```sh
 # 方式一：从 npm 安装（推荐，支持插件页一键更新）
-dsh plugin --profile web add @ycet/dsh-account-usage@0.6.1
+dsh plugin --profile web add @ycet/dsh-account-usage@0.6.2
 
 # 方式二：从本地源码安装（开发）
 dsh plugin --profile web add <absolute-path-to-plugin>
 
 # 方式三：从 GitHub 安装（锁定版本 tag，需本机有 git，无需 npm 账号）
-dsh plugin --profile web add "github:Ycet/dsh-account-usage#v0.6.1"
+dsh plugin --profile web add "github:Ycet/dsh-account-usage#v0.6.2"
 
 # 方式四：从 Release 资产安装（tarball，无需 git、无需 npm 账号）
-dsh plugin --profile web add "https://github.com/Ycet/dsh-account-usage/releases/download/v0.6.1/dsh-account-usage-0.6.1.tgz"
+dsh plugin --profile web add "https://github.com/Ycet/dsh-account-usage/releases/download/v0.6.2/dsh-account-usage-0.6.2.tgz"
 ```
 
 包声明了 `dsh.bundle` 补丁层，`dsh plugin` 会自动把加载项合入 profile 的 bundle 层，无需手动编辑 `cordis.patch.yml`。方式二～四均无需 npm 账号；桌面端把 `--profile web` 换成 `--profile desktop`（使用桌面端自带 CLI）。
@@ -278,7 +281,7 @@ DEEPSEEK_PLATFORM_TOKEN: <令牌>
 
 ### 在 OpenCode Go 页
 
-- 展示三个配额窗口的用量百分比、下次重置时间与限额参考，可一键「跳转」到 opencode.ai 或「刷新」；
+- 展示三个配额窗口的用量百分比与下次重置时间，可一键「跳转」到 opencode.ai 或「刷新」；
 - 三张额度卡下方是「用量趋势（当前订阅周期）」：横轴为本次订阅周期（由每月窗口的重置时间倒推一个自然月），绿线为已用额度累计、黄虚线为到期预测、灰虚线为 100% 上限；鼠标悬浮任意一天可看「日期 / 已用 / 当日 / 请求数」；
 - 顶部摘要显示「当前已用 / 日均消耗 / 预计期末」；周期刚开始（不足 1 天）时只显示「周期刚开始」，不做预测；
 - 配置了 Console Cookie 时，趋势卡下方会多出「本周期模型用量」卡（模型占比、请求数、Tokens）。
@@ -361,7 +364,7 @@ flowchart LR
 - 账户菜单余额入口依赖 DSH 0.2.x 的原生账户菜单 DOM；上游重做菜单结构时入口可能暂时不显示，但不影响账户页与其余功能。该入口只读取本插件已配置的平台令牌，不会额外保存余额数据。
 - 合并内容依赖官方「账号与余额」页的 DOM（`[data-slot="settings.section"]` 内的 `<section>`）；上游重写账户页结构时嵌入内容可能不再显示，此时可等待插件适配或暂时依赖兜底页（官方页存在时兜底页不会显示）。
 - 嵌入内容在同一设置会话内切换分区会保留 tab/时间维度；关闭设置再打开会重置为 概览 / 本月。官方页仅登录 DSH 官方账号后存在，未登录时使用兜底页。
-- OpenCode Go 的限额（$12/$30/$60）为套餐参考值，端点未返回限额；套餐调整时以 opencode.ai 页面为准。
+- OpenCode Go 的限额（$12/$30/$60）为套餐参考值，端点未返回限额；插件现已不再展示固定限额文字，套餐调整时以 opencode.ai 页面为准。
 - 趋势图在**未配置 Console Cookie** 时依赖本地采样：历史只能从插件开始记录那天起累积（首次安装后当前周期只有安装之后的数据），百分比精度受官方接口整数限制（1%）。需要完整周期与每日请求数请配置 Cookie。
 - 控制台接口（`/console/api/*`）是**未公开的内部接口**，只认浏览器会话 Cookie，且可能随上游改版失效。插件对结构做别名容忍解析，失败时自动退回采样数据，并在响应里只回传状态码与 CSV 表头列名以便定位（不含 Cookie、不含业务数据）。Cookie 过期需重新粘贴。
 - 官方日榜的日期口径为 UTC，插件按本地时区展示，跨零点附近可能差 1 天；日榜本身也有聚合延迟，刚完成的请求可能次日才计入。
